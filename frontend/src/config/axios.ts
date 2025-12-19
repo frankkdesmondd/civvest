@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
-  baseURL: 'https://civvest-backend.onrender.com/api',
+  baseURL: 'https://civvest-backend.onrender.com',
   withCredentials: true, // CRITICAL: This enables sending cookies
   headers: {
     'Content-Type': 'application/json',
@@ -60,6 +60,7 @@ axiosInstance.interceptors.response.use(
 );
 
 export default axiosInstance;
+
 
 
 
