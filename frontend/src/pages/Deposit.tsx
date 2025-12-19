@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import Foot from '../components/Foot';
 import { useToast } from '../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
+import axiosInstance from '../config/axios';
 
 interface Investment {
   id: string;
@@ -134,25 +135,16 @@ const Deposit: React.FC = () => {
   const handleConfirmPayment = async () => {
     setShowConfirmModal(false);
     setLoading(true);
-
+  
     try {
       const formData = new FormData();
       formData.append('investmentId', investmentId!);
       formData.append('amount', amount);
       formData.append('network', selectedNetwork);
       formData.append('receipt', receipt!);
-
-      await axios.post(
-        'https://civvest-backend.onrender.com/api/deposits',
-        formData,
-        {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
+  
+      await axiosInstance.post('/api/deposits', formData);
+  
       showToast('Payment confirmation submitted! An admin will verify your deposit shortly.', 'success');
       
       setTimeout(() => {
@@ -407,3 +399,4 @@ const Deposit: React.FC = () => {
 };
 
 export default Deposit;
+
