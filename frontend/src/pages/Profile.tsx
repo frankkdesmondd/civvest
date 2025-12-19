@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { HomeUtils } from '../utils/HomeUtils';
 import { useUser } from '../context/UserContext';
 import ProfilePictureUpload from '../components/ProfilePictureUpload';
+import axiosInstance from '../config/axios';
 
 interface Wallet {
   id: string;
@@ -650,4 +651,5 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
 
