@@ -286,14 +286,6 @@ const InvestmentDetail: React.FC = () => {
                     </div>
                     <p className="text-2xl font-bold text-gray-800">{investment.duration}</p>
                   </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center gap-2 text-gray-600 mb-2">
-                      <FiDollarSign />
-                      <span className="text-sm">Target Amount</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">${investment.targetAmount.toLocaleString()}</p>
-                  </div>
                 </div>
 
                 <div className="border-t pt-6">
@@ -697,3 +689,4 @@ const ApplicationFormModal: React.FC<{
 };
 
 export default InvestmentDetail;
+
