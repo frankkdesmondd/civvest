@@ -101,7 +101,7 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
       formData.append('profilePicture', file);
       
       // Use the correct endpoint - no /api prefix needed since axiosInstance adds it
-      const response = await axiosInstance.post('/profile-picture/upload', formData, {
+      const response = await axiosInstance.post('/api/profile-picture/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -156,7 +156,7 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
     try {
       console.log('Attempting to remove profile picture...');
       
-      const response = await axiosInstance.delete('/profile-picture/remove', {
+      const response = await axiosInstance.delete('/api/profile-picture/remove', {
         withCredentials: true
       });
       
@@ -331,5 +331,6 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
     </>
   );
 };
+
 
 export default ProfilePictureUpload;
