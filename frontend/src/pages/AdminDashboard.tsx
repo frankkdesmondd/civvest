@@ -1,0 +1,1472 @@
+import React, { useState, useEffect } from 'react';
+import { FiUsers, FiTrendingUp, FiDollarSign, FiActivity, FiEdit, FiTrash2, FiPlus, FiSearch, FiBarChart2, FiPieChart, FiMenu, FiLogOut, FiHome, FiFileText, FiFile, FiExternalLink, FiAlertCircle } from 'react-icons/fi';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import CivvestLogo from '../assets/civvest company logo.png'
+import ChatModal from '../components/ChatModal';
+import { HomeUtils } from '../utils/HomeUtils';
+import { useToast } from '../context/ToastContext';
+import ConfirmModal from '../components/ConfirmModal'; // Import ConfirmModal
+import { PiHandWithdrawFill } from "react-icons/pi";
+
+interface Application {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  address: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+  investment: {
+    id: string;
+    title: string;
+    category: string;
+  };
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}
+
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  accountNumber: string;
+  balance: number;
+  roi: number;
+  referralBonus: number;
+  createdAt: string;
+  _count: { userInvestments: number };
+}
+
+interface Stats {
+  totalUsers: number;
+  totalInvestments: number;
+  totalUserInvestments: number;
+  totalInvestedAmount: number;
+}
+
+interface Withdrawal {
+  id: string;
+  userId: string;
+  userInvestmentId: string;
+  amount: number;
+  type: 'BANK_TRANSFER' | 'CRYPTO_WALLET';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PROCESSED';
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  routingCode?: string;
+  coinHost?: string;
+  walletAddress?: string;
+  adminNotes?: string;
+  approvedById?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  investment: {
+    id: string;
+    amount: number;
+    returnAmount: number;
+    investment: {
+      title: string;
+      category: string;
+    };
+  };
+  approvedBy?: {
+    firstName: string;
+    lastName: string;
+  };
+}
+
+// Sidebar Component (unchanged)
+const Sidebar: React.FC<{ activeTab: string; setActiveTab: (tab: any) => void; collapsed: boolean; setCollapsed: (val: boolean) => void }> = ({ activeTab, setActiveTab, collapsed, setCollapsed }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    navigate('/signin');
+  };
+
+  return (
+    <div className={`h-screen sm:h-screen lg:h-screen bg-[#041a35] text-white flex flex-col transition-all duration-300 fixed left-0 top-0 z-40 ${collapsed ? 'w-20' : 'w-64'}`}>
+      <div className="flex items-center justify-between px-4 py-6 border-b border-gray-700">
+        {!collapsed && (<img src={CivvestLogo} alt='' className='w-[3.4em]'/> )}
+        <button onClick={() => setCollapsed(!collapsed)} className="p-2 rounded hover:bg-gray-700">
+          <FiMenu className="text-xl" />
+        </button>
+      </div>
+
+      <nav className="flex-1 flex flex-col mt-4 gap-2 px-2">
+        <button onClick={() => navigate('/')} className="flex items-center gap-3 px-4 py-3 rounded-md font-semibold hover:bg-gray-700 text-gray-300">
+          <FiHome className="text-xl" />
+          {!collapsed && <span>Homepage</span>}
+        </button>
+        
+        <button onClick={() => setActiveTab('overview')} className={`flex items-center gap-3 px-4 py-3 rounded-md font-semibold ${activeTab === 'overview' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+          <FiBarChart2 className="text-xl" />
+          {!collapsed && <span>Overview</span>}
+        </button>
+
+        <button onClick={() => setActiveTab('users')} className={`flex items-center gap-3 px-4 py-3 rounded-md font-semibold ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+          <FiUsers className="text-xl" />
+          {!collapsed && <span>Users</span>}
+        </button>
+
+        <button onClick={() => setActiveTab('investments')} className={`flex items-center gap-3 px-4 py-3 rounded-md font-semibold ${activeTab === 'investments' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+          <FiTrendingUp className="text-xl" />
+          {!collapsed && <span>Investments</span>}
+        </button>
+
+        <button onClick={() => setActiveTab('news')} className={`flex items-center gap-3 px-4 py-3 rounded-md font-semibold ${activeTab === 'news' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}>
+          <FiFileText className="text-xl" />
+          {!collapsed && <span>News</span>}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('withdrawals')}
+          className={`flex items-center gap-3 px-4 py-3 rounded-md font-semibold ${
+            activeTab === 'withdrawals' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          <PiHandWithdrawFill className="text-xl" />
+          {!collapsed && <span>Withdrawals</span>}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('deposits')}
+          className={`flex items-center gap-3 px-4 py-3 rounded-md font-semibold ${
+            activeTab === 'deposits' ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          <FiDollarSign className="text-xl" />
+          {!collapsed && <span>Deposits</span>}
+        </button>
+      </nav>
+
+      <div className="px-2 py-4 border-t border-gray-700">
+        <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 rounded-md font-semibold text-gray-300 hover:bg-red-600 hover:text-white">
+          <FiLogOut className="text-xl" />
+          {!collapsed && <span>Logout</span>}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const AdminDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'investments' | 'news' | 'withdrawals' | 'deposits'>('overview');
+  const [collapsed, setCollapsed] = useState(false);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [newsPosts, setNewsPosts] = useState<any[]>([]);
+  const [investments, setInvestments] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [balanceAction, setBalanceAction] = useState<'SET' | 'ADD' | 'SUBTRACT'>('ADD');
+  const [balanceAmount, setBalanceAmount] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [oilPrices, setOilPrices] = useState<any[]>([]);
+  const [selectedUserForROI, setSelectedUserForROI] = useState<User | null>(null);
+  const [roiAmount, setRoiAmount] = useState('');
+  const navigate = useNavigate();
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [deposits, setDeposits] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const { showToast } = useToast();
+  
+  // Receipt Modal State
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<string>('');
+
+  // Rejection Modal State
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedWithdrawalForRejection, setSelectedWithdrawalForRejection] = useState<string | null>(null);
+
+  // ConfirmModal States
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string;
+    message: string;
+    confirmText: string;
+    cancelText: string;
+    type: 'warning' | 'danger' | 'info';
+    onConfirm: () => void;
+    onCancel: () => void;
+  }>({
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    type: 'warning',
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
+
+  // Function to open confirm modal
+  const openConfirmModal = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    type: 'warning' | 'danger' | 'info' = 'warning',
+    confirmText = 'Confirm',
+    cancelText = 'Cancel'
+  ) => {
+    setConfirmModalConfig({
+      title,
+      message,
+      confirmText,
+      cancelText,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmModalOpen(false);
+      },
+      onCancel: () => setConfirmModalOpen(false)
+    });
+    setConfirmModalOpen(true);
+  };
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      navigate('/signin');
+      return;
+    }
+    
+    const parsedUser = JSON.parse(storedUser);
+    if (parsedUser.role !== 'ADMIN') {
+      navigate('/dashboard');
+      return;
+    }
+    
+    fetchAllData();
+    generateOilPriceData();
+  }, []);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchStats(), 
+      fetchUsers(), 
+      fetchNews(), 
+      fetchInvestments(), 
+      fetchRecentActivities(), 
+      fetchDeposits(),
+      fetchWithdrawals()
+    ]);
+    setLoading(false);
+  };
+
+  const fetchWithdrawals = async () => {
+    try {
+      const res = await axios.get('https://civvest-backend.onrender.com/api/withdrawals/admin/all', { 
+        withCredentials: true 
+      });
+      setWithdrawals(res.data);
+    } catch (error) {
+      console.error('Failed to fetch withdrawals:', error);
+      showToast('Failed to load withdrawal requests', 'error');
+    }
+  };
+
+  const handleApproveWithdrawal = async (withdrawalId: string) => {
+    openConfirmModal(
+      'Approve Withdrawal',
+      'Are you sure you want to approve this withdrawal request?',
+      async () => {
+        try {
+          await axios.put(
+            `https://civvest-backend.onrender.com/api/withdrawals/admin/${withdrawalId}/status`,
+            { status: 'APPROVED' },
+            { withCredentials: true }
+          );
+          showToast('Withdrawal approved!', 'success');
+          fetchWithdrawals();
+          fetchUsers();
+        } catch (error: any) {
+          showToast(error.response?.data?.error || 'Failed to approve withdrawal', 'error');
+        }
+      },
+      'info',
+      'Approve',
+      'Cancel'
+    );
+  };
+
+  const handleRejectWithdrawal = async (withdrawalId: string, reason?: string) => {
+    try {
+      await axios.put(
+        `https://civvest-backend.onrender.com/api/withdrawals/admin/${withdrawalId}/status`,
+        { status: 'REJECTED', adminNotes: reason || 'No reason provided' },
+        { withCredentials: true }
+      );
+      showToast('Withdrawal rejected!', 'success');
+      fetchWithdrawals();
+      setShowRejectModal(false);
+      setRejectionReason('');
+      setSelectedWithdrawalForRejection(null);
+    } catch (error: any) {
+      showToast(error.response?.data?.error || 'Failed to reject withdrawal', 'error');
+    }
+  };
+
+  const openRejectModal = (withdrawalId: string) => {
+    setSelectedWithdrawalForRejection(withdrawalId);
+    setShowRejectModal(true);
+  };
+
+  const handleUpdateROI = async () => {
+    if (!selectedUserForROI || !roiAmount) {
+      showToast('Please enter a valid ROI amount', "error");
+      return;
+    }
+
+    try {
+      await axios.put(
+        `https://civvest-backend.onrender.com/api/admin/users/${selectedUserForROI.id}/roi`, 
+        { roi: parseFloat(roiAmount) }, 
+        { withCredentials: true }
+      );
+      
+      showToast('ROI updated successfully', "success");
+      
+      // Clear modal state
+      setSelectedUserForROI(null);
+      setRoiAmount('');
+      
+      // Refresh users list to show updated ROI
+      await fetchUsers();
+      
+      // Also refresh stats if needed
+      await fetchStats();
+    } catch (error: any) {
+      console.error('Update ROI error:', error);
+      showToast("ROI failed to update", "error");
+    }
+  };
+
+  const generateOilPriceData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
+    setOilPrices(months.map(month => ({ month, price: Math.floor(Math.random() * 30) + 60 })));
+  };
+
+  const fetchDeposits = async () => {
+    try {
+      const res = await axios.get('https://civvest-backend.onrender.com/api/deposits/admin/all', { withCredentials: true });
+      setDeposits(res.data);
+    } catch (error) {
+      console.error('Failed to fetch deposits:', error);
+    }
+  };
+
+  const handleConfirmDeposit = async (depositId: string) => {
+    openConfirmModal(
+      'Confirm Deposit',
+      'Are you sure you want to confirm this deposit? This will update the user balance and activate their investment.',
+      async () => {
+        try {
+          await axios.put(`https://civvest-backend.onrender.com/api/deposits/${depositId}/status`, 
+            { status: 'CONFIRMED' }, 
+            { withCredentials: true }
+          );
+          showToast('Deposit confirmed successfully!', "success");
+          fetchDeposits();
+          fetchUsers();
+        } catch (error: any) {
+          showToast('Failed to confirm deposit', "error");
+        }
+      },
+      'info',
+      'Confirm',
+      'Cancel'
+    );
+  };
+
+  const handleRejectDeposit = async (depositId: string) => {
+    openConfirmModal(
+      'Reject Deposit',
+      'Are you sure you want to reject this deposit?',
+      async () => {
+        try {
+          await axios.put(`https://civvest-backend.onrender.com/api/deposits/${depositId}/status`, 
+            { status: 'REJECTED' }, 
+            { withCredentials: true }
+          );
+          showToast('Deposit rejected', "success");
+          fetchDeposits();
+        } catch (error: any) {
+          showToast('Failed to reject deposit', "error");
+        }
+      },
+      'danger',
+      'Reject',
+      'Cancel'
+    );
+  };
+
+  const openReceiptModal = (receiptUrl: string) => {
+    setSelectedReceipt(receiptUrl);
+    setShowReceiptModal(true);
+  };
+
+  const fetchStats = async () => {
+    try {
+      const res = await axios.get('https://civvest-backend.onrender.com/api/admin/stats', { withCredentials: true });
+      setStats(res.data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await axios.get('https://civvest-backend.onrender.com/api/admin/users', { 
+        withCredentials: true 
+      });
+      console.log('Fetched users:', res.data);
+      setUsers(res.data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const fetchNews = async () => {
+    try {
+      const res = await axios.get('https://civvest-backend.onrender.com/api/news/admin/all', { withCredentials: true });
+      setNewsPosts(res.data);
+    } catch (error) {
+      console.error('Failed to fetch news:', error);
+    }
+  };
+
+  const fetchInvestments = async () => {
+    try {
+      const res = await axios.get('https://civvest-backend.onrender.com/api/admin/investments/analytics', { withCredentials: true });
+      setInvestments(res.data);
+    } catch (error) {
+      console.error('Failed to fetch investments:', error);
+    }
+  };
+
+  const fetchRecentActivities = async () => {
+    try {
+      const res = await axios.get('https://civvest-backend.onrender.com/api/admin/recent-activities', { withCredentials: true });
+      setRecentActivities(res.data);
+    } catch (error) {
+      console.error('Failed to fetch activities:', error);
+    }
+  };
+
+  const handleUpdateBalance = async () => {
+    if (!selectedUser || !balanceAmount) {
+      showToast('Please enter a valid amount', "error");
+      return;
+    }
+
+    try {
+      await axios.put(`https://civvest-backend.onrender.com/api/admin/users/${selectedUser.id}/balance`, 
+        { balance: parseFloat(balanceAmount), action: balanceAction }, 
+        { withCredentials: true }
+      );
+      showToast('Balance updated successfully', "success");
+      setSelectedUser(null);
+      setBalanceAmount('');
+      fetchUsers();
+    } catch (error: any) {
+      showToast('Failed to update balance', "error");
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    openConfirmModal(
+      'Delete User',
+      `Are you sure you want to delete ${userName}? This action cannot be undone.`,
+      async () => {
+        try {
+          await axios.delete(`https://civvest-backend.onrender.com/api/admin/users/${userId}`, { withCredentials: true });
+          showToast('User deleted', "success");
+          fetchUsers();
+        } catch (error: any) {
+          showToast('Failed to delete user', "error");
+        }
+      },
+      'danger',
+      'Delete',
+      'Cancel'
+    );
+  };
+
+  const handleDeleteNews = async (id: string) => {
+    openConfirmModal(
+      'Delete News Post',
+      'Are you sure you want to delete this news post?',
+      async () => {
+        try {
+          await axios.delete(`https://civvest-backend.onrender.com/api/news/${id}`, { withCredentials: true });
+          showToast('News deleted', "success");
+          fetchNews();
+        } catch (error) {
+          showToast('Failed to delete news', "error");
+        }
+      },
+      'danger',
+      'Delete',
+      'Cancel'
+    );
+  };
+
+  const filteredUsers = users.filter(user => 
+    user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.accountNumber.includes(searchTerm)
+  );
+
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+  const categoryData = investments.reduce((acc: any[], inv) => {
+    const existing = acc.find(item => item.category === inv.category);
+    if (existing) {
+      existing.value += inv.totalInvested;
+    } else {
+      acc.push({ category: inv.category, value: inv.totalInvested });
+    }
+    return acc;
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
+        <img src={HomeUtils[0].companyLogo} alt="" className='w-[8em]'/>
+        <p className='text-white'>Page Loading......</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} collapsed={collapsed} setCollapsed={setCollapsed} />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModalOpen}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        confirmText={confirmModalConfig.confirmText}
+        cancelText={confirmModalConfig.cancelText}
+        type={confirmModalConfig.type}
+        onConfirm={confirmModalConfig.onConfirm}
+        onCancel={confirmModalConfig.onCancel}
+      />
+
+      {/* Receipt Modal */}
+      {showReceiptModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Payment Receipt</h2>
+              <button
+                onClick={() => {
+                  setShowReceiptModal(false);
+                  setSelectedReceipt('');
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold w-8 h-8 flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              {selectedReceipt.endsWith('.pdf') ? (
+                <div className="text-center">
+                  <FiFile className="text-6xl text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">PDF Receipt</p>
+                  <a
+                    href={`https://civvest-backend.onrender.com${selectedReceipt}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
+                  >
+                    <FiExternalLink /> Open PDF in New Tab
+                  </a>
+                </div>
+              ) : (
+                <img
+                  src={`https://civvest-backend.onrender.com${selectedReceipt}`}
+                  alt="Payment Receipt"
+                  className="w-full h-auto rounded-lg"
+                  onError={(e) => {
+                    console.error('Image failed to load:', selectedReceipt);
+                    e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <FiAlertCircle className="text-red-600 text-xl" />
+                <h2 className="text-xl font-bold text-gray-800">Reject Withdrawal</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                  setSelectedWithdrawalForRejection(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold w-8 h-8 flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm mb-2">
+                  Please provide a reason for rejection
+                </label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Enter rejection reason..."
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:border-red-500 focus:outline-none h-32 resize-none"
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This reason will be visible to the user
+                </p>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    if (!rejectionReason.trim()) {
+                      showToast('Please enter a rejection reason', 'error');
+                      return;
+                    }
+                    if (selectedWithdrawalForRejection) {
+                      handleRejectWithdrawal(selectedWithdrawalForRejection, rejectionReason);
+                    }
+                  }}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold"
+                >
+                  Confirm Rejection
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRejectModal(false);
+                    setRejectionReason('');
+                    setSelectedWithdrawalForRejection(null);
+                  }}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-lg font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={`flex-1 transition-all duration-300 ${collapsed ? 'ml-20' : 'ml-64'}`}>
+        <div className="pt-8 px-4 lg:px-8 pb-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h1 className="text-4xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
+                <p className="text-gray-600">Manage your platform</p>
+              </div>
+              {activeTab === 'news' && (
+                <button onClick={() => navigate('/admin/create-news')} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2">
+                  <FiPlus /> Create News
+                </button>
+              )}
+            </div>
+
+            {/* Overview Section */}
+            {activeTab === 'overview' && stats && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-linear-to-br from-blue-500 to-blue-600 p-6 rounded-xl shadow-lg text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100 text-sm mb-1">Total Users</p>
+                        <p className="text-3xl font-bold">{stats.totalUsers}</p>
+                      </div>
+                      <div className="bg-blue-400 bg-opacity-30 p-4 rounded-full">
+                        <FiUsers className="text-3xl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-linear-to-br from-green-500 to-green-600 p-6 rounded-xl shadow-lg text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-green-100 text-sm mb-1">Investments</p>
+                        <p className="text-3xl font-bold">{stats.totalInvestments}</p>
+                      </div>
+                      <div className="bg-green-400 bg-opacity-30 p-4 rounded-full">
+                        <FiTrendingUp className="text-3xl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-linear-to-br from-purple-500 to-purple-600 p-6 rounded-xl shadow-lg text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-purple-100 text-sm mb-1">Transactions</p>
+                        <p className="text-3xl font-bold">{stats.totalUserInvestments}</p>
+                      </div>
+                      <div className="bg-purple-400 bg-opacity-30 p-4 rounded-full">
+                        <FiActivity className="text-3xl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-linear-to-br from-orange-500 to-orange-600 p-6 rounded-xl shadow-lg text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-orange-100 text-sm mb-1">Total Volume</p>
+                        <p className="text-3xl font-bold">${(stats.totalInvestedAmount / 1000).toFixed(1)}K</p>
+                      </div>
+                      <div className="bg-orange-400 bg-opacity-30 p-4 rounded-full">
+                        <FiDollarSign className="text-3xl" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <FiBarChart2 className="text-blue-600" /> Oil Price Trends 2024
+                    </h2>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={oilPrices}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="price" stroke="#3B82F6" strokeWidth={3} name="$/barrel" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                      <FiPieChart className="text-green-600" /> Investment Categories
+                    </h2>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          dataKey="value"
+                          outerRadius={100}
+                          label={(props) => {
+                            const { name, percent } = props;
+                            const safePercent = percent ? (percent * 100).toFixed(0) : "0";
+                            return `${name}: ${safePercent}%`;
+                          }}
+                        >
+                          {categoryData.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Investments</h2>
+                    <div className="space-y-3">
+                      {recentActivities?.recentInvestments.slice(0, 5).map((activity: any) => (
+                        <div key={activity.id} className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="font-semibold">{activity.user.firstName} {activity.user.lastName}</p>
+                            <p className="text-sm text-gray-600">{activity.investment.title}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-green-600">${activity.amount.toFixed(2)}</p>
+                            <p className="text-xs text-gray-500">{new Date(activity.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">New Users</h2>
+                    <div className="space-y-3">
+                      {recentActivities?.recentUsers.map((user: any) => (
+                        <div key={user.id} className="flex justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                              {user.firstName[0]}{user.lastName[0]}
+                            </div>
+                            <div>
+                              <p className="font-semibold">{user.firstName} {user.lastName}</p>
+                              <p className="text-sm text-gray-600">{user.email}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-blue-600">${user.balance.toFixed(2)}</p>
+                            <p className="text-xs text-gray-500">{new Date(user.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Users Section */}
+            {activeTab === 'users' && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">User Management</h2>
+                  <div className="relative">
+                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 pr-4 py-2 border rounded-lg w-64" />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left py-4 px-4">User</th>
+                        <th className="text-left py-4 px-4">Account #</th>
+                        <th className="text-left py-4 px-4">Balance</th>
+                        <th className="text-left py-4 px-4">ROI</th>
+                        <th className="text-left py-4 px-4">Referral Bonus</th>
+                        <th className="text-left py-4 px-4">Investments</th>
+                        <th className="text-left py-4 px-4">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((user) => (
+                        <tr key={user.id} className="border-b hover:bg-gray-50">
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+                                {user.firstName[0]}{user.lastName[0]}
+                              </div>
+                              <div>
+                                <p className="font-semibold">{user.firstName} {user.lastName}</p>
+                                <p className="text-sm text-gray-600">{user.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4"><span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{user.accountNumber}</span></td>
+                          <td className="py-4 px-4 font-bold text-green-600">${Math.floor(user.balance)}</td>
+                          <td className="py-4 px-4 font-bold text-purple-600">
+                            ${Math.floor(user.roi || 0)}
+                          </td>
+                          <td className="py-4 px-4 font-bold text-orange-600">
+                            ${Math.floor(user.referralBonus || 0)}
+                          </td>
+                          <td className="py-4 px-4 text-center">{user._count.userInvestments}</td>
+                          <td className="py-4 px-4">
+                            <div className="flex gap-2">
+                              <button onClick={() => setSelectedUser(user)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm">
+                                <FiEdit className="inline" /> Balance
+                              </button>
+                              <button onClick={() => {
+                                setSelectedUserForROI(user);
+                                setRoiAmount((user.roi || 0).toString());
+                              }} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm">
+                                <FiEdit className="inline" /> ROI
+                              </button>
+                              <button onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm">
+                                <FiTrash2 />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {selectedUser && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl p-8 max-w-md w-full">
+                      <h2 className="text-2xl font-bold mb-4">Edit Balance</h2>
+                      <p className="mb-6">Current: <span className="font-bold text-green-600">${selectedUser.balance.toFixed(2)}</span></p>
+                      <select value={balanceAction} onChange={(e) => setBalanceAction(e.target.value as any)} className="w-full px-4 py-3 border rounded-lg mb-4">
+                        <option value="ADD">Add</option>
+                        <option value="SUBTRACT">Subtract</option>
+                        <option value="SET">Set</option>
+                      </select>
+                      <input type="number" value={balanceAmount} onChange={(e) => setBalanceAmount(e.target.value)} placeholder="Amount" className="w-full px-4 py-3 border rounded-lg mb-6" />
+                      <div className="flex gap-4">
+                        <button onClick={handleUpdateBalance} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg">Update</button>
+                        <button onClick={() => { setSelectedUser(null); setBalanceAmount(''); }} className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded-lg">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ROI Edit Modal */}
+                {selectedUserForROI && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl p-8 max-w-md w-full">
+                      <h2 className="text-2xl font-bold mb-4">Edit ROI</h2>
+                      <p className="mb-2">User: <span className="font-semibold">{selectedUserForROI.firstName} {selectedUserForROI.lastName}</span></p>
+                      <p className="mb-6">Current ROI: <span className="font-bold text-purple-600">
+                        ${Math.floor(selectedUserForROI.roi || 0)}
+                      </span></p>
+                      <input
+                        type="number"
+                        value={roiAmount}
+                        onChange={(e) => setRoiAmount(e.target.value)}
+                        placeholder="Enter new ROI amount"
+                        className="w-full px-4 py-3 border rounded-lg mb-6"
+                      />
+                      <div className="flex gap-4">
+                        <button onClick={handleUpdateROI} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold">
+                          Update ROI
+                        </button>
+                        <button onClick={() => {
+                          setSelectedUserForROI(null);
+                          setRoiAmount('');
+                        }} className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded-lg">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Withdrawals Section */}
+            {activeTab === 'withdrawals' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6">Withdrawal Requests</h2>
+                  
+                  {withdrawals.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <p className="text-lg">No withdrawal requests yet</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left py-4 px-4 text-gray-700 font-semibold">User</th>
+                            <th className="text-left py-4 px-4 text-gray-700 font-semibold">Investment</th>
+                            <th className="text-left py-4 px-4 text-gray-700 font-semibold">Amount</th>
+                            <th className="text-left py-4 px-4 text-gray-700 font-semibold">Type</th>
+                            <th className="text-left py-4 px-4 text-gray-700 font-semibold">Details</th>
+                            <th className="text-left py-4 px-4 text-gray-700 font-semibold">Date</th>
+                            <th className="text-left py-4 px-4 text-gray-700 font-semibold">Status</th>
+                            <th className="text-left py-4 px-4 text-gray-700 font-semibold">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {withdrawals.map((withdrawal) => (
+                            <tr key={withdrawal.id} className="border-b hover:bg-gray-50 transition">
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="font-semibold text-gray-800">
+                                    {withdrawal.user.firstName} {withdrawal.user.lastName}
+                                  </p>
+                                  <p className="text-sm text-gray-600">{withdrawal.user.email}</p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <p className="font-semibold text-gray-800">
+                                  {withdrawal.investment.investment.title}
+                                </p>
+                                <p className="text-xs text-gray-600">
+                                  {withdrawal.investment.investment.category}
+                                </p>
+                              </td>
+                              <td className="py-4 px-4">
+                                <p className="font-bold text-green-600 text-lg">
+                                  ${withdrawal.amount.toFixed(2)}
+                                </p>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                  withdrawal.type === 'BANK_TRANSFER' 
+                                    ? 'bg-blue-100 text-blue-800' 
+                                    : 'bg-purple-100 text-purple-800'
+                                }`}>
+                                  {withdrawal.type === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Crypto Wallet'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <button
+                                  onClick={() => {
+                                    alert(
+                                      withdrawal.type === 'BANK_TRANSFER' 
+                                        ? `Bank Details:\nBank: ${withdrawal.bankName || 'N/A'}\nAccount Name: ${withdrawal.accountName || 'N/A'}\nAccount Number: ${withdrawal.accountNumber || 'N/A'}\nRouting Code: ${withdrawal.routingCode || 'N/A'}`
+                                        : `Wallet Details:\nCoin/Host: ${withdrawal.coinHost || 'N/A'}\nWallet Address: ${withdrawal.walletAddress || 'N/A'}`
+                                    );
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
+                                >
+                                  View Details
+                                </button>
+                              </td>
+                              <td className="py-4 px-4">
+                                <p className="text-sm text-gray-600">
+                                  {new Date(withdrawal.createdAt).toLocaleDateString()}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(withdrawal.createdAt).toLocaleTimeString()}
+                                </p>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                  withdrawal.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                  withdrawal.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                  withdrawal.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {withdrawal.status}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                {withdrawal.status === 'PENDING' ? (
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleApproveWithdrawal(withdrawal.id)}
+                                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => openRejectModal(withdrawal.id)}
+                                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500 text-sm">
+                                    {withdrawal.status === 'APPROVED' ? 'Approved' : 
+                                     withdrawal.status === 'REJECTED' ? 'Rejected' : 'Processed'}
+                                    {withdrawal.approvedBy && ` by ${withdrawal.approvedBy.firstName} ${withdrawal.approvedBy.lastName}`}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-sm mb-2">Total Withdrawals</p>
+                    <p className="text-3xl font-bold text-gray-800">{withdrawals.length}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-sm mb-2">Pending</p>
+                    <p className="text-3xl font-bold text-yellow-600">
+                      {withdrawals.filter(w => w.status === 'PENDING').length}
+                    </p>
+                  </div>
+                  <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-sm mb-2">Approved</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {withdrawals.filter(w => w.status === 'APPROVED').length}
+                    </p>
+                  </div>
+                  <div className="bg-white p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-sm mb-2">Total Amount</p>
+                    <p className="text-3xl font-bold text-blue-600">
+                      ${withdrawals
+                        .filter(w => w.status === 'APPROVED')
+                        .reduce((sum, w) => sum + w.amount, 0)
+                        .toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Investments Section */}
+            {activeTab === 'investments' && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h2 className="text-2xl font-bold mb-6">Investment Analytics</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {investments.map((inv) => (
+                    <div key={inv.id} className="border rounded-xl p-6 hover:shadow-lg">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{inv.category}</span>
+                      <h3 className="text-lg font-bold mt-3">{inv.title}</h3>
+                      <div className="space-y-2 mt-4 text-sm">
+                        <div className="flex justify-between">
+                          <span>Investors:</span>
+                          <span className="font-semibold">{inv.totalInvestors}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Invested:</span>
+                          <span className="font-semibold text-green-600">${inv.totalInvested.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Target:</span>
+                          <span className="font-semibold">${inv.targetAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
+                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.min((inv.totalInvested / inv.targetAmount) * 100, 100)}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* News Section */}
+            {activeTab === 'news' && (
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left py-4 px-4">Title</th>
+                      <th className="text-left py-4 px-4">Category</th>
+                      <th className="text-left py-4 px-4">Status</th>
+                      <th className="text-left py-4 px-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {newsPosts.map((post) => (
+                      <tr key={post.id} className="border-b hover:bg-gray-50">
+                        <td className="py-4 px-4 font-semibold">{post.title}</td>
+                        <td className="py-4 px-4">{post.category}</td>
+                        <td className="py-4 px-4">
+                          <span className={`px-3 py-1 rounded-full text-xs ${post.published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {post.published ? 'Published' : 'Draft'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex gap-2">
+                            <button className="text-blue-600"><FiEdit /></button>
+                            <button onClick={() => handleDeleteNews(post.id)} className="text-red-600"><FiTrash2 /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Deposits Section */}
+            {activeTab === 'deposits' && (
+              <div className="space-y-6">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Total Deposits</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-800">{deposits.length}</p>
+                  </div>
+                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Pending</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-yellow-600">
+                      {deposits.filter(d => d.status === 'PENDING').length}
+                    </p>
+                  </div>
+                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Confirmed</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-green-600">
+                      {deposits.filter(d => d.status === 'CONFIRMED').length}
+                    </p>
+                  </div>
+                  <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
+                    <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Total Amount</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-blue-600">
+                      ${deposits
+                        .filter(d => d.status === 'CONFIRMED')
+                        .reduce((sum, d) => sum + d.amount, 0)
+                        .toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Deposits Table */}
+                <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Deposit Requests</h2>
+                    <div className="text-sm text-gray-600">
+                      Showing {deposits.length} deposit{deposits.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  
+                  {deposits.length === 0 ? (
+                    <div className="text-center py-8 sm:py-12 text-gray-500">
+                      <p className="text-base sm:text-lg">No deposit requests yet</p>
+                      <p className="text-sm mt-2">New deposits will appear here</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto -mx-4 sm:mx-0">
+                      {/* Desktop/Large Tablet View */}
+                      <div className="hidden lg:block">
+                        <table className="w-full min-w-5xl">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Investment</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Amount</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Network</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Receipt</th>
+                              <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {deposits.map((deposit) => (
+                              <tr key={deposit.id} className="border-b hover:bg-gray-50 transition">
+                                <td className="py-4 px-4">
+                                  <div>
+                                    <p className="font-semibold text-gray-800">
+                                      {deposit.user.firstName} {deposit.user.lastName}
+                                    </p>
+                                    <p className="text-sm text-gray-600">{deposit.user.email}</p>
+                                    <p className="text-xs text-gray-500">Acc: {deposit.user.accountNumber}</p>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <p className="font-semibold text-gray-800">{deposit.investment.title}</p>
+                                  <p className="text-xs text-gray-600">{deposit.investment.returnRate} return</p>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <p className="font-bold text-green-600 text-lg">
+                                    ${deposit.amount.toFixed(2)}
+                                  </p>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                    deposit.network === 'ETH' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    USDT ({deposit.network})
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="whitespace-nowrap">
+                                    <p className="text-sm text-gray-600">
+                                      {new Date(deposit.createdAt).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {new Date(deposit.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                    deposit.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                                    deposit.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {deposit.status}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">
+                                  {deposit.receiptUrl ? (
+                                    <button
+                                      onClick={() => openReceiptModal(deposit.receiptUrl)}
+                                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                                    >
+                                      <FiFile className="text-lg" /> View
+                                    </button>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">No receipt</span>
+                                  )}
+                                </td>
+                                <td className="py-4 px-4">
+                                  {deposit.status === 'PENDING' ? (
+                                    <div className="flex flex-col xs:flex-row gap-2">
+                                      <button
+                                        onClick={() => handleConfirmDeposit(deposit.id)}
+                                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-semibold transition whitespace-nowrap"
+                                      >
+                                        Confirm
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectDeposit(deposit.id)}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md text-sm font-semibold transition whitespace-nowrap"
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-500 text-sm whitespace-nowrap">
+                                      {deposit.status === 'CONFIRMED' ? 'Confirmed' : 'Rejected'}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Mobile/Tablet View */}
+                      <div className="block lg:hidden">
+                        <div className="space-y-4">
+                          {deposits.map((deposit) => (
+                            <div key={deposit.id} className="border rounded-xl p-4 hover:shadow-md transition">
+                              <div className="space-y-4">
+                                {/* User & Status Row */}
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-semibold text-gray-800">
+                                      {deposit.user.firstName} {deposit.user.lastName}
+                                    </p>
+                                    <p className="text-sm text-gray-600">{deposit.user.email}</p>
+                                    <p className="text-xs text-gray-500 mt-1">Acc: {deposit.user.accountNumber}</p>
+                                  </div>
+                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                    deposit.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                                    deposit.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {deposit.status}
+                                  </span>
+                                </div>
+
+                                {/* Investment & Amount Row */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-xs text-gray-500 mb-1">Investment</p>
+                                    <p className="font-semibold text-gray-800 text-sm">{deposit.investment.title}</p>
+                                    <p className="text-xs text-gray-600">{deposit.investment.returnRate} return</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 mb-1">Amount</p>
+                                    <p className="font-bold text-green-600 text-lg">
+                                      ${deposit.amount.toFixed(2)}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Network & Date Row */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-xs text-gray-500 mb-1">Network</p>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                      deposit.network === 'ETH' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      USDT ({deposit.network})
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 mb-1">Date</p>
+                                    <p className="text-sm text-gray-600">
+                                      {new Date(deposit.createdAt).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {new Date(deposit.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Receipt & Actions Row */}
+                                <div className="pt-4 border-t">
+                                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <div>
+                                      <p className="text-xs text-gray-500 mb-1">Receipt</p>
+                                      {deposit.receiptUrl ? (
+                                        <button
+                                          onClick={() => openReceiptModal(deposit.receiptUrl)}
+                                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                                        >
+                                          <FiFile className="text-base" /> View Receipt
+                                        </button>
+                                      ) : (
+                                        <span className="text-gray-400 text-sm">No receipt</span>
+                                      )}
+                                    </div>
+                                    
+                                    <div>
+                                      {deposit.status === 'PENDING' ? (
+                                        <div className="flex gap-2">
+                                          <button
+                                            onClick={() => handleConfirmDeposit(deposit.id)}
+                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition whitespace-nowrap"
+                                          >
+                                            Confirm
+                                          </button>
+                                          <button
+                                            onClick={() => handleRejectDeposit(deposit.id)}
+                                            className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition whitespace-nowrap"
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="text-gray-500 text-sm whitespace-nowrap">
+                                          {deposit.status === 'CONFIRMED' ? 'Confirmed' : 'Rejected'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {showChat && selectedApplication && (
+              <ChatModal
+                application={selectedApplication}
+                onClose={() => {
+                  setShowChat(false);
+                  setSelectedApplication(null);
+                }}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;
