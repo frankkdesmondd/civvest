@@ -85,9 +85,7 @@ const Profile: React.FC = () => {
   const fetchProfile = async () => {
   try {
     // Use /profile without additional /api since axiosInstance adds it
-    const response = await axios.get('https://civvest-backend.onrender.com/api/profile', {
-      withCredentials: true
-    });
+   const response = await axiosInstance.get('/api/profile');
     setProfile(response.data);
     setFormData({
       country: response.data.country || '',
@@ -652,3 +650,4 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
