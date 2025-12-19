@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String                  @id @default(uuid())
+  email           String                  @unique
+  password        String
+  resetToken      String?
+  resetTokenExp   DateTime?
+  accountNumber   String                  @unique
+  balance         Float                   @default(0)
+  roi             Float                   @default(0)        // NEW: ROI field
+  referralBonus   Float                   @default(0)        // NEW: Referral bonus
+  createdAt       DateTime                @default(now())
+  firstName       String
+  lastName        String
+  profilePicture  String?
+  role            Role                    @default(USER)
+  updatedAt       DateTime                @updatedAt
+  country         String?
+  state           String?
+  address         String?
+  phone           String?
+  referralCode    String?                 // Code this user can share
+  referredBy      String?                 // NEW: Code used during signup
+  bankName        String?
+  accountName     String?
+  bankAccountNumber String?
+  routingCode     String?             
+  applications    InvestmentApplication[] @relation("UserApplications")
+  messages        Message[]               @relation("SentMessages")
+  notifications   Notification[]
+  transfers       Transfer[]              @relation("UserTransfers")
+  userInvestments UserInvestment[]
+  deposits        Deposit[]               @relation("UserDeposits")
+  wallets         Wallet[]                @relation("UserWallets")
+  withdrawals Withdrawal[]   // ← Back relation to Withdrawal.user
+
+  approvedWithdrawals Withdrawal[] @relation("WithdrawalApprovals")  // ← Back relation to Withdrawal.approvedBy
+}
+
+model Wallet {
+  id          String   @id @default(uuid())
+  userId      String
+  coinHost    String   // e.g., "Bitcoin", "Ethereum", "USDT"
+  walletAddress String
+  createdAt   DateTime @default(now())
+  user        User     @relation("UserWallets", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Deposit {
+  id              String   @id @default(uuid())
+  userId          String
+  investmentId    String
+  amount          Float
+  network         String   // "ETH" or "TRON"
+  receiptUrl      String?
+  status          String   @default("PENDING") // PENDING, CONFIRMED, REJECTED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation("UserDeposits", fields: [userId], references: [id], onDelete: Cascade)
+  investment      Investment @relation(fields: [investmentId], references: [id])
+}
+
+model Investment {
+  id              String                  @id @default(uuid())
+  title           String
+  slug            String                  @unique
+  description     String
+  shortDesc       String
+  imageUrl        String
+  minAmount       Float
+  targetAmount    Float
+  currentAmount   Float                   @default(0)
+  returnRate      String
+  duration        String
+  category        String
+  bondOffering    Boolean                 @default(false)
+  featured        Boolean                 @default(false)
+  status          InvestmentStatus        @default(ACTIVE)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  applications    InvestmentApplication[] @relation("InvestmentApplications")
+  userInvestments UserInvestment[]
+  deposits        Deposit[]
+}
+
+model InvestmentApplication {
+  id           String            @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String
+  phoneNumber  String
+  amount       Float
+  message      String?
+  status       ApplicationStatus @default(PENDING)
+  userId       String?
+  investmentId String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  investment   Investment        @relation("InvestmentApplications", fields: [investmentId], references: [id])
+  user         User?             @relation("UserApplications", fields: [userId], references: [id])
+  messages     Message[]
+}
+
+model NewsPost {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String   @unique
+  content   String
+  excerpt   String
+  imageUrl  String
+  category  String
+  author    String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserInvestment {
+  id           String     @id @default(uuid())
+  userId       String
+  investmentId String
+  amount       Float
+  returnAmount Float
+  startDate    DateTime?
+  endDate      DateTime?
+  status       String     @default("PENDING")
+  depositId    String?    
+  createdAt    DateTime   @default(now())
+  investment   Investment @relation(fields: [investmentId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+  withdrawals Withdrawal[]    // ← Back relation to Withdrawal.investment
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  type      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Message {
+  id            String                @id @default(uuid())
+  applicationId String
+  senderId      String
+  senderRole    String
+  content       String
+  read          Boolean               @default(false)
+  createdAt     DateTime              @default(now())
+  application   InvestmentApplication @relation(fields: [applicationId], references: [id])
+  sender        User                  @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+model Transfer {
+  id            String   @id @default(uuid())
+  userId        String
+  amount        Float
+  receiptUrl    String
+  accountNumber String
+  bankName      String
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation("UserTransfers", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum InvestmentStatus {
+  ACTIVE
+  CLOSED
+  COMING_SOON
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Add to your existing schema.prisma
+
+model Withdrawal {
+  id            String   @id @default(uuid())
+  userId        String
+  userInvestmentId String
+  amount        Float
+  type          WithdrawalType
+  status        WithdrawalStatus @default(PENDING)
+  
+  // Bank transfer fields (optional)
+  bankName      String?
+  accountName   String?
+  accountNumber String?
+  routingCode   String?
+  
+  // Crypto wallet fields (optional)
+  coinHost      String?
+  walletAddress String?
+  
+  // Admin approval fields
+  approvedById  String?
+  approvedAt    DateTime?
+  adminNotes    String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  investment    UserInvestment @relation(fields: [userInvestmentId], references: [id], onDelete: Cascade)
+  approvedBy    User?    @relation("WithdrawalApprovals", fields: [approvedById], references: [id])
+}
+
+enum WithdrawalType {
+  BANK_TRANSFER
+  CRYPTO_WALLET
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSED
+  FAILED
+}
+
+model ContactSubmission {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String
+  message   String?
+  accreditedInvestor Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
