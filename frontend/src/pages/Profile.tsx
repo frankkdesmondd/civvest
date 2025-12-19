@@ -116,11 +116,7 @@ const Profile: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.put(
-        'https://civvest-backend.onrender.com/api/profile',
-        formData,
-        { withCredentials: true }
-      );
+      await axiosInstance.put('/api/profile', formData);
       showToast('Profile updated successfully!', 'success');
       setEditing(false);
       fetchProfile();
@@ -651,5 +647,6 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
 
 
