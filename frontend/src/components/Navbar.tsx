@@ -9,6 +9,7 @@ import axios from "axios";
 import ConfirmModal from "../components/ConfirmModal";
 import { useUser } from "../context/UserContext";
 import ProfilePicture from "../components/ProfilePicture";
+import axiosInstance from '../config/axios';
 
 interface Notification {
   id: string;
@@ -74,9 +75,7 @@ const Navbar: React.FC = () => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await axios.get('https://civvest-backend.onrender.com/api/notifications', {
-        withCredentials: true
-      });
+      const response = await axiosInstance.get('/api/notifications');
       setNotifications(response.data.notifications);
       setUnreadCount(response.data.unreadCount);
     } catch (error) {
@@ -199,9 +198,7 @@ const Navbar: React.FC = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      await axios.put(`https://civvest-backend.onrender.com/api/notifications${notificationId}/read`, {}, {
-        withCredentials: true
-      });
+      await axiosInstance.put(`/api/notifications/${notificationId}/read`);
       fetchNotifications();
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -231,9 +228,7 @@ const Navbar: React.FC = () => {
     if (!confirmModal.notificationId) return;
     
     try {
-      await axios.delete(`https://civvest-backend.onrender.com/api/notifications/${confirmModal.notificationId}`, {
-        withCredentials: true
-      });
+      await axiosInstance.delete(`/api/notifications/${confirmModal.notificationId}`);
       fetchNotifications();
     } catch (error) {
       console.error('Failed to delete notification:', error);
@@ -601,6 +596,7 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
+
 
 
 
