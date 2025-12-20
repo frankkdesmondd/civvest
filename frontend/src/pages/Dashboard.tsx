@@ -393,12 +393,12 @@ const Dashboard: React.FC = () => {
       <div className={`flex-1 min-h-screen transition-all duration-300 ${isMobile ? 'ml-0' : 'ml-64'}`}>
         {/* Mobile Header */}
         {isMobile && (
-          <div className="sticky top-0 bg-white shadow-md z-30 p-4 flex items-center justify-between">
+          <div className="sticky top-0 bg-[#244772] shadow-md z-30 p-4 flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(true)}
               className="text-2xl text-gray-800"
             >
-              <FiMenu />
+              <FiMenu className="text-white"/>
             </button>
             <img src={CivvestLogo} alt="Civvest" className="w-10" />
             <ProfilePicture size="sm" showBorder={true} borderColor="border-blue-500" />
@@ -636,5 +636,6 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
 
 
