@@ -68,7 +68,7 @@ const BondPlans: React.FC = () => {
       <Navbar />
 
       {/* ================= HERO ================= */}
-      <div className="relative w-full h-[80vh] lg:h-screen">
+      <div className="relative w-full h-[80vh] lg:h-screen mt-[4em]">
         <img
           src={HomeUtils[0].miningPicture}
           alt="Hero"
@@ -105,94 +105,103 @@ const BondPlans: React.FC = () => {
         </p>
 
         {loading ? (
-          <p className="py-12 text-xl">Loading bond offerings...</p>
-        ) : (
-          <div className="w-full max-w-7xl mx-auto mt-10 px-2 lg:px-6">
-            <div className="flex items-center gap-4">
+  <p className="py-12 text-xl">Loading bond offerings...</p>
+) : (
+  <div className="w-full max-w-7xl mx-auto mt-10 px-2 lg:px-6 relative">
+    {/* VIEWPORT CONTAINER WITH ABSOLUTE ARROWS ON MOBILE */}
+    <div className="relative">
+      {/* LEFT ARROW - ABSOLUTE ON MOBILE, RELATIVE ON DESKTOP */}
+      <button
+        onClick={() => setIndex((i) => Math.max(i - 1, 0))}
+        disabled={index === 0}
+        className="md:relative absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 md:translate-x-0 md:translate-y-0 z-20 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-white p-2 md:p-3 rounded-full shadow disabled:opacity-40"
+      >
+        <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+      </button>
 
-              {/* LEFT ARROW */}
-              <button
-                onClick={() => setIndex((i) => Math.max(i - 1, 0))}
-                disabled={index === 0}
-                className="hidden md:flex bg-white p-3 rounded-full shadow disabled:opacity-40 shrink-0"
-              >
-                <ChevronLeft />
-              </button>
+      {/* VIEWPORT */}
+      <div className="w-full overflow-hidden px-4 md:px-0">
+        <motion.div
+          className="flex gap-6"
+          animate={{ x: `-${index * (100 / visibleCards)}%` }}
+          transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        >
+          {investments.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => navigate(`/investment/${item.slug}`)}
+              className="shrink-0 w-full md:w-1/3"
+            >
+              <div className="bg-linear-to-r from-[#041a35] to-[#2a5f9b] text-white rounded-2xl overflow-hidden shadow-lg cursor-pointer hover:scale-[1.03] transition-transform">
+                <div className="relative">
+                  <img
+                    src={MainBonding}
+                    alt={item.title}
+                    className="w-full h-56 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-[#041a35]/60" />
+                  {item.featured && (
+                    <span className="absolute top-4 right-4 bg-yellow-500 text-black px-3 py-1 rounded-full font-bold">
+                      Featured
+                    </span>
+                  )}
+                </div>
 
-              {/* VIEWPORT */}
-              <div className="w-full overflow-hidden">
-                <motion.div
-                  className="flex gap-6 pr-6 md:pr-20"
-                  animate={{ x: `-${index * (100 / visibleCards)}%` }}
-                  transition={{ type: "spring", stiffness: 120, damping: 20 }}
-                >
-                  {investments.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() =>
-                        navigate(`/investment/${item.slug}`)
-                      }
-                      className="shrink-0 w-full md:w-1/3"
-                    >
-                      {/* CARD — WIDER ON DESKTOP */}
-                      <div className="bg-linear-to-r from-[#041a35] to-[#2a5f9b] text-white rounded-2xl overflow-hidden shadow-lg cursor-pointer hover:scale-[1.03] transition-transform">
-                        <div className="relative">
-                          <img
-                            src={MainBonding}
-                            alt={item.title}
-                            className="w-full h-56 object-cover"
-                          />
-                          <div className="absolute inset-0 bg-[#041a35]/60" />
-                          {item.featured && (
-                            <span className="absolute top-4 right-4 bg-yellow-500 text-black px-3 py-1 rounded-full font-bold">
-                              Featured
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="p-6 space-y-3">
-                          <h3 className="text-xl font-bold">
-                            {item.title}
-                          </h3>
-
-                          <InfoRow icon={<FiDollarSign />} label="Currency" value="USD" />
-                          <InfoRow
-                            icon={<FiDollarSign />}
-                            label="Min Amount"
-                            value={`$${item.minAmount.toLocaleString()}`}
-                          />
-                          <InfoRow
-                            icon={<VscPercentage />}
-                            label="Interest Rate"
-                            value={item.returnRate}
-                          />
-                          <InfoRow
-                            icon={<SlCalender />}
-                            label="ROI Period"
-                            value={item.duration}
-                          />
-
-                          <button className="w-full bg-blue-500 py-2 rounded-lg font-semibold mt-4">
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
+                <div className="p-6 space-y-3">
+                  <h3 className="text-xl font-bold">{item.title}</h3>
+                  <InfoRow icon={<FiDollarSign />} label="Currency" value="USD" />
+                  <InfoRow
+                    icon={<FiDollarSign />}
+                    label="Min Amount"
+                    value={`$${item.minAmount.toLocaleString()}`}
+                  />
+                  <InfoRow
+                    icon={<VscPercentage />}
+                    label="Interest Rate"
+                    value={item.returnRate}
+                  />
+                  <InfoRow
+                    icon={<SlCalender />}
+                    label="ROI Period"
+                    value={item.duration}
+                  />
+                  <button className="w-full bg-blue-500 py-2 rounded-lg font-semibold mt-4">
+                    View Details
+                  </button>
+                </div>
               </div>
-
-              {/* RIGHT ARROW */}
-              <button
-                onClick={() => setIndex((i) => Math.min(i + 1, maxIndex))}
-                disabled={index === maxIndex}
-                className="hidden md:flex bg-white p-3 rounded-full shadow disabled:opacity-40 shrink-0"
-              >
-                <ChevronRight />
-              </button>
             </div>
-          </div>
-        )}
+          ))}
+        </motion.div>
+      </div>
+
+      {/* RIGHT ARROW - ABSOLUTE ON MOBILE, RELATIVE ON DESKTOP */}
+      <button
+        onClick={() => setIndex((i) => Math.min(i + 1, maxIndex))}
+        disabled={index === maxIndex}
+        className="md:relative absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 md:translate-x-0 md:translate-y-0 z-20 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 bg-white p-2 md:p-3 rounded-full shadow disabled:opacity-40"
+      >
+        <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+      </button>
+    </div>
+
+    {/* Mobile dots indicator (optional) */}
+    {investments.length > 1 && (
+      <div className="flex justify-center gap-2 mt-8 md:hidden">
+        {investments.slice(0, maxIndex + 1).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIndex(i)}
+            className={`w-2 h-2 rounded-full ${
+              i === index ? 'bg-blue-500' : 'bg-gray-300'
+            }`}
+            aria-label={`Go to slide ${i + 1}`}
+          />
+        ))}
+      </div>
+    )}
+  </div>
+)}
       </div>
 
       <TrackRecord />
