@@ -393,7 +393,7 @@ const Dashboard: React.FC = () => {
       <div className={`flex-1 min-h-screen transition-all duration-300 ${isMobile ? 'ml-0' : 'ml-64'}`}>
         {/* Mobile Header */}
         {isMobile && (
-          <div className="sticky top-0 bg-[#244772] shadow-md z-30 p-4 flex items-center justify-between">
+          <div className="sticky top-0 bg-gray-900 shadow-md z-30 p-4 flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(true)}
               className="text-2xl text-gray-800"
@@ -636,6 +636,7 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
 
 
 
