@@ -100,7 +100,7 @@ const BondPlans: React.FC = () => {
           Private Placement Bond Offering
         </p>
 
-        <p className="text-[1.5em] lg:text-[2.5em]">
+        <p className="text-[1.5em] lg:text-[2.5em] text-center">
           ACCREDITED INVESTORS ONLY
         </p>
 
@@ -234,3 +234,4 @@ const InfoRow = ({
 );
 
 export default BondPlans;
+
