@@ -389,33 +389,7 @@ const InvestmentDetail: React.FC = () => {
                           </p>
                         </div>
                       </div>
-
-                      {/* Daily ROI Section */}
-                      <div className="mt-6 bg-linear-to-r from-blue-100 to-indigo-100 p-4 rounded-lg border border-blue-200">
-                        <p className="text-gray-700 font-semibold mb-2 text-center">Daily Returns</p>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="text-center">
-                            <p className="text-xs text-gray-600 mb-1">Daily ROI</p>
-                            <p className="text-lg font-bold text-blue-700">
-                              ${dailyROI.toFixed(2)}
-                            </p>
-                            <p className="text-xs text-gray-500">per day</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs text-gray-600 mb-1">Daily Rate</p>
-                            <p className="text-lg font-bold text-purple-700">
-                              {((dailyROI / parseFloat(investmentAmount)) * 100).toFixed(4)}%
-                            </p>
-                            <p className="text-xs text-gray-500">daily return</p>
-                          </div>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-blue-300 text-center">
-                          <p className="text-xs text-gray-600 mb-1">Estimated Monthly Income</p>
-                          <p className="text-xl font-bold text-green-700">
-                            ${(dailyROI * 30).toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
+                      
                     </div>
                   </div>
                 )}
@@ -691,6 +665,7 @@ const ApplicationFormModal: React.FC<{
 };
 
 export default InvestmentDetail;
+
 
 
 
