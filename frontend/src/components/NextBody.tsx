@@ -16,7 +16,7 @@ const NextBody: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative flex flex-col px-4 sm:px-[2em] h-[155em] lg:h-[120em] lg:px-[3em] bg-[#041a35] pb-[5em]">
+    <div className="relative flex flex-col px-4 sm:px-[2em] bg-[#041a35] pb-[9em]">
 
       {/* FADE FROM HEROSECTION INTO NEXTBODY */}
       <div className="absolute top-[-8em] left-0 w-full h-[14em] bg-linear-to-b from-transparent via-[#041a35]/95 to-[#041a35] pointer-events-none z-10"></div>
@@ -24,53 +24,59 @@ const NextBody: React.FC = () => {
       {/* MAIN BLOCKS */}
       <div className="relative px-[2em] lg:px-0 z-20 flex flex-col lg:flex-row gap-[3em] lg:gap-[2em] mt-[6em]">
 
-        {/* BLOCK 1 */}
-        <div className="flex gap-[1.5em] items-start">
-          <div className="h-full min-h-[10em] bg-white w-[0.05em]" />
-          <div className="flex flex-col w-full max-w-none lg:max-w-[21em] gap-4">
-            <h1 className="text-white font-serif text-[1.8em] sm:text-[2em] leading-tight">
-              Monthly and annual cash flow
-            </h1>
-            <p className="text-white text-base sm:text-lg">
-              With strong ROI potential and exclusive access to vetted energy assets,
-              Civvest Energy Partners helps accredited investors capitalize on the oil and gas sector.
-              Reach out to our support team for a complimentary consultation and investment
-              prospectus.
-            </p>
-          </div>
-        </div>
+  {/* BLOCK 1 */}
+  <div className="flex gap-[1.5em]">
+    <div className="flex flex-col">
+      <div className="bg-white w-[0.05em] grow min-h-[1em]"></div>
+    </div>
+    <div className="flex flex-col w-full max-w-none lg:max-w-[21em] gap-4">
+      <h1 className="text-white font-serif text-[1.8em] sm:text-[2em] leading-tight">
+        Monthly and annual cash flow
+      </h1>
+      <p className="text-white text-base sm:text-lg">
+        With strong ROI potential and exclusive access to vetted energy assets,
+        Civvest Energy Partners helps accredited investors capitalize on the oil and gas sector.
+        Reach out to our support team for a complimentary consultation and investment
+        prospectus.
+      </p>
+    </div>
+  </div>
 
-        {/* BLOCK 2 */}
-        <div className="flex gap-[1.5em] items-start">
-          <div className="h-full min-h-[10em] bg-white w-[0.05em]" />
-          <div className="flex flex-col w-full max-w-none lg:max-w-[21em] gap-4">
-            <h1 className="text-white font-serif text-[1.8em] sm:text-[2em] leading-tight">
-              Increased Value Through Reduced Costs
-            </h1>
-            <p className="text-white text-base sm:text-lg">
-              By eliminating unnecessary costs beyond that of the well,
-              Civvest Energy Partners gives the investor one of the strongest ownership
-              percentage values in the industry.
-            </p>
-          </div>
-        </div>
+  {/* BLOCK 2 */}
+  <div className="flex gap-[1.5em]">
+    <div className="flex flex-col">
+      <div className="bg-white w-[0.05em] grow min-h-[1em]"></div>
+    </div>
+    <div className="flex flex-col w-full max-w-none lg:max-w-[21em] gap-4">
+      <h1 className="text-white font-serif text-[1.8em] sm:text-[2em] leading-tight">
+        Increased Value Through Reduced Costs
+      </h1>
+      <p className="text-white text-base sm:text-lg">
+        By eliminating unnecessary costs beyond that of the well,
+        Civvest Energy Partners gives the investor one of the strongest ownership
+        percentage values in the industry.
+      </p>
+    </div>
+  </div>
 
-        {/* BLOCK 3 */}
-        <div className="flex gap-[1.5em] items-start">
-          <div className="h-full min-h-[10em] bg-white w-[0.03em]" />
-          <div className="flex flex-col w-full max-w-none lg:max-w-[21em] gap-4">
-            <h1 className="text-white font-serif text-[1.8em] sm:text-[2em] leading-tight">
-              Unmatched Communication & Expertise
-            </h1>
-            <p className="text-white text-base sm:text-lg">
-              With a team of industry experts, Civvest Energy Partners carefully selects programs
-              with minimal risk and the highest income potential. Our team takes tremendous pride in
-              keeping investors updated at all times.
-            </p>
-          </div>
-        </div>
+  {/* BLOCK 3 */}
+  <div className="flex gap-[1.5em]">
+    <div className="flex flex-col">
+      <div className="bg-white w-[0.03em] grow min-h-[1em]"></div>
+    </div>
+    <div className="flex flex-col w-full max-w-none lg:max-w-[21em] gap-4">
+      <h1 className="text-white font-serif text-[1.8em] sm:text-[2em] leading-tight">
+        Unmatched Communication & Expertise
+      </h1>
+      <p className="text-white text-base sm:text-lg">
+        With a team of industry experts, Civvest Energy Partners carefully selects programs
+        with minimal risk and the highest income potential. Our team takes tremendous pride in
+        keeping investors updated at all times.
+      </p>
+    </div>
+  </div>
 
-      </div>
+</div>
 
       <ScrollingBanner/>
 
@@ -115,6 +121,3 @@ const NextBody: React.FC = () => {
 };
 
 export default NextBody;
-
-
-
