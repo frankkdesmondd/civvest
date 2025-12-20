@@ -380,7 +380,7 @@ const InvestmentDetail: React.FC = () => {
 
                       <div className="border-t border-blue-200 pt-4">
                         <p className="text-gray-600 text-sm mb-1">Total Return</p>
-                        <div className="flex justify-between items-end">
+                        <div className="flex flex-col lg:flex-row justify-between items-end">
                           <p className="text-3xl font-bold text-green-700">
                             ${expectedReturn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
@@ -665,6 +665,7 @@ const ApplicationFormModal: React.FC<{
 };
 
 export default InvestmentDetail;
+
 
 
 
