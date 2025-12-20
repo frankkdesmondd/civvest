@@ -87,21 +87,14 @@ const BondPlans: React.FC = () => {
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px] z-10" />
-        <Link to="/contact-us">
-          <div className="absolute top-[5.2em] left-10 z-20 pr-[2em]">
-            <p className="text-white font-semibold">
+          <div className="flex flex-col absolute top-[5.2em] lg:top-[3.5em] left-10 mt-[7em] lg:mt-[10em] align-start z-20 pr-[2em]">
+            <p className="text-[1em] lg:text-[1.2em] text-white text-start font-serif font-semibold">
               Register For A Bond Offering Webinar
             </p>
-            <p className="text-white text-[2em] lg:text-[3.7em] font-semibold max-w-[8em]">
-              Drill Deeper into Civvest Energy
-            </p>
-            <div className="h-[0.3em] bg-blue-300 my-2" />
-            <p className="text-white">
-              *Connect with our customer support team to learn how our bond
-              offerings may provide 70–90% annual returns
-            </p>
+            <p className='text-[2em] lg:text-[3.7em] text-white text-start font-serif font-semibold lg:max-w-[8em]'>Drill Deeper into Civvest Energy</p>
+            <div className='h-[0.3em] w-full bg-blue-300'></div>
+            <p className='text-white text-[1em] lg:text-[1.2em] mt-[2em]'>*Connect with our customer support team to learn how our bond offerings may provide the opportunity to earn an annual interest rate in the 70&ndash;90% range</p>
           </div>
-        </Link>
       </div>
 
       {/* CONTENT */}
@@ -230,3 +223,4 @@ const InfoRow = ({
 )
 
 export default BondPlans
+
