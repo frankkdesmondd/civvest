@@ -45,12 +45,14 @@ const BondPlans: React.FC = () => {
   const fetchBondPlans = async () => {
     try {
       // Fetch only bond offerings from the API
-      const response = await axios.get('https://civvest-backend.onrender.com', {
+      const response = await axios.get('https://civvest-backend.onrender.com/api/investments', {
         params: {
           bondOffering: true,
           category: 'Accredited Investors'
         }
       });
+      
+      console.log('Bond plans response:', response.data); // Add logging
       
       // Sort by minAmount (smallest to biggest)
       const sortedInvestments = response.data.sort((a: Investment, b: Investment) => 
@@ -60,59 +62,8 @@ const BondPlans: React.FC = () => {
       setInvestments(sortedInvestments);
     } catch (error) {
       console.error('Failed to fetch bond plans:', error);
-      // Fallback to hardcoded data if API fails
-      const fallbackPlans: Investment[] = [
-        {
-          id: "bond-1",
-          title: "Premium Bond Offering",
-          slug: "premium-bond-offering",
-          minAmount: 1000000,
-          returnRate: "80%",
-          duration: "5 Years",
-          category: "Accredited Investors",
-          imageUrl: "/uploads/investments/bond-offering-default.jpg",
-          featured: true,
-          bondOffering: true
-        },
-        {
-          id: "bond-2",
-          title: "Elite Bond Offering",
-          slug: "elite-bond-offering",
-          minAmount: 5000000,
-          returnRate: "90%",
-          duration: "5 Years",
-          category: "Accredited Investors",
-          imageUrl: "/uploads/investments/bond-offering-default.jpg",
-          featured: true,
-          bondOffering: true
-        },
-        {
-          id: "bond-3",
-          title: "Standard Bond Offering",
-          slug: "standard-bond-offering",
-          minAmount: 500000,
-          returnRate: "70%",
-          duration: "2 Years",
-          category: "Accredited Investors",
-          imageUrl: "/uploads/investments/bond-offering-default.jpg",
-          featured: false,
-          bondOffering: true
-        },
-        {
-          id: "bond-4",
-          title: "Executive Bond Offering",
-          slug: "executive-bond-offering",
-          minAmount: 2000000,
-          returnRate: "90%",
-          duration: "5 Years",
-          category: "Accredited Investors",
-          imageUrl: "/uploads/investments/bond-offering-default.jpg",
-          featured: true,
-          bondOffering: true
-        }
-      ].sort((a, b) => a.minAmount - b.minAmount);
-      
-      setInvestments(fallbackPlans);
+      // Fallback to empty array or show error message
+      setInvestments([]);
     } finally {
       setLoading(false);
     }
@@ -268,3 +219,4 @@ const BondPlans: React.FC = () => {
 }
 
 export default BondPlans
+
