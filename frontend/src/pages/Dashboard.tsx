@@ -278,7 +278,7 @@ const Dashboard: React.FC = () => {
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-30 z-40"
+          className="fixed inset-0 bg-black bg-opacity-10 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -636,4 +636,5 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
 
