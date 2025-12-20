@@ -430,14 +430,25 @@ const AdminDashboard: React.FC = () => {
   };
 
   const fetchUsers = async () => {
-    try {
-      const res = await axiosInstance.get('/api/admin/stats');
-      console.log('Fetched users:', res.data);
+  try {
+    const res = await axiosInstance.get('/api/admin/users');
+    console.log('Fetched users:', res.data);
+    
+    // Check if the response is an array
+    if (Array.isArray(res.data)) {
       setUsers(res.data);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
+    } else if (res.data.users && Array.isArray(res.data.users)) {
+      // If users are nested in an object
+      setUsers(res.data.users);
+    } else {
+      console.error('Unexpected user data format:', res.data);
+      setUsers([]);
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch users:', error);
+    setUsers([]);
+  }
+};
 
   const fetchNews = async () => {
     try {
@@ -1460,5 +1471,6 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default AdminDashboard;
+
 
 
