@@ -86,7 +86,7 @@ const BondPlans: React.FC = () => {
           alt="Hero"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px] z-10" />
+        <div className="absolute top-0 left-0 w-full h-full inset-0 bg-black/70 backdrop-blur-[2px] z-10" />
           <div className="flex flex-col absolute top-[5.2em] lg:top-[3.5em] left-10 mt-[7em] lg:mt-[10em] align-start z-20 pr-[2em]">
             <p className="text-[1em] lg:text-[1.2em] text-white text-start font-serif font-semibold">
               Register For A Bond Offering Webinar
@@ -116,80 +116,132 @@ const BondPlans: React.FC = () => {
         {loading ? (
           <p className="py-10 text-xl">Loading bond offerings...</p>
         ) : (
-          <div className="relative w-full max-w-7xl mt-10 overflow-hidden">
-            {/* LEFT ARROW */}
+          {/* ===== BOND OFFERINGS SLIDER ===== */}
+        <div className="w-full max-w-7xl mx-auto mt-10 px-4 md:px-20">
+          <div className="flex items-center gap-4 md:gap-8">
+        
+            {/* LEFT ARROW (BESIDE CAROUSEL) */}
             <button
               onClick={() => setIndex((i) => Math.max(i - 1, 0))}
               disabled={index === 0}
-              className="absolute left-0 top-1/2 z-10 -translate-y-1/2 bg-white p-2 rounded-full shadow disabled:opacity-40"
+              className="
+                hidden md:flex 
+                bg-white 
+                p-3 
+                rounded-full 
+                shadow-lg 
+                disabled:opacity-40 
+                shrink-0
+              "
             >
               <ChevronLeft />
             </button>
-
-            {/* RIGHT ARROW */}
+        
+            {/* VIEWPORT */}
+            <div className="w-full overflow-hidden rounded-2xl">
+              <motion.div
+                className="flex gap-6"
+                animate={{
+                  x: `-${index * (typeof window !== "undefined" && window.innerWidth < 768 ? 100 : 33.333)}%`,
+                }}
+                transition={{ type: "spring", stiffness: 120, damping: 20 }}
+              >
+                {investments.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    onClick={() => handleCardClick(item.slug)}
+                    className="flex-shrink-0 w-full md:w-1/3 px-2"
+                    whileHover={{ scale: 1.03 }}
+                  >
+                    {/* CARD */}
+                    <div className="
+                      max-w-[23.5em] 
+                      mx-auto 
+                      bg-linear-to-r from-[#041a35] to-[#2a5f9b] 
+                      text-white 
+                      rounded-2xl 
+                      overflow-hidden 
+                      cursor-pointer 
+                      shadow-lg
+                    ">
+                      {/* IMAGE */}
+                      <div className="relative">
+                        <img
+                          src={MainBonding}
+                          alt={item.title}
+                          className="w-full h-48 object-cover"
+                        />
+                        <div className="absolute inset-0 bg-[#041a35]/60" />
+                        {item.featured && (
+                          <span className="absolute top-4 right-4 bg-yellow-500 text-black px-3 py-1 rounded-full font-bold">
+                            Featured
+                          </span>
+                        )}
+                      </div>
+        
+                      {/* CONTENT */}
+                      <div className="p-6 space-y-3">
+                        <h3 className="text-xl font-bold">{item.title}</h3>
+        
+                        <InfoRow icon={<FiDollarSign />} label="Currency" value="USD" />
+                        <InfoRow
+                          icon={<FiDollarSign />}
+                          label="Min Amount"
+                          value={`$${item.minAmount.toLocaleString()}`}
+                        />
+                        <InfoRow
+                          icon={<VscPercentage />}
+                          label="Interest Rate"
+                          value={item.returnRate}
+                        />
+                        <InfoRow
+                          icon={<SlCalender />}
+                          label="ROI Period"
+                          value={item.duration}
+                        />
+        
+                        <button className="w-full bg-blue-500 py-2 rounded-lg font-semibold">
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+        
+            {/* RIGHT ARROW (BESIDE CAROUSEL) */}
             <button
-              onClick={() => setIndex((i) => Math.min(i + 1, maxIndex))}
-              disabled={index === maxIndex}
-              className="absolute right-0 top-1/2 z-10 -translate-y-1/2 bg-white p-2 rounded-full shadow disabled:opacity-40"
+              onClick={() =>
+                setIndex((i) =>
+                  Math.min(
+                    i + 1,
+                    typeof window !== "undefined" && window.innerWidth < 768
+                      ? investments.length - 1
+                      : investments.length - 3
+                  )
+                )
+              }
+              disabled={
+                typeof window !== "undefined" && window.innerWidth < 768
+                  ? index >= investments.length - 1
+                  : index >= investments.length - 3
+              }
+              className="
+                hidden md:flex 
+                bg-white 
+                p-3 
+                rounded-full 
+                shadow-lg 
+                disabled:opacity-40 
+                shrink-0
+              "
             >
               <ChevronRight />
             </button>
-
-            {/* SLIDER */}
-            <motion.div
-              className="flex gap-6"
-              animate={{ x: `-${index * (100 / visibleCards)}%` }}
-              transition={{ type: "spring", stiffness: 120, damping: 20 }}
-            >
-              {investments.map((item) => (
-                <motion.div
-                  key={item.id}
-                  onClick={() => handleCardClick(item.slug)}
-                  className="flex-shrink-0 w-full md:w-[23.5em] bg-linear-to-r from-[#041a35] to-[#2a5f9b] text-white rounded-2xl cursor-pointer shadow-lg"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <div className="relative">
-                    <img
-                      src={MainBonding}
-                      alt={item.title}
-                      className="w-full h-48 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-[#041a35]/60" />
-                    {item.featured && (
-                      <span className="absolute top-4 right-4 bg-yellow-500 text-black px-3 py-1 rounded-full font-bold">
-                        Featured
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="p-6 space-y-3">
-                    <h3 className="text-xl font-bold">{item.title}</h3>
-
-                    <InfoRow icon={<FiDollarSign />} label="Currency" value="USD" />
-                    <InfoRow
-                      icon={<FiDollarSign />}
-                      label="Min Amount"
-                      value={`$${item.minAmount.toLocaleString()}`}
-                    />
-                    <InfoRow
-                      icon={<VscPercentage />}
-                      label="Interest Rate"
-                      value={item.returnRate}
-                    />
-                    <InfoRow
-                      icon={<SlCalender />}
-                      label="ROI Period"
-                      value={item.duration}
-                    />
-
-                    <button className="w-full bg-blue-500 py-2 rounded-lg font-semibold">
-                      View Details
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
+        
           </div>
+        </div>
         )}
       </div>
 
@@ -223,4 +275,5 @@ const InfoRow = ({
 )
 
 export default BondPlans
+
 
