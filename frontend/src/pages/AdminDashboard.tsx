@@ -9,6 +9,7 @@ import { HomeUtils } from '../utils/HomeUtils';
 import { useToast } from '../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal'; // Import ConfirmModal
 import { PiHandWithdrawFill } from "react-icons/pi";
+import axiosInstance from '../config/axios';
 
 interface Application {
   id: string;
@@ -277,9 +278,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchWithdrawals = async () => {
     try {
-      const res = await axios.get('https://civvest-backend.onrender.com/api/withdrawals/admin/all', { 
-        withCredentials: true 
-      });
+      const res = await axiosInstance.get('/api/withdrawals/admin/all');
       setWithdrawals(res.data);
     } catch (error) {
       console.error('Failed to fetch withdrawals:', error);
@@ -293,11 +292,10 @@ const AdminDashboard: React.FC = () => {
       'Are you sure you want to approve this withdrawal request?',
       async () => {
         try {
-          await axios.put(
-            `https://civvest-backend.onrender.com/api/withdrawals/admin/${withdrawalId}/status`,
-            { status: 'APPROVED' },
-            { withCredentials: true }
-          );
+          await axiosInstance.put(
+          `/api/withdrawals/admin/${withdrawalId}/status`,
+          { status: 'APPROVED' }
+        );
           showToast('Withdrawal approved!', 'success');
           fetchWithdrawals();
           fetchUsers();
@@ -313,11 +311,10 @@ const AdminDashboard: React.FC = () => {
 
   const handleRejectWithdrawal = async (withdrawalId: string, reason?: string) => {
     try {
-      await axios.put(
-        `https://civvest-backend.onrender.com/api/withdrawals/admin/${withdrawalId}/status`,
-        { status: 'REJECTED', adminNotes: reason || 'No reason provided' },
-        { withCredentials: true }
-      );
+     await axiosInstance.put(
+      `/api/withdrawals/admin/${withdrawalId}/status`,
+      { status: 'REJECTED', adminNotes: reason || 'No reason provided' }
+    );
       showToast('Withdrawal rejected!', 'success');
       fetchWithdrawals();
       setShowRejectModal(false);
@@ -340,11 +337,10 @@ const AdminDashboard: React.FC = () => {
     }
 
     try {
-      await axios.put(
-        `https://civvest-backend.onrender.com/api/admin/users/${selectedUserForROI.id}/roi`, 
-        { roi: parseFloat(roiAmount) }, 
-        { withCredentials: true }
-      );
+      await axiosInstance.put(
+      `/api/admin/users/${selectedUserForROI.id}/roi`, 
+      { roi: parseFloat(roiAmount) }
+    );
       
       showToast('ROI updated successfully', "success");
       
@@ -370,7 +366,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchDeposits = async () => {
     try {
-      const res = await axios.get('https://civvest-backend.onrender.com/api/deposits/admin/all', { withCredentials: true });
+     const res = await axiosInstance.get('/api/deposits/admin/all');
       setDeposits(res.data);
     } catch (error) {
       console.error('Failed to fetch deposits:', error);
@@ -383,10 +379,9 @@ const AdminDashboard: React.FC = () => {
       'Are you sure you want to confirm this deposit? This will update the user balance and activate their investment.',
       async () => {
         try {
-          await axios.put(`https://civvest-backend.onrender.com/api/deposits/${depositId}/status`, 
-            { status: 'CONFIRMED' }, 
-            { withCredentials: true }
-          );
+           await axiosInstance.put(`/api/deposits/${depositId}/status`, // Changed
+          { status: 'CONFIRMED' }
+        );
           showToast('Deposit confirmed successfully!', "success");
           fetchDeposits();
           fetchUsers();
@@ -406,10 +401,9 @@ const AdminDashboard: React.FC = () => {
       'Are you sure you want to reject this deposit?',
       async () => {
         try {
-          await axios.put(`https://civvest-backend.onrender.com/api/deposits/${depositId}/status`, 
-            { status: 'REJECTED' }, 
-            { withCredentials: true }
-          );
+          await axiosInstance.put(`/api/deposits/${depositId}/status`,
+          { status: 'REJECTED' }
+        );
           showToast('Deposit rejected', "success");
           fetchDeposits();
         } catch (error: any) {
@@ -429,7 +423,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const res = await axios.get('https://civvest-backend.onrender.com/api/admin/stats', { withCredentials: true });
+      const res = await axiosInstance.get('/api/admin/stats');
       setStats(res.data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -438,9 +432,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('https://civvest-backend.onrender.com/api/admin/users', { 
-        withCredentials: true 
-      });
+      const res = await axiosInstance.get('/api/admin/stats');
       console.log('Fetched users:', res.data);
       setUsers(res.data);
     } catch (error) {
@@ -450,7 +442,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchNews = async () => {
     try {
-      const res = await axios.get('https://civvest-backend.onrender.com/api/news/admin/all', { withCredentials: true });
+      const res = await axiosInstance.get('/api/news/admin/all');
       setNewsPosts(res.data);
     } catch (error) {
       console.error('Failed to fetch news:', error);
@@ -459,7 +451,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchInvestments = async () => {
     try {
-      const res = await axios.get('https://civvest-backend.onrender.com/api/admin/investments/analytics', { withCredentials: true });
+      const res = await axiosInstance.get('/api/admin/investments/analytics');
       setInvestments(res.data);
     } catch (error) {
       console.error('Failed to fetch investments:', error);
@@ -468,7 +460,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchRecentActivities = async () => {
     try {
-      const res = await axios.get('https://civvest-backend.onrender.com/api/admin/recent-activities', { withCredentials: true });
+      const res = await axiosInstance.get('/api/admin/recent-activities');
       setRecentActivities(res.data);
     } catch (error) {
       console.error('Failed to fetch activities:', error);
@@ -482,10 +474,9 @@ const AdminDashboard: React.FC = () => {
     }
 
     try {
-      await axios.put(`https://civvest-backend.onrender.com/api/admin/users/${selectedUser.id}/balance`, 
-        { balance: parseFloat(balanceAmount), action: balanceAction }, 
-        { withCredentials: true }
-      );
+      await axiosInstance.put(`/api/admin/users/${selectedUser.id}/balance`,
+      { balance: parseFloat(balanceAmount), action: balanceAction }
+    );
       showToast('Balance updated successfully', "success");
       setSelectedUser(null);
       setBalanceAmount('');
@@ -501,7 +492,7 @@ const AdminDashboard: React.FC = () => {
       `Are you sure you want to delete ${userName}? This action cannot be undone.`,
       async () => {
         try {
-          await axios.delete(`https://civvest-backend.onrender.com/api/admin/users/${userId}`, { withCredentials: true });
+          await axiosInstance.delete(`/api/admin/users/${userId}`);
           showToast('User deleted', "success");
           fetchUsers();
         } catch (error: any) {
@@ -520,7 +511,7 @@ const AdminDashboard: React.FC = () => {
       'Are you sure you want to delete this news post?',
       async () => {
         try {
-          await axios.delete(`https://civvest-backend.onrender.com/api/news/${id}`, { withCredentials: true });
+          await axiosInstance.delete(`/api/news/${id}`);
           showToast('News deleted', "success");
           fetchNews();
         } catch (error) {
@@ -1470,3 +1461,4 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default AdminDashboard;
+
