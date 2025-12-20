@@ -6,12 +6,15 @@ const HeroSection: React.FC = () => {
   return (
     <div className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
       {/* Video Background */}
-      <video
+     <video
         className="absolute top-0 left-0 w-full h-screen object-cover -z-10"
         src={BackgroundVideo}
         autoPlay
         loop
         muted
+        playsInline
+        webkit-playsinline="true"
+        preload="auto"
       />
 
       {/* Dark Blur Overlay */}
@@ -54,5 +57,6 @@ const HeroSection: React.FC = () => {
 };
 
 export default HeroSection;
+
 
 
