@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { FiUsers, FiTrendingUp, FiDollarSign, FiActivity, FiEdit, FiTrash2, FiPlus, FiSearch, FiBarChart2, FiPieChart, FiMenu, FiLogOut, FiHome, FiFileText, FiFile, FiExternalLink, FiAlertCircle } from 'react-icons/fi';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import CivvestLogo from '../assets/civvest company logo.png'
@@ -1461,4 +1460,5 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default AdminDashboard;
+
 
