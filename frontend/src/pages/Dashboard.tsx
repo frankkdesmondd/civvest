@@ -48,14 +48,6 @@ interface Investment {
   };
 }
 
-interface UserProfile {
-  bankName: string | null;
-  accountName: string | null;
-  bankAccountNumber: string | null;
-  routingCode: string | null;
-  wallets: any[];
-}
-
 const Dashboard: React.FC = () => {
   const { user, refreshUser } = useUser();
   const [investments, setInvestments] = useState<Investment[]>([]);
@@ -776,6 +768,7 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
 
 
 
