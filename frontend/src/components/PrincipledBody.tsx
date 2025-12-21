@@ -4,11 +4,11 @@ import { HomeUtils } from '../utils/HomeUtils';
 
 const PrincipledBody: React.FC = () => {
   return (
-    <div className="relative flex flex-col z-20 mt-[-10em] lg:mt-[-14em] px-[4em] items-center mb-[212em] lg:mb-[110em]">
+    <div className="relative flex flex-col z-20 mt-[-10em] lg:mt-[-14em] px-[2em] lg:px-[4em] items-center mb-[5em]">
       
-      <div className="absolute bg-white w-[90%] flex flex-col justify-center items-center py-[3.6em] left-1/2 -translate-x-1/2 rounded-lg px-[5em] gap-[0.6em] lg:gap-[1.4em] shadow-xl">
+      <div className="bg-white w-full flex flex-col justify-center items-center py-[3.6em] rounded-lg px-[5em] gap-[0.6em] lg:gap-[1.4em] shadow-xl">
         <p className='text-[1.55em] text-[#244772]'>The fundamental</p>
-        <p className='text-[2.2em] lg:text-5xl font-serif text-[#244772]'>Principles of Investment</p>
+        <p className='text-[2em] lg:text-5xl font-serif text-[#244772]'>Principles of Investment</p>
         <div className='flex flex-col gap-[4em] lg:gap-[2.5em] items-start justify-between mt-[3em]'>
           <div className='flex flex-col lg:flex-row gap-[2em] lg:gap-[4em]'>
             <div className='flex flex-col gap-[1em] items-center'>
