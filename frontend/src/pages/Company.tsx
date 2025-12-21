@@ -6,7 +6,7 @@ import Footer from '../components/Footer'
 import Foot from '../components/Foot'
 import { usePageTitle } from "../hooks/usePageTitle";
 import { Link } from 'react-router-dom'
-import OurCompany from '../assets/our company logo.jpg'
+import OurCompany from '../assets/our company logo (2).jpg'
 
 const Company: React.FC = () => {
   usePageTitle("Our Company");
@@ -237,3 +237,4 @@ const Company: React.FC = () => {
 }
 
 export default Company
+
