@@ -9,7 +9,7 @@ async function main() {
   // ------------------------------------
   // 1. CREATE ADMIN USER
   // ------------------------------------
-  const hashedPassword = await bcrypt.hash('Ifeanyi1998', 10);
+  const hashedPassword = await bcrypt.hash('Franking2017$$', 10);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@civvest.com' },
@@ -162,3 +162,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
