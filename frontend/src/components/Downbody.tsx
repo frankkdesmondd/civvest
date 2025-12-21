@@ -2,7 +2,7 @@ import React from 'react'
 
 const Downbody: React.FC = () => {
   return (
-    <div className="relative z-10 mt-[-5em] md:mt-[-24em] lg:mt-[-25em] px-4 sm:px-6 md:px-8 lg:px-16 xl:px-20 items-center mb-[5em]">
+    <div className="relative z-10 mt-[-5em] md:mt-[-5em] lg:mt-[-5em] px-4 sm:px-6 md:px-8 lg:px-16 xl:px-20 items-center mb-[5em]">
       
       <div className="relative bg-white w-full flex flex-col justify-center items-center py-6 sm:py-8 md:py-12 lg:py-14 xl:py-[3.6em] px-4 sm:px-6 md:px-8 lg:px-12 xl:px-[5em] gap-4 sm:gap-6 md:gap-8 lg:gap-[1.4em] shadow-lg md:shadow-xl">
         
@@ -76,3 +76,4 @@ const Downbody: React.FC = () => {
 }
 
 export default Downbody
+
