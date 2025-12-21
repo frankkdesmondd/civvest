@@ -54,11 +54,10 @@ const Dashboard: React.FC = () => {
   const [oilPrices, setOilPrices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Added this state
   const [showModal, setShowModal] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -66,8 +65,9 @@ const Dashboard: React.FC = () => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (!mobile) {
-        setSidebarOpen(false);
+      // Remove the collapsed state logic since we're not using it
+      if (mobile) {
+        setSidebarOpen(false); // Start with sidebar closed on mobile
       }
     };
     
@@ -88,38 +88,72 @@ const Dashboard: React.FC = () => {
 
     fetchAllData();
 
+    // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
+      console.log('Auto-refreshing dashboard data...');
       fetchAllData();
     }, 30000);
 
-    const handleUserUpdate = (event: StorageEvent) => {
-      if (event.key === 'user' && event.newValue) {
-        refreshUser();
-      }
-    };
-
-    const handleCustomUserUpdate = (event: CustomEvent) => {
+    // Enhanced event listeners for real-time updates
+    const handleUserUpdated = (event: CustomEvent) => {
+      console.log('User updated event received:', event.detail);
       if (event.detail?.user) {
         refreshUser();
+        fetchAllData();
+        
+        // Show notification if it's from admin
+        if (event.detail.source === 'admin-update') {
+          showToast('Your account has been updated!', 'success');
+        }
       }
     };
 
-    window.addEventListener('storage', handleUserUpdate);
-    window.addEventListener('userUpdated', handleCustomUserUpdate as EventListener);
+    const handleBalanceUpdated = (event: CustomEvent) => {
+      console.log('Balance updated event received:', event.detail);
+      if (event.detail?.userId === user?.id) {
+        showToast('Your balance has been updated!', 'success');
+        refreshUser();
+        fetchAllData();
+      }
+    };
+
+    const handleROIUpdated = (event: CustomEvent) => {
+      console.log('ROI updated event received:', event.detail);
+      if (event.detail?.userId === user?.id) {
+        showToast('Your ROI has been updated!', 'success');
+        refreshUser();
+        fetchAllData();
+      }
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'user') {
+        console.log('User data changed in storage');
+        refreshUser();
+        fetchAllData();
+      }
+    };
+
+    window.addEventListener('userUpdated', handleUserUpdated as EventListener);
+    window.addEventListener('balanceUpdated', handleBalanceUpdated as EventListener);
+    window.addEventListener('roiUpdated', handleROIUpdated as EventListener);
+    window.addEventListener('storage', handleStorageChange);
     
     return () => {
       clearInterval(interval);
       window.removeEventListener('resize', checkMobile);
-      window.removeEventListener('storage', handleUserUpdate);
-      window.removeEventListener('userUpdated', handleCustomUserUpdate as EventListener);
+      window.removeEventListener('userUpdated', handleUserUpdated as EventListener);
+      window.removeEventListener('balanceUpdated', handleBalanceUpdated as EventListener);
+      window.removeEventListener('roiUpdated', handleROIUpdated as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
     };
-  }, [navigate]);
+  }, [navigate, user?.id]);
 
   const fetchAllData = async () => {
+    console.log('Fetching all dashboard data...');
     await Promise.all([
       fetchUserData(),
       fetchInvestments(),
-      fetchUserProfile(),
       generateOilPriceData()
     ]);
   };
@@ -128,6 +162,7 @@ const Dashboard: React.FC = () => {
     try {
       setError(null);
       await refreshUser();
+      console.log('User data refreshed');
     } catch (error: any) {
       console.error("Failed to fetch user data:", error);
       if (error.response?.status === 401) {
@@ -138,24 +173,12 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const fetchUserProfile = async () => {
-    try {
-      const response = await axiosInstance.get('/api/auth/profile');
-      setUserProfile(response.data);
-    } catch (error) {
-      try {
-        const altResponse = await axiosInstance.get('/api/profile');
-        setUserProfile(altResponse.data);
-      } catch (altError) {
-        console.error('Failed to fetch profile from alternative endpoint:', altError);
-      }
-    }
-  };
-
   const fetchInvestments = async () => {
     try {
       setError(null);
       const response = await axiosInstance.get('/api/user-investments/my-investments');
+      
+      console.log("Investments fetched:", response.data);
       setInvestments(response.data);
       setLoading(false);
     } catch (error: any) {
@@ -181,27 +204,55 @@ const Dashboard: React.FC = () => {
   };
 
   const handleWithdrawClick = (investment: Investment) => {
+    console.log('Selected investment:', investment);
+    console.log('Investment ID:', investment.id);
+    console.log('Investment amount:', investment.amount);
+    console.log('Return amount:', investment.returnAmount);
+    
     setSelectedInvestment(investment);
     setShowModal(true);
   };
 
   const handleConfirmWithdrawal = async (withdrawalData: any) => {
     try {
+      console.log('Withdrawal data being sent:', withdrawalData);
+      console.log('Investment ID:', withdrawalData.userInvestmentId);
+      
       if (!withdrawalData.userInvestmentId) {
         showToast('Error: Investment ID is missing', "error");
         return;
       }
 
-      const response = await axiosInstance.post('/api/withdrawals/request', withdrawalData);
-      showToast(response.data.message, "success");
-      fetchAllData();
-      setShowModal(false);
-      setSelectedInvestment(null);
+      try {
+        const response = await axiosInstance.post('/api/withdrawals/request', withdrawalData);
+        
+        console.log('Withdrawal response:', response.data);
+        showToast(response.data.message, "success");
+        fetchAllData();
+        setShowModal(false);
+        setSelectedInvestment(null);
+      } catch (instanceError: any) {
+        console.log('axiosInstance failed, trying direct axios...');
+        
+        const directResponse = await axiosInstance.post('/api/withdrawals/request', withdrawalData);
+        
+        console.log('Direct withdrawal response:', directResponse.data);
+        showToast(directResponse.data.message, "success");
+        fetchAllData();
+        setShowModal(false);
+        setSelectedInvestment(null);
+      }
+      
     } catch (error: any) {
+      console.error('Full withdrawal error:', error);
+      console.error('Error response:', error.response?.data);
+      
       if (error.response?.status === 404) {
         showToast('Withdrawal route not found. Please check API configuration.', "error");
       } else if (error.response?.data?.error) {
         showToast(error.response.data.error, "error");
+      } else if (error.message) {
+        showToast(error.message, "error");
       } else {
         showToast('Failed to submit withdrawal request', "error");
       }
@@ -270,7 +321,7 @@ const Dashboard: React.FC = () => {
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-10 z-40"
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -388,9 +439,9 @@ const Dashboard: React.FC = () => {
           <div className="sticky top-0 bg-gray-900 shadow-md z-30 p-4 flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-2xl text-gray-800"
+              className="text-2xl text-white p-1 hover:bg-gray-800 rounded"
             >
-              <FiMenu className="text-white"/>
+              <FiMenu />
             </button>
             <img src={CivvestLogo} alt="Civvest" className="w-10" />
             <ProfilePicture size="sm" showBorder={true} borderColor="border-blue-500" />
@@ -421,7 +472,7 @@ const Dashboard: React.FC = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">Total Invested</p>
@@ -435,7 +486,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">ROI</p>
@@ -449,7 +500,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">Referral Bonus</p>
@@ -463,7 +514,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">Active Investments</p>
@@ -506,272 +557,270 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Investments Table */}
+          {/* Investments Section */}
           <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm mb-8 sm:mb-10">
-  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
-    <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-800">
-      My Investments
-    </h2>
-    
-    {investments.length === 0 && (
-      <a
-        href="/view-investment"
-        className="text-blue-600 hover:underline text-xs sm:text-sm whitespace-nowrap"
-      >
-        Browse investments →
-      </a>
-    )}
-  </div>
-
-  {investments.length === 0 ? (
-    <div className="text-center py-6 sm:py-8 md:py-12 text-gray-500">
-      <p className="text-sm sm:text-base md:text-lg">You haven't made any investments yet.</p>
-      <a
-        href="/view-investment"
-        className="text-blue-600 hover:underline mt-2 sm:mt-3 md:mt-4 inline-block text-xs sm:text-sm md:text-base"
-      >
-        Browse available investments
-      </a>
-    </div>
-  ) : (
-    <>
-      {/* Mobile View - Cards */}
-      <div className="md:hidden space-y-4">
-        {investments.map((investment) => (
-          <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-            <div className="space-y-3">
-              {/* Investment Header */}
-              <div>
-                <h3 className="font-semibold text-gray-800 text-sm truncate">
-                  {investment.investment.title}
-                </h3>
-                <p className="text-xs text-gray-500 truncate">
-                  {investment.investment.category}
-                </p>
-              </div>
-
-              {/* Investment Details Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Amount</p>
-                  <p className="font-medium text-gray-800 text-sm">
-                    ${formatNumber(investment.amount)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Return</p>
-                  <p className="font-medium text-green-600 text-sm">
-                    ${formatNumber(investment.returnAmount)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Status</p>
-                  <span
-                    className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                      investment.status === "ACTIVE"
-                        ? "bg-blue-100 text-blue-800"
-                        : investment.status === "COMPLETED"
-                        ? "bg-green-100 text-green-800"
-                        : investment.status === "PENDING"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {investment.status}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Days Left</p>
-                  {investment.status === "PENDING" ? (
-                    <span className="text-yellow-600 font-semibold text-xs">
-                      Awaiting
-                    </span>
-                  ) : investment.status === "ACTIVE" ? (
-                    typeof investment.daysRemaining === 'number' && investment.daysRemaining > 0 ? (
-                      <span className="text-gray-800 text-sm">
-                        {investment.daysRemaining} days
-                      </span>
-                    ) : typeof investment.daysRemaining === 'number' && investment.daysRemaining <= 0 ? (
-                      <span className="text-green-600 font-semibold text-xs">
-                        Ready
-                      </span>
-                    ) : (
-                      <span className="text-gray-500 text-xs">Calculating...</span>
-                    )
-                  ) : (
-                    <span className="text-gray-500 text-xs">N/A</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Button */}
-              <div className="pt-2">
-                {investment.status === "PENDING" ? (
-                  <div className="text-center">
-                    <span className="text-gray-500 text-sm">Pending</span>
-                  </div>
-                ) : investment.status === "ACTIVE" &&
-                  typeof investment.daysRemaining === 'number' &&
-                  investment.daysRemaining <= 0 ? (
-                  <button
-                    onClick={() => handleWithdrawClick(investment)}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md text-sm font-semibold transition-colors"
-                  >
-                    Withdraw Funds
-                  </button>
-                ) : investment.status === "COMPLETED" ? (
-                  <div className="text-center">
-                    <span className="text-gray-500 text-sm">Withdrawn</span>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <span className="text-gray-500 text-sm">Locked</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Desktop View - Table */}
-      <div className="hidden md:block overflow-x-auto -mx-3 sm:mx-0">
-        <div className="inline-block min-w-full align-middle">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Investment
-                </th>
-                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Return
-                </th>
-                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Days Left
-                </th>
-                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Action
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-gray-100">
-              {investments.map((investment) => (
-                <tr
-                  key={investment.id}
-                  className="hover:bg-gray-50 transition-colors"
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
+              <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-800">
+                My Investments
+              </h2>
+              
+              {investments.length === 0 && (
+                <a
+                  href="/view-investment"
+                  className="text-blue-600 hover:underline text-xs sm:text-sm whitespace-nowrap"
                 >
-                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
-                    <div>
-                      <p className="font-semibold text-gray-800 text-sm md:text-base truncate max-w-[180px] lg:max-w-[250px]">
-                        {investment.investment.title}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate max-w-[180px] lg:max-w-[250px]">
-                        {investment.investment.category}
-                      </p>
+                  Browse investments →
+                </a>
+              )}
+            </div>
+
+            {investments.length === 0 ? (
+              <div className="text-center py-6 sm:py-8 md:py-12 text-gray-500">
+                <p className="text-sm sm:text-base md:text-lg">You haven't made any investments yet.</p>
+                <a
+                  href="/view-investment"
+                  className="text-blue-600 hover:underline mt-2 sm:mt-3 md:mt-4 inline-block text-xs sm:text-sm md:text-base"
+                >
+                  Browse available investments
+                </a>
+              </div>
+            ) : (
+              <>
+                {/* Mobile View - Cards */}
+                <div className="md:hidden space-y-4">
+                  {investments.map((investment) => (
+                    <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="space-y-3">
+                        {/* Investment Header */}
+                        <div>
+                          <h3 className="font-semibold text-gray-800 text-sm truncate">
+                            {investment.investment.title}
+                          </h3>
+                          <p className="text-xs text-gray-500 truncate">
+                            {investment.investment.category}
+                          </p>
+                        </div>
+
+                        {/* Investment Details Grid */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Amount</p>
+                            <p className="font-medium text-gray-800 text-sm">
+                              ${formatNumber(investment.amount)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Return</p>
+                            <p className="font-medium text-green-600 text-sm">
+                              ${formatNumber(investment.returnAmount)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Status</p>
+                            <span
+                              className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+                                investment.status === "ACTIVE"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : investment.status === "COMPLETED"
+                                  ? "bg-green-100 text-green-800"
+                                  : investment.status === "PENDING"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {investment.status}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Days Left</p>
+                            {investment.status === "PENDING" ? (
+                              <span className="text-yellow-600 font-semibold text-xs">
+                                Awaiting
+                              </span>
+                            ) : investment.status === "ACTIVE" ? (
+                              typeof investment.daysRemaining === 'number' && investment.daysRemaining > 0 ? (
+                                <span className="text-gray-800 text-sm">
+                                  {investment.daysRemaining} days
+                                </span>
+                              ) : typeof investment.daysRemaining === 'number' && investment.daysRemaining <= 0 ? (
+                                <span className="text-green-600 font-semibold text-xs">
+                                  Ready
+                                </span>
+                              ) : (
+                                <span className="text-gray-500 text-xs">Calculating...</span>
+                              )
+                            ) : (
+                              <span className="text-gray-500 text-xs">N/A</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="pt-2">
+                          {investment.status === "PENDING" ? (
+                            <div className="text-center">
+                              <span className="text-gray-500 text-sm">Pending</span>
+                            </div>
+                          ) : investment.status === "ACTIVE" &&
+                            typeof investment.daysRemaining === 'number' &&
+                            investment.daysRemaining <= 0 ? (
+                            <button
+                              onClick={() => handleWithdrawClick(investment)}
+                              className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md text-sm font-semibold transition-colors"
+                            >
+                              Withdraw Funds
+                            </button>
+                          ) : investment.status === "COMPLETED" ? (
+                            <div className="text-center">
+                              <span className="text-gray-500 text-sm">Withdrawn</span>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <span className="text-gray-500 text-sm">Locked</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </td>
+                  ))}
+                </div>
 
-                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-gray-800 text-sm md:text-base">
-                    ${formatNumber(investment.amount)}
-                  </td>
+                {/* Desktop View - Table */}
+                <div className="hidden md:block overflow-x-auto -mx-3 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Investment
+                          </th>
+                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Amount
+                          </th>
+                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Return
+                          </th>
+                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Days Left
+                          </th>
+                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Action
+                          </th>
+                        </tr>
+                      </thead>
 
-                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-green-600 font-semibold text-sm md:text-base">
-                    ${formatNumber(investment.returnAmount)}
-                  </td>
+                      <tbody className="divide-y divide-gray-100">
+                        {investments.map((investment) => (
+                          <tr
+                            key={investment.id}
+                            className="hover:bg-gray-50 transition-colors"
+                          >
+                            <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
+                              <div>
+                                <p className="font-semibold text-gray-800 text-sm md:text-base truncate max-w-[180px] lg:max-w-[250px]">
+                                  {investment.investment.title}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate max-w-[180px] lg:max-w-[250px]">
+                                  {investment.investment.category}
+                                </p>
+                              </div>
+                            </td>
 
-                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        investment.status === "ACTIVE"
-                          ? "bg-blue-100 text-blue-800"
-                          : investment.status === "COMPLETED"
-                          ? "bg-green-100 text-green-800"
-                          : investment.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {investment.status}
-                    </span>
-                  </td>
+                            <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-gray-800 text-sm md:text-base">
+                              ${formatNumber(investment.amount)}
+                            </td>
 
-                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-gray-800 text-sm md:text-base">
-                    {investment.status === "PENDING" ? (
-                      <span className="text-yellow-600 font-semibold text-xs">
-                        Awaiting
-                      </span>
-                    ) : investment.status === "ACTIVE" ? (
-                      typeof investment.daysRemaining === 'number' && investment.daysRemaining > 0 ? (
-                        <span className="text-sm">
-                          {investment.daysRemaining} days
-                        </span>
-                      ) : typeof investment.daysRemaining === 'number' && investment.daysRemaining <= 0 ? (
-                        <span className="text-green-600 font-semibold text-sm">
-                          Ready
-                        </span>
-                      ) : (
-                        <span className="text-gray-500 text-xs">Calculating...</span>
-                      )
-                    ) : (
-                      <span className="text-gray-500 text-xs">N/A</span>
-                    )}
-                  </td>
+                            <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-green-600 font-semibold text-sm md:text-base">
+                              ${formatNumber(investment.returnAmount)}
+                            </td>
 
-                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
-                    {investment.status === "PENDING" ? (
-                      <span className="text-gray-500 text-sm">Pending</span>
-                    ) : investment.status === "ACTIVE" &&
-                      typeof investment.daysRemaining === 'number' &&
-                      investment.daysRemaining <= 0 ? (
-                      <button
-                        onClick={() => handleWithdrawClick(investment)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-colors"
-                      >
-                        Withdraw
-                      </button>
-                    ) : investment.status === "COMPLETED" ? (
-                      <span className="text-gray-500 text-sm">Withdrawn</span>
-                    ) : (
-                      <span className="text-gray-500 text-sm">Locked</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                            <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  investment.status === "ACTIVE"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : investment.status === "COMPLETED"
+                                    ? "bg-green-100 text-green-800"
+                                    : investment.status === "PENDING"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {investment.status}
+                              </span>
+                            </td>
+
+                            <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-gray-800 text-sm md:text-base">
+                              {investment.status === "PENDING" ? (
+                                <span className="text-yellow-600 font-semibold text-xs">
+                                  Awaiting
+                                </span>
+                              ) : investment.status === "ACTIVE" ? (
+                                typeof investment.daysRemaining === 'number' && investment.daysRemaining > 0 ? (
+                                  <span className="text-sm">
+                                    {investment.daysRemaining} days
+                                  </span>
+                                ) : typeof investment.daysRemaining === 'number' && investment.daysRemaining <= 0 ? (
+                                  <span className="text-green-600 font-semibold text-sm">
+                                    Ready
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-500 text-xs">Calculating...</span>
+                                )
+                              ) : (
+                                <span className="text-gray-500 text-xs">N/A</span>
+                              )}
+                            </td>
+
+                            <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
+                              {investment.status === "PENDING" ? (
+                                <span className="text-gray-500 text-sm">Pending</span>
+                              ) : investment.status === "ACTIVE" &&
+                                typeof investment.daysRemaining === 'number' &&
+                                investment.daysRemaining <= 0 ? (
+                                <button
+                                  onClick={() => handleWithdrawClick(investment)}
+                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-colors"
+                                >
+                                  Withdraw
+                                </button>
+                              ) : investment.status === "COMPLETED" ? (
+                                <span className="text-gray-500 text-sm">Withdrawn</span>
+                              ) : (
+                                <span className="text-gray-500 text-sm">Locked</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Bottom Spacing */}
+          <div className="h-4 sm:h-6 md:h-8"></div>
         </div>
-      </div>
-    </>
-  )}
-</div>
 
-      {/* Withdrawal Modal */}
-      {showModal && selectedInvestment && (
-        <WithdrawalModal
-          investment={selectedInvestment}
-          onClose={() => {
-            setShowModal(false);
-            setSelectedInvestment(null);
-          }}
-          onConfirm={handleConfirmWithdrawal}
-        />
-      )}
+        {/* Withdrawal Modal */}
+        {showModal && selectedInvestment && (
+          <WithdrawalModal
+            investment={selectedInvestment}
+            onClose={() => {
+              setShowModal(false);
+              setSelectedInvestment(null);
+            }}
+            onConfirm={handleConfirmWithdrawal}
+          />
+        )}
+      </div>
     </div>
   );
 };
 
 export default Dashboard;
-
-
-
-
-
-
-
