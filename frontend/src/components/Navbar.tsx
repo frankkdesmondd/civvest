@@ -5,11 +5,10 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import Topbar from "./Topbar";
 import { FiMenu, FiX, FiUser, FiLogOut, FiBell, FiTrash2 } from "react-icons/fi";
-import axios from "axios";
 import ConfirmModal from "../components/ConfirmModal";
 import { useUser } from "../context/UserContext";
 import ProfilePicture from "../components/ProfilePicture";
-import axiosInstance from '../config/axios';
+import axiosInstance from "../config/axios";
 
 interface Notification {
   id: string;
@@ -166,7 +165,7 @@ const Navbar: React.FC = () => {
   const handleSignOut = async () => {
     try {
       console.log('Attempting to sign out...');
-      const response = await axios.post('https://civvest-backend.onrender.com/api/auth/signout', {}, { withCredentials: true });
+      const response = await axiosInstance.post('/api/auth/signout');
       console.log('Sign out response:', response.data);
       
       localStorage.removeItem('token');
@@ -336,7 +335,7 @@ const Navbar: React.FC = () => {
                         <p className="text-sm font-semibold text-gray-800">Notifications</p>
                         {unreadCount > 0 && (
                           <button
-                            onClick={() => axios.put('https://civvest-backend.onrender.com/api/notifications/mark-all-read', {}, { withCredentials: true }).then(fetchNotifications)}
+                            onClick={() => axiosInstance.put('/notifications/mark-all-read').then(fetchNotifications)}
                             className="text-xs text-blue-600 hover:text-blue-800"
                           >
                             Mark all read
@@ -486,7 +485,7 @@ const Navbar: React.FC = () => {
 
         <div
           className={`
-            lg:hidden fixed top-0 right-0 h-screen w-[85%]
+            lg:hidden fixed top-0 right-0 h-screen w-[98%]
             bg-white shadow-xl z-50 pt-[10em] px-6
             transform transition-transform duration-500
             ${mobileOpen ? "translate-x-0" : "translate-x-full"}
@@ -497,13 +496,13 @@ const Navbar: React.FC = () => {
             {!user && (
               <>
                 <Link to="/signin" onClick={closeMobileMenu}>
-                  <p className="hover:bg-gray-100 py-3 px-2 rounded-md transition bg-[#041a35] text-white text-center font-semibold">
+                  <p className="hover:bg-gray-100 py-3 px-2 rounded-md transition bg-blue-600 text-white text-center font-semibold">
                     Sign In
                   </p>
                 </Link>
                 <hr className="w-full" />
                 <Link to="/signup" onClick={closeMobileMenu}>
-                  <p className="hover:bg-gray-100 py-3 px-2 rounded-md transition bg-blue-100 text-[#041a35] text-center font-semibold mb-4">
+                  <p className="hover:bg-gray-100 py-3 px-2 rounded-md transition bg-blue-100 text-blue-600 text-center font-semibold mb-4">
                     Create Account
                   </p>
                 </Link>
@@ -596,7 +595,3 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
-
-
-
-
