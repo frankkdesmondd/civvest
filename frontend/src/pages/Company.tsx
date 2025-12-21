@@ -6,6 +6,7 @@ import Footer from '../components/Footer'
 import Foot from '../components/Foot'
 import { usePageTitle } from "../hooks/usePageTitle";
 import { Link } from 'react-router-dom'
+import OurCompany from '../assets/our company logo.jpg'
 
 const Company: React.FC = () => {
   usePageTitle("Our Company");
@@ -15,19 +16,20 @@ const Company: React.FC = () => {
       {/* Navbar */}
       <Navbar/>
 
-      {/* Hero Section */}
       <div className="relative w-full h-[50vh] lg:h-[70vh]">
         <img
-          src={HomeUtils[0].companyView}
+          src={OurCompany}
           alt="Company View"
           className="w-full h-full object-cover"
         />
 
         <div className="absolute bottom-0 left-0 w-full h-32 bg-linear-to-t from-[#041a35] via-[#041a35]/80 to-transparent"></div>
 
-        <p className="absolute top-[6em] lg:top-[3.5em] left-1/2 -translate-x-1/2 -translate-y-1/2 text-[3.5em] lg:text-[5em] text-white text-center font-serif">
-          Our Company
-        </p>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <p className="text-[2.9em] sm:text-[3em] md:text-[4em] lg:text-[5em] text-white text-center font-serif mt-[3em] lg:mt-[2em]">
+            Our Company
+          </p>
+        </div>
       </div>
 
       {/* Intro Section */}
