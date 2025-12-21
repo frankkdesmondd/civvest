@@ -5,7 +5,6 @@ import { useNavigate } from "react-router-dom";
 import MainBonding from "../assets/main bonding.jpg";
 import { FiDollarSign } from "react-icons/fi";
 import { SlCalender } from "react-icons/sl";
-import { VscPercentage } from "react-icons/vsc";
 import axios from "axios";
 import TrackRecord from "../components/TrackRecord";
 import Testimonial from "../components/Testimonial";
@@ -156,11 +155,6 @@ const BondPlans: React.FC = () => {
                     value={`$${item.minAmount.toLocaleString()}`}
                   />
                   <InfoRow
-                    icon={<VscPercentage />}
-                    label="Interest Rate"
-                    value={item.returnRate}
-                  />
-                  <InfoRow
                     icon={<SlCalender />}
                     label="ROI Period"
                     value={item.duration}
@@ -234,4 +228,5 @@ const InfoRow = ({
 );
 
 export default BondPlans;
+
 
