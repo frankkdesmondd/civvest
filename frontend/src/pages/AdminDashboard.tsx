@@ -9,6 +9,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { PiHandWithdrawFill } from "react-icons/pi";
 import axiosInstance from '../config/axios';
 import { GrOverview } from "react-icons/gr";
+import { useUser } from '../context/UserContext';
 
 
 interface User {
@@ -1520,4 +1521,3 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default AdminDashboard;
-
