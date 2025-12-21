@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiUsers, FiTrendingUp, FiDollarSign, FiActivity, FiEdit, FiTrash2, FiPlus, FiSearch, FiBarChart2, FiPieChart, FiMenu, FiLogOut, FiHome, FiFileText, FiFile, FiExternalLink, FiAlertCircle } from 'react-icons/fi';
+import { FiUsers, FiTrendingUp, FiDollarSign, FiActivity, FiEdit, FiTrash2, FiPlus, FiSearch, FiBarChart2, FiPieChart, FiMenu, FiLogOut, FiHome, FiFileText, FiFile, FiExternalLink, FiAlertCircle, FiUpload } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import CivvestLogo from '../assets/civvest company logo.png'
@@ -238,6 +238,20 @@ const AdminDashboard: React.FC = () => {
     onConfirm: () => {},
     onCancel: () => {}
   });
+
+  const [editingNews, setEditingNews] = useState<any>(null);
+const [editFormData, setEditFormData] = useState({
+  title: '',
+  slug: '',
+  content: '',
+  excerpt: '',
+  category: 'Energy',
+  author: '',
+  published: false
+});
+const [editImage, setEditImage] = useState<File | null>(null);
+const [editImagePreview, setEditImagePreview] = useState<string>('');
+const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -631,6 +645,108 @@ const AdminDashboard: React.FC = () => {
       'Cancel'
     );
   };
+
+  // Handle opening edit modal
+const handleEditNews = (post: any) => {
+  setEditingNews(post);
+  setEditFormData({
+    title: post.title,
+    slug: post.slug || '',
+    content: post.content,
+    excerpt: post.excerpt || '',
+    category: post.category || 'Energy',
+    author: post.author || '',
+    published: post.published
+  });
+  
+  // Set image preview if exists
+  if (post.imageUrl) {
+    setEditImagePreview(`https://civvest-backend.onrender.com${post.imageUrl}`);
+  } else {
+    setEditImagePreview('');
+  }
+  
+  setEditImage(null);
+};
+
+// Handle form field changes
+const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const { name, value, type } = e.target;
+  setEditFormData({
+    ...editFormData,
+    [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+  });
+};
+
+// Handle image change for edit
+const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (e.target.files && e.target.files[0]) {
+    const file = e.target.files[0];
+    setEditImage(file);
+    setEditImagePreview(URL.createObjectURL(file));
+  }
+};
+
+// Generate slug from title for edit
+const generateEditSlug = () => {
+  const slug = editFormData.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  setEditFormData({ ...editFormData, slug });
+};
+
+// Handle edit submission
+const handleEditSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setEditLoading(true);
+
+  try {
+    const formData = new FormData();
+    formData.append('title', editFormData.title);
+    formData.append('slug', editFormData.slug);
+    formData.append('content', editFormData.content);
+    formData.append('excerpt', editFormData.excerpt);
+    formData.append('category', editFormData.category);
+    formData.append('author', editFormData.author);
+    formData.append('published', String(editFormData.published));
+    
+    if (editImage) {
+      formData.append('image', editImage);
+    }
+
+    await axiosInstance.put(`/api/news/${editingNews.id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    showToast('News updated successfully!', 'success');
+    setEditingNews(null);
+    fetchNews(); // Refresh the news list
+  } catch (error: any) {
+    console.error('Edit news error:', error);
+    showToast(error.response?.data?.error || 'Failed to update news', 'error');
+  } finally {
+    setEditLoading(false);
+  }
+};
+
+// Reset edit modal
+const resetEditModal = () => {
+  setEditingNews(null);
+  setEditImage(null);
+  setEditImagePreview('');
+  setEditFormData({
+    title: '',
+    slug: '',
+    content: '',
+    excerpt: '',
+    category: 'Energy',
+    author: '',
+    published: false
+  });
+};
 
   const filteredUsers = users.filter(user => 
     user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1348,12 +1464,20 @@ const AdminDashboard: React.FC = () => {
                               {post.published ? 'Published' : 'Draft'}
                             </span>
                           </td>
-                          <td className="py-4 px-4">
-                            <div className="flex gap-2">
-                              <button className="text-blue-600 hover:text-blue-800"><FiEdit /></button>
-                              <button onClick={() => handleDeleteNews(post.id)} className="text-red-600 hover:text-red-800"><FiTrash2 /></button>
-                            </div>
-                          </td>
+                          <div className="flex gap-2">
+    <button 
+      onClick={() => handleEditNews(post)} 
+      className="text-blue-600 hover:text-blue-800"
+    >
+      <FiEdit />
+    </button>
+    <button 
+      onClick={() => handleDeleteNews(post.id)} 
+      className="text-red-600 hover:text-red-800"
+    >
+      <FiTrash2 />
+    </button>
+  </div>
                         </tr>
                       ))}
                     </tbody>
@@ -1516,6 +1640,193 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Edit News Modal */}
+{editingNews && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+      <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-800">Edit News Post</h2>
+        <button
+          onClick={resetEditModal}
+          className="text-gray-500 hover:text-gray-700 text-2xl font-bold w-8 h-8 flex items-center justify-center"
+        >
+          ×
+        </button>
+      </div>
+
+      <form onSubmit={handleEditSubmit} className="p-6">
+        <div className="space-y-6">
+          {/* Title */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">Title *</label>
+            <input
+              type="text"
+              name="title"
+              value={editFormData.title}
+              onChange={handleEditChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={generateEditSlug}
+              className="text-sm text-blue-600 hover:text-blue-800 mt-1"
+            >
+              Generate slug from title
+            </button>
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">Slug *</label>
+            <input
+              type="text"
+              name="slug"
+              value={editFormData.slug}
+              onChange={handleEditChange}
+              required
+              placeholder="news-title-slug"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-sm text-gray-500 mt-1">URL-friendly version of the title</p>
+          </div>
+
+          {/* Excerpt */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">Excerpt *</label>
+            <textarea
+              name="excerpt"
+              value={editFormData.excerpt}
+              onChange={handleEditChange}
+              required
+              rows={3}
+              placeholder="Brief summary of the news..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Content */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">Content *</label>
+            <textarea
+              name="content"
+              value={editFormData.content}
+              onChange={handleEditChange}
+              required
+              rows={10}
+              placeholder="Full news content..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Category & Author */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">Category *</label>
+              <select
+                name="category"
+                value={editFormData.category}
+                onChange={handleEditChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Energy">Energy</option>
+                <option value="Investment">Investment</option>
+                <option value="Market">Market</option>
+                <option value="Technology">Technology</option>
+                <option value="Company">Company</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">Author *</label>
+              <input
+                type="text"
+                name="author"
+                value={editFormData.author}
+                onChange={handleEditChange}
+                required
+                placeholder="Author name"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Featured Image */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">Featured Image</label>
+            <div className="flex flex-col md:flex-row gap-4 items-start">
+              {/* Current Image Preview */}
+              {editImagePreview && (
+                <div className="w-32 h-32">
+                  <img
+                    src={editImagePreview}
+                    alt="Preview"
+                    className="w-full h-full object-cover rounded-md border"
+                  />
+                  <p className="text-xs text-gray-500 mt-1 text-center">Current/New Image</p>
+                </div>
+              )}
+              
+              {/* Upload Button */}
+              <div>
+                <label className="cursor-pointer inline-block">
+                  <div className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md font-semibold flex items-center gap-2">
+                    <FiUpload /> Upload New Image
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditImageChange}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-sm text-gray-500 mt-2">
+                  Upload a new image to replace the current one
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Publish Status */}
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              name="published"
+              id="editPublished"
+              checked={editFormData.published}
+              onChange={handleEditChange}
+              className="w-5 h-5"
+            />
+            <label htmlFor="editPublished" className="text-gray-700 font-semibold cursor-pointer">
+              Publish immediately
+            </label>
+          </div>
+          <p className="text-sm text-gray-500">
+            If unchecked, the post will be saved as draft
+          </p>
+
+          {/* Buttons */}
+          <div className="flex gap-4 pt-4">
+            <button
+              type="submit"
+              disabled={editLoading}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md font-semibold disabled:opacity-50"
+            >
+              {editLoading ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button
+              type="button"
+              onClick={resetEditModal}
+              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-md font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
     </div>
   );
 };
