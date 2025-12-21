@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import { FiClock, FiCheckCircle, FiAlertCircle, FiDollarSign, FiRefreshCw } from 'react-icons/fi';
 import { HomeUtils } from '../utils/HomeUtils';
 import WithdrawalModal from '../components/WithdrawalModal';
 import WithdrawalHistory from '../components/WithdrawalHistory';
 import { useToast } from '../context/ToastContext';
+import axiosInstance from '../config/axios';
 
 interface Investment {
   id: string;
@@ -59,9 +59,7 @@ const Withdrawal: React.FC = () => {
 
   const fetchInvestments = async () => {
     try {
-      const response = await axios.get('https://civvest-backend.onrender.com/api/user-investments/my-investments', {
-        withCredentials: true
-      });
+      const response = await axiosInstance.get('/api/user-investments/my-investments');
       setInvestments(response.data);
     } catch (error) {
       console.error('Failed to fetch investments:', error);
@@ -70,9 +68,7 @@ const Withdrawal: React.FC = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await axios.get('https://civvest-backend.onrender.com/api/profile', {
-        withCredentials: true
-      });
+      const response = await axiosInstance.get('/api/profile');
       setUserProfile(response.data);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
@@ -81,9 +77,7 @@ const Withdrawal: React.FC = () => {
 
   const fetchWithdrawalHistory = async () => {
     try {
-      const response = await axios.get('https://civvest-backend.onrender.com/api/withdrawals/my-withdrawals', {
-        withCredentials: true
-      });
+      const response = await axiosInstance.get('/api/withdrawals/my-withdrawals');
       setWithdrawalHistory(response.data);
     } catch (error) {
       console.error('Failed to fetch withdrawal history:', error);
@@ -128,11 +122,7 @@ const Withdrawal: React.FC = () => {
         return;
       }
 
-      const response = await axios.post(
-        'https://civvest-backend.onrender.com/api/withdrawals/request',
-        withdrawalData,
-        { withCredentials: true }
-      );
+      const response = await axiosInstance.post('/withdrawals/request', withdrawalData);
       
       console.log('Withdrawal response:', response.data);
       showToast(response.data.message, "success");
