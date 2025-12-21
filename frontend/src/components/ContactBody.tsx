@@ -26,11 +26,11 @@ const ContactBody: React.FC = () => {
               Come say hello and visit us in person
             </p> */}
             <div className='flex flex-col items-center'>
-              <h1 className='text-[1.8em] font-serif mb-4 bg-gray-400 px-[1.5em]'>Civvest Energy Partners</h1>
-              <p className='w-[14em] text-center mb-4'>2911 Turtle Creek Blvd, Ste 570 Dallas, TX 75219</p>
+              <h1 className='text-[1.4em] lg:text-[1.8em] font-serif mb-4 bg-gray-400 px-[1.5em]'>Civvest Energy Partners</h1>
+              <p className='w-[14em] text-center mb-4'>Dallas, Texas</p>
               <div className='flex gap-[0.5em] items-center'>
                 <FaPhoneAlt className="text-[0.8em]" />
-                <p>+1(929) 248 117 5</p>
+                <p>(192)924-81175</p>
               </div>
             </div>
           </div>
