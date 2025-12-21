@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Foot from '../components/Foot';
 import { FiCalendar, FiUser, FiArrowLeft } from 'react-icons/fi';
+import axiosInstance from '../config/axios';
 
 interface NewsPost {
   id: string;
@@ -33,7 +33,7 @@ const NewsDetail: React.FC = () => {
 
   const fetchNewsDetail = async () => {
     try {
-      const response = await axios.get(`https://civvest-backend.onrender.com/api/news/${slug}`);
+      const response = await axiosInstance.get(`/api/news/${slug}`);
       setPost(response.data.post);
       setRelatedPosts(response.data.relatedPosts);
     } catch (error) {
@@ -95,7 +95,7 @@ const NewsDetail: React.FC = () => {
             {/* Featured Image */}
             <div className="relative h-96 overflow-hidden">
               <img
-                src={`http://localhost:5000${post.imageUrl}`}
+                src={`https://civvest-backend.onrender.com${post.imageUrl}`}
                 alt={post.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -144,7 +144,7 @@ const NewsDetail: React.FC = () => {
                   >
                     <div className="relative h-40 overflow-hidden">
                       <img
-                        src={`http://localhost:5000${related.imageUrl}`}
+                        src={`https://civvest-backend.onrender.com${related.imageUrl}`}
                         alt={related.title}
                         className="w-full h-full object-cover"
                         onError={(e) => {
