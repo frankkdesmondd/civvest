@@ -207,7 +207,8 @@ const AdminDashboard: React.FC = () => {
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const { showToast } = useToast();
-  
+  const { updateUserById } = useUser();
+
   // Receipt Modal State
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<string>('');
@@ -318,27 +319,45 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleApproveWithdrawal = async (withdrawalId: string) => {
-    openConfirmModal(
-      'Approve Withdrawal',
-      'Are you sure you want to approve this withdrawal request?',
-      async () => {
-        try {
-          await axiosInstance.put(
-            `/api/withdrawals/admin/${withdrawalId}/status`,
-            { status: 'APPROVED' }
-          );
-          showToast('Withdrawal approved!', 'success');
-          fetchWithdrawals();
-          fetchUsers();
-        } catch (error: any) {
-          showToast(error.response?.data?.error || 'Failed to approve withdrawal', 'error');
+  openConfirmModal(
+    'Approve Withdrawal',
+    'Are you sure you want to approve this withdrawal request?',
+    async () => {
+      try {
+        const response = await axiosInstance.put(
+          `/api/withdrawals/admin/${withdrawalId}/status`,
+          { status: 'APPROVED' }
+        );
+        
+        showToast('Withdrawal approved!', 'success');
+        
+        // Update the user's balance in context if they're logged in
+        if (response.data.userId && response.data.newBalance) {
+          updateUserById(response.data.userId, { 
+            balance: response.data.newBalance 
+          });
+          
+          // Broadcast balance update
+          window.dispatchEvent(new CustomEvent('balanceUpdated', {
+            detail: {
+              userId: response.data.userId,
+              newBalance: response.data.newBalance,
+              source: 'withdrawal-approval'
+            }
+          }));
         }
-      },
-      'info',
-      'Approve',
-      'Cancel'
-    );
-  };
+        
+        fetchWithdrawals();
+        fetchUsers();
+      } catch (error: any) {
+        showToast(error.response?.data?.error || 'Failed to approve withdrawal', 'error');
+      }
+    },
+    'info',
+    'Approve',
+    'Cancel'
+  );
+};
 
   const handleRejectWithdrawal = async (withdrawalId: string, reason?: string) => {
     try {
@@ -362,33 +381,47 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleUpdateROI = async () => {
-    if (!selectedUserForROI || !roiAmount) {
-      showToast('Please enter a valid ROI amount', "error");
-      return;
-    }
+  if (!selectedUserForROI || !roiAmount) {
+    showToast('Please enter a valid ROI amount', "error");
+    return;
+  }
 
-    try {
-      await axiosInstance.put(
-        `/api/admin/users/${selectedUserForROI.id}/roi`, 
-        { roi: parseFloat(roiAmount) }
-      );
-      
-      showToast('ROI updated successfully', "success");
-      
-      // Clear modal state
-      setSelectedUserForROI(null);
-      setRoiAmount('');
-      
-      // Refresh users list to show updated ROI
-      await fetchUsers();
-      
-      // Also refresh stats if needed
-      await fetchStats();
-    } catch (error: any) {
-      console.error('Update ROI error:', error);
-      showToast("ROI failed to update", "error");
-    }
-  };
+  try {
+    const response = await axiosInstance.put(
+      `/api/admin/users/${selectedUserForROI.id}/roi`, 
+      { roi: parseFloat(roiAmount) }
+    );
+    
+    showToast('ROI updated successfully', "success");
+    
+    // Update the user's context if they're currently logged in
+    updateUserById(selectedUserForROI.id, { 
+      roi: response.data.updatedRoi || parseFloat(roiAmount) 
+    });
+    
+    // Broadcast ROI update event
+    window.dispatchEvent(new CustomEvent('roiUpdated', {
+      detail: {
+        userId: selectedUserForROI.id,
+        newROI: response.data.updatedRoi || parseFloat(roiAmount),
+        source: 'admin-dashboard'
+      }
+    }));
+    
+    // Clear modal state
+    setSelectedUserForROI(null);
+    setRoiAmount('');
+    
+    // Refresh users list to show updated ROI
+    await fetchUsers();
+    
+    // Also refresh stats if needed
+    await fetchStats();
+  } catch (error: any) {
+    console.error('Update ROI error:', error);
+    showToast("ROI failed to update", "error");
+  }
+};
 
   const generateOilPriceData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
@@ -405,26 +438,44 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleConfirmDeposit = async (depositId: string) => {
-    openConfirmModal(
-      'Confirm Deposit',
-      'Are you sure you want to confirm this deposit? This will update the user balance and activate their investment.',
-      async () => {
-        try {
-          await axiosInstance.put(`/api/deposits/${depositId}/status`,
-            { status: 'CONFIRMED' }
-          );
-          showToast('Deposit confirmed successfully!', "success");
-          fetchDeposits();
-          fetchUsers();
-        } catch (error: any) {
-          showToast('Failed to confirm deposit', "error");
+  openConfirmModal(
+    'Confirm Deposit',
+    'Are you sure you want to confirm this deposit? This will update the user balance and activate their investment.',
+    async () => {
+      try {
+        const response = await axiosInstance.put(`/api/deposits/${depositId}/status`,
+          { status: 'CONFIRMED' }
+        );
+        
+        showToast('Deposit confirmed successfully!', "success");
+        
+        // Update the user's balance in context if they're logged in
+        if (response.data.userId && response.data.newBalance) {
+          updateUserById(response.data.userId, { 
+            balance: response.data.newBalance 
+          });
+          
+          // Broadcast balance update
+          window.dispatchEvent(new CustomEvent('balanceUpdated', {
+            detail: {
+              userId: response.data.userId,
+              newBalance: response.data.newBalance,
+              source: 'deposit-confirmation'
+            }
+          }));
         }
-      },
-      'info',
-      'Confirm',
-      'Cancel'
-    );
-  };
+        
+        fetchDeposits();
+        fetchUsers();
+      } catch (error: any) {
+        showToast('Failed to confirm deposit', "error");
+      }
+    },
+    'info',
+    'Confirm',
+    'Cancel'
+  );
+};
 
   const handleRejectDeposit = async (depositId: string) => {
     openConfirmModal(
@@ -507,23 +558,40 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleUpdateBalance = async () => {
-    if (!selectedUser || !balanceAmount) {
-      showToast('Please enter a valid amount', "error");
-      return;
-    }
+  if (!selectedUser || !balanceAmount) {
+    showToast('Please enter a valid amount', "error");
+    return;
+  }
 
-    try {
-      await axiosInstance.put(`/api/admin/users/${selectedUser.id}/balance`,
-        { balance: parseFloat(balanceAmount), action: balanceAction }
-      );
-      showToast('Balance updated successfully', "success");
-      setSelectedUser(null);
-      setBalanceAmount('');
-      fetchUsers();
-    } catch (error: any) {
-      showToast('Failed to update balance', "error");
-    }
-  };
+  try {
+    const response = await axiosInstance.put(`/api/admin/users/${selectedUser.id}/balance`,
+      { balance: parseFloat(balanceAmount), action: balanceAction }
+    );
+    
+    showToast('Balance updated successfully', "success");
+    
+    // Update the user's context if they're currently logged in
+    updateUserById(selectedUser.id, { 
+      balance: response.data.updatedBalance || parseFloat(balanceAmount) 
+    });
+    
+    // Broadcast balance update event
+    window.dispatchEvent(new CustomEvent('balanceUpdated', {
+      detail: {
+        userId: selectedUser.id,
+        newBalance: response.data.updatedBalance || parseFloat(balanceAmount),
+        source: 'admin-dashboard'
+      }
+    }));
+    
+    setSelectedUser(null);
+    setBalanceAmount('');
+    fetchUsers();
+  } catch (error: any) {
+    showToast('Failed to update balance', "error");
+  }
+};
+
 
   const handleDeleteUser = async (userId: string, userName: string) => {
     openConfirmModal(
@@ -1452,3 +1520,4 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default AdminDashboard;
+
