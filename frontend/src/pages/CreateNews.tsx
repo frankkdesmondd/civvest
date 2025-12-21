@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
+import axiosInstance from '../config/axios';
 
 const CreateNews: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -58,10 +58,7 @@ const CreateNews: React.FC = () => {
         data.append('image', image);
       }
 
-      await axios.post('https://civvest-backend.onrender.com/api/news', data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        withCredentials: true
-      });
+      await axiosInstance.post('/api/news', data);
 
       showToast('News post created successfully!', 'success');
       navigate('/admin-dashboard');
