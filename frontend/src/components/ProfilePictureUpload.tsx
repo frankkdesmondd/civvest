@@ -156,9 +156,7 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
     try {
       console.log('Attempting to remove profile picture...');
       
-      const response = await axiosInstance.delete('/api/profile-picture/remove', {
-        withCredentials: true
-      });
+      const response = await axiosInstance.delete('/api/profile-picture/remove');
       
       console.log('Remove response:', response.data);
       
@@ -331,6 +329,5 @@ const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
     </>
   );
 };
-
 
 export default ProfilePictureUpload;
