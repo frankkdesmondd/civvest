@@ -764,7 +764,6 @@ const Dashboard: React.FC = () => {
       {showModal && selectedInvestment && (
         <WithdrawalModal
           investment={selectedInvestment}
-          userProfile={userProfile}
           onClose={() => {
             setShowModal(false);
             setSelectedInvestment(null);
@@ -777,6 +776,7 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
 
 
 
