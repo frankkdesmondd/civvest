@@ -2,6 +2,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosInstance from '../config/axios';
 
+interface Wallet {
+  id: string;
+  coinHost: string;
+  walletAddress: string;
+  userId: string;
+}
+
 interface User {
   id: string;
   email: string;
@@ -23,6 +30,7 @@ interface User {
   accountName?: string | null;
   bankAccountNumber?: string | null;
   routingCode?: string | null;
+  wallets?: Wallet[];
 }
 
 interface UserContextType {
@@ -30,6 +38,7 @@ interface UserContextType {
   loading: boolean;
   refreshUser: () => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
+  updateUserById: (userId: string, updatedData: Partial<User>) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -40,21 +49,66 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-      
-      // Also fetch fresh data from server
-      const response = await axiosInstance.get('/auth/me');
+      const response = await axiosInstance.get('/api/auth/me');
       if (response.data.user) {
-        setUser(response.data.user);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        const newUser = response.data.user;
+        setUser(newUser);
+        localStorage.setItem('user', JSON.stringify(newUser));
+        console.log('User refreshed:', newUser);
       }
     } catch (error) {
       console.error('Failed to refresh user:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateUserById = (userId: string, updatedData: Partial<User>) => {
+    // Update if it's the current user
+    if (user && user.id === userId) {
+      const newUser = { ...user, ...updatedData };
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      
+      // Broadcast events more aggressively
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'user',
+        newValue: JSON.stringify(newUser),
+        oldValue: JSON.stringify(user)
+      }));
+      
+      window.dispatchEvent(new CustomEvent('userUpdated', {
+        detail: { 
+          user: newUser,
+          source: 'admin-update',
+          userId: userId,
+          updatedData: updatedData
+        }
+      }));
+      
+      // Also dispatch specific events
+      if (updatedData.balance !== undefined) {
+        window.dispatchEvent(new CustomEvent('balanceUpdated', {
+          detail: {
+            userId: userId,
+            newBalance: updatedData.balance
+          }
+        }));
+      }
+      
+      if (updatedData.roi !== undefined) {
+        window.dispatchEvent(new CustomEvent('roiUpdated', {
+          detail: {
+            userId: userId,
+            newROI: updatedData.roi
+          }
+        }));
+      }
+      
+      // Force refresh after a short delay
+      setTimeout(() => {
+        refreshUser();
+      }, 100);
     }
   };
 
@@ -65,7 +119,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(newUser);
     localStorage.setItem('user', JSON.stringify(newUser));
     
-    // Dispatch events for other components
     window.dispatchEvent(new StorageEvent('storage', {
       key: 'user',
       newValue: JSON.stringify(newUser)
@@ -79,11 +132,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     refreshUser();
     
-    // Listen for user updates
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'user') {
         if (e.newValue) {
-          setUser(JSON.parse(e.newValue));
+          try {
+            const parsedUser = JSON.parse(e.newValue);
+            setUser(parsedUser);
+            console.log('User updated from storage:', parsedUser);
+          } catch (error) {
+            console.error('Failed to parse user from storage:', error);
+          }
         } else {
           setUser(null);
         }
@@ -94,6 +152,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (e.detail?.user) {
         setUser(e.detail.user);
         localStorage.setItem('user', JSON.stringify(e.detail.user));
+        console.log('User updated from custom event:', e.detail.user);
       }
     };
 
@@ -107,7 +166,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, loading, refreshUser, updateUser }}>
+    <UserContext.Provider value={{ 
+      user, 
+      loading, 
+      refreshUser, 
+      updateUser, 
+      updateUserById 
+    }}>
       {children}
     </UserContext.Provider>
   );
