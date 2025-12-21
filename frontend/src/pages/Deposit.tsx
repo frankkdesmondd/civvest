@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
 import { FiCopy, FiCheck, FiAlertCircle, FiUpload, FiFile, FiX } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -49,7 +48,7 @@ const Deposit: React.FC = () => {
 
   const fetchInvestment = async () => {
     try {
-      const response = await axios.get(`https://civvest-backend.onrender.com/api/investments/by-id/${investmentId}`);
+      const response = await axiosInstance.get(`/investments/by-id/${investmentId}`);
       setInvestment(response.data);
     } catch (error) {
       console.error('Failed to fetch investment:', error);
@@ -60,7 +59,7 @@ const Deposit: React.FC = () => {
 
   const fetchWallets = async () => {
     try {
-      const response = await axios.get('https://civvest-backend.onrender.com/api/deposits/wallets');
+      const response = await axiosInstance.get('/api/deposits/wallets');
       setWallets(response.data);
     } catch (error) {
       console.error('Failed to fetch wallets:', error);
@@ -135,16 +134,16 @@ const Deposit: React.FC = () => {
   const handleConfirmPayment = async () => {
     setShowConfirmModal(false);
     setLoading(true);
-  
+
     try {
       const formData = new FormData();
       formData.append('investmentId', investmentId!);
       formData.append('amount', amount);
       formData.append('network', selectedNetwork);
       formData.append('receipt', receipt!);
-  
+
       await axiosInstance.post('/api/deposits', formData);
-  
+
       showToast('Payment confirmation submitted! An admin will verify your deposit shortly.', 'success');
       
       setTimeout(() => {
@@ -399,5 +398,3 @@ const Deposit: React.FC = () => {
 };
 
 export default Deposit;
-
-
