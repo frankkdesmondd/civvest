@@ -6,6 +6,7 @@ import WithdrawalModal from '../components/WithdrawalModal';
 import WithdrawalHistory from '../components/WithdrawalHistory';
 import { useToast } from '../context/ToastContext';
 import axiosInstance from '../config/axios';
+import { useUser } from '../context/UserContext';
 
 interface Investment {
   id: string;
@@ -21,23 +22,15 @@ interface Investment {
   };
 }
 
-interface UserProfile {
-  bankName: string | null;
-  accountName: string | null;
-  bankAccountNumber: string | null;
-  routingCode: string | null;
-  wallets: any[];
-}
-
 const Withdrawal: React.FC = () => {
   const [investments, setInvestments] = useState<Investment[]>([]);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const { showToast } = useToast();
+  const { user } = useUser();
 
   useEffect(() => {
     fetchAllData();
@@ -47,7 +40,6 @@ const Withdrawal: React.FC = () => {
     try {
       await Promise.all([
         fetchInvestments(),
-        fetchUserProfile(),
         fetchWithdrawalHistory()
       ]);
     } catch (error) {
@@ -63,15 +55,6 @@ const Withdrawal: React.FC = () => {
       setInvestments(response.data);
     } catch (error) {
       console.error('Failed to fetch investments:', error);
-    }
-  };
-
-  const fetchUserProfile = async () => {
-    try {
-      const response = await axiosInstance.get('/api/profile');
-      setUserProfile(response.data);
-    } catch (error) {
-      console.error('Failed to fetch profile:', error);
     }
   };
 
@@ -122,11 +105,13 @@ const Withdrawal: React.FC = () => {
         return;
       }
 
-      const response = await axiosInstance.post('/withdrawals/request', withdrawalData);
+      const response = await axiosInstance.post('/api/withdrawals/request', withdrawalData);
       
       console.log('Withdrawal response:', response.data);
       showToast(response.data.message, "success");
       fetchAllData();
+      setShowModal(false); // Close modal after successful request
+      setSelectedInvestment(null);
       
     } catch (error: any) {
       console.error('Full withdrawal error:', error);
@@ -171,11 +156,13 @@ const Withdrawal: React.FC = () => {
       }
 
       const daysRemaining = getDaysRemaining(investment.endDate);
-      return (
-        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold flex items-center gap-1">
-          <FiClock /> {daysRemaining} days remaining
-        </span>
-      );
+      if (daysRemaining !== null) {
+        return (
+          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold flex items-center gap-1">
+            <FiClock /> {daysRemaining} days remaining
+          </span>
+        );
+      }
     }
 
     return (
@@ -188,8 +175,8 @@ const Withdrawal: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
-        <img src={HomeUtils[0].companyLogo} alt="" className='w-[8em]'/>
-        <p className='text-white'>Page Loading......</p>
+        <img src={HomeUtils[0].companyLogo} alt="" className='w-16 sm:w-20 md:w-24 lg:w-32'/>
+        <p className='text-white mt-4 text-base sm:text-lg md:text-xl'>Page Loading...</p>
       </div>
     );
   }
@@ -355,11 +342,15 @@ const Withdrawal: React.FC = () => {
                         <div className="text-center p-3 bg-gray-50 rounded-lg">
                           <p className="text-sm text-gray-600">Already withdrawn</p>
                         </div>
-                      ) : (
+                      ) : investment.endDate && getDaysRemaining(investment.endDate) !== null ? (
                         <div className="text-center p-3 bg-blue-50 rounded-lg">
                           <p className="text-sm text-blue-800">
                             {getDaysRemaining(investment.endDate)} days until maturity
                           </p>
+                        </div>
+                      ) : (
+                        <div className="text-center p-3 bg-gray-50 rounded-lg">
+                          <p className="text-sm text-gray-600">Not available for withdrawal</p>
                         </div>
                       )}
                     </div>
@@ -372,10 +363,9 @@ const Withdrawal: React.FC = () => {
       </div>
 
       {/* Withdrawal Modal */}
-      {showModal && selectedInvestment && (
+      {showModal && selectedInvestment && user && (
         <WithdrawalModal
           investment={selectedInvestment}
-          userProfile={userProfile}
           onClose={() => {
             setShowModal(false);
             setSelectedInvestment(null);
