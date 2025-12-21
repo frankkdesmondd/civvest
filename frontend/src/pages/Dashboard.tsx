@@ -515,109 +515,250 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Investments Table */}
-          <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg md:text-xl font-bold text-gray-800">
-                My Investments
-              </h2>
-              {investments.length === 0 && (
-                <a href="/view-investment" className="text-blue-600 hover:underline text-sm">
-                  Browse investments →
-                </a>
-              )}
-            </div>
+          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm mb-8 sm:mb-10">
+  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
+    <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-800">
+      My Investments
+    </h2>
+    
+    {investments.length === 0 && (
+      <a
+        href="/view-investment"
+        className="text-blue-600 hover:underline text-xs sm:text-sm whitespace-nowrap"
+      >
+        Browse investments →
+      </a>
+    )}
+  </div>
 
-            {investments.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <p className="text-base md:text-lg">You haven't made any investments yet.</p>
-                <a href="/view-investment" className="text-blue-600 hover:underline mt-4 inline-block">
-                  Browse available investments
-                </a>
+  {investments.length === 0 ? (
+    <div className="text-center py-6 sm:py-8 md:py-12 text-gray-500">
+      <p className="text-sm sm:text-base md:text-lg">You haven't made any investments yet.</p>
+      <a
+        href="/view-investment"
+        className="text-blue-600 hover:underline mt-2 sm:mt-3 md:mt-4 inline-block text-xs sm:text-sm md:text-base"
+      >
+        Browse available investments
+      </a>
+    </div>
+  ) : (
+    <>
+      {/* Mobile View - Cards */}
+      <div className="md:hidden space-y-4">
+        {investments.map((investment) => (
+          <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+            <div className="space-y-3">
+              {/* Investment Header */}
+              <div>
+                <h3 className="font-semibold text-gray-800 text-sm truncate">
+                  {investment.investment.title}
+                </h3>
+                <p className="text-xs text-gray-500 truncate">
+                  {investment.investment.category}
+                </p>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px]">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Investment</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Return</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Days Left</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {investments.map((investment) => (
-                      <tr key={investment.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-semibold text-gray-800 text-sm">
-                              {investment.investment.title}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {investment.investment.category}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-gray-800 text-sm">
-                          ${formatNumber(investment.amount)}
-                        </td>
-                        <td className="px-4 py-4 text-green-600 font-semibold text-sm">
-                          ${formatNumber(investment.returnAmount)}
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            investment.status === "ACTIVE" ? "bg-blue-100 text-blue-800" :
-                            investment.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                            investment.status === "PENDING" ? "bg-yellow-100 text-yellow-800" :
-                            "bg-gray-100 text-gray-800"
-                          }`}>
-                            {investment.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-gray-800 text-sm">
-                          {investment.status === "PENDING" ? (
-                            <span className="text-yellow-600 font-semibold">Awaiting</span>
-                          ) : investment.status === "ACTIVE" ? (
-                            typeof investment.daysRemaining === 'number' && investment.daysRemaining > 0 ? (
-                              <span>{investment.daysRemaining} days</span>
-                            ) : typeof investment.daysRemaining === 'number' && investment.daysRemaining <= 0 ? (
-                              <span className="text-green-600 font-semibold">Ready</span>
-                            ) : (
-                              <span className="text-gray-500">Calculating...</span>
-                            )
-                          ) : (
-                            <span className="text-gray-500">N/A</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          {investment.status === "PENDING" ? (
-                            <span className="text-gray-500 text-xs">Pending</span>
-                          ) : investment.status === "ACTIVE" &&
-                            typeof investment.daysRemaining === 'number' &&
-                            investment.daysRemaining <= 0 ? (
-                            <button
-                              onClick={() => handleWithdrawClick(investment)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
-                            >
-                              Withdraw
-                            </button>
-                          ) : investment.status === "COMPLETED" ? (
-                            <span className="text-gray-500 text-xs">Withdrawn</span>
-                          ) : (
-                            <span className="text-gray-500 text-xs">Locked</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              {/* Investment Details Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Amount</p>
+                  <p className="font-medium text-gray-800 text-sm">
+                    ${formatNumber(investment.amount)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Return</p>
+                  <p className="font-medium text-green-600 text-sm">
+                    ${formatNumber(investment.returnAmount)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                  <span
+                    className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+                      investment.status === "ACTIVE"
+                        ? "bg-blue-100 text-blue-800"
+                        : investment.status === "COMPLETED"
+                        ? "bg-green-100 text-green-800"
+                        : investment.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {investment.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Days Left</p>
+                  {investment.status === "PENDING" ? (
+                    <span className="text-yellow-600 font-semibold text-xs">
+                      Awaiting
+                    </span>
+                  ) : investment.status === "ACTIVE" ? (
+                    typeof investment.daysRemaining === 'number' && investment.daysRemaining > 0 ? (
+                      <span className="text-gray-800 text-sm">
+                        {investment.daysRemaining} days
+                      </span>
+                    ) : typeof investment.daysRemaining === 'number' && investment.daysRemaining <= 0 ? (
+                      <span className="text-green-600 font-semibold text-xs">
+                        Ready
+                      </span>
+                    ) : (
+                      <span className="text-gray-500 text-xs">Calculating...</span>
+                    )
+                  ) : (
+                    <span className="text-gray-500 text-xs">N/A</span>
+                  )}
+                </div>
               </div>
-            )}
+
+              {/* Action Button */}
+              <div className="pt-2">
+                {investment.status === "PENDING" ? (
+                  <div className="text-center">
+                    <span className="text-gray-500 text-sm">Pending</span>
+                  </div>
+                ) : investment.status === "ACTIVE" &&
+                  typeof investment.daysRemaining === 'number' &&
+                  investment.daysRemaining <= 0 ? (
+                  <button
+                    onClick={() => handleWithdrawClick(investment)}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md text-sm font-semibold transition-colors"
+                  >
+                    Withdraw Funds
+                  </button>
+                ) : investment.status === "COMPLETED" ? (
+                  <div className="text-center">
+                    <span className="text-gray-500 text-sm">Withdrawn</span>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <span className="text-gray-500 text-sm">Locked</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+        ))}
+      </div>
+
+      {/* Desktop View - Table */}
+      <div className="hidden md:block overflow-x-auto -mx-3 sm:mx-0">
+        <div className="inline-block min-w-full align-middle">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Investment
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Return
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Days Left
+                </th>
+                <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Action
+                </th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-gray-100">
+              {investments.map((investment) => (
+                <tr
+                  key={investment.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm md:text-base truncate max-w-[180px] lg:max-w-[250px]">
+                        {investment.investment.title}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate max-w-[180px] lg:max-w-[250px]">
+                        {investment.investment.category}
+                      </p>
+                    </div>
+                  </td>
+
+                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-gray-800 text-sm md:text-base">
+                    ${formatNumber(investment.amount)}
+                  </td>
+
+                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-green-600 font-semibold text-sm md:text-base">
+                    ${formatNumber(investment.returnAmount)}
+                  </td>
+
+                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        investment.status === "ACTIVE"
+                          ? "bg-blue-100 text-blue-800"
+                          : investment.status === "COMPLETED"
+                          ? "bg-green-100 text-green-800"
+                          : investment.status === "PENDING"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {investment.status}
+                    </span>
+                  </td>
+
+                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-gray-800 text-sm md:text-base">
+                    {investment.status === "PENDING" ? (
+                      <span className="text-yellow-600 font-semibold text-xs">
+                        Awaiting
+                      </span>
+                    ) : investment.status === "ACTIVE" ? (
+                      typeof investment.daysRemaining === 'number' && investment.daysRemaining > 0 ? (
+                        <span className="text-sm">
+                          {investment.daysRemaining} days
+                        </span>
+                      ) : typeof investment.daysRemaining === 'number' && investment.daysRemaining <= 0 ? (
+                        <span className="text-green-600 font-semibold text-sm">
+                          Ready
+                        </span>
+                      ) : (
+                        <span className="text-gray-500 text-xs">Calculating...</span>
+                      )
+                    ) : (
+                      <span className="text-gray-500 text-xs">N/A</span>
+                    )}
+                  </td>
+
+                  <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
+                    {investment.status === "PENDING" ? (
+                      <span className="text-gray-500 text-sm">Pending</span>
+                    ) : investment.status === "ACTIVE" &&
+                      typeof investment.daysRemaining === 'number' &&
+                      investment.daysRemaining <= 0 ? (
+                      <button
+                        onClick={() => handleWithdrawClick(investment)}
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-colors"
+                      >
+                        Withdraw
+                      </button>
+                    ) : investment.status === "COMPLETED" ? (
+                      <span className="text-gray-500 text-sm">Withdrawn</span>
+                    ) : (
+                      <span className="text-gray-500 text-sm">Locked</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
+    </>
+  )}
+</div>
 
       {/* Withdrawal Modal */}
       {showModal && selectedInvestment && (
@@ -636,6 +777,7 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
 
 
 
