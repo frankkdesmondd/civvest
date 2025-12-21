@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Foot from '../components/Foot';
 import { FiCalendar, FiUser } from 'react-icons/fi';
 import NewsImage from '../assets/news image.jpg'
 import { HomeUtils } from '../utils/HomeUtils';
+import axiosInstance from '../config/axios';
 
 interface NewsPost {
   id: string;
@@ -30,7 +30,7 @@ const News: React.FC = () => {
 
   const fetchNews = async () => {
     try {
-      const response = await axios.get('https://civvest-backend.onrender.com/news');
+      const response = await axiosInstance.get('/api/news');
       setNews(response.data);
     } catch (error) {
       console.error('Failed to fetch news:', error);
