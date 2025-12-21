@@ -22,8 +22,6 @@ const bondOfferings = [
     Your investment supports ongoing energy production projects across multiple states, with funds allocated to drilling, production enhancement, and operational expansion.`,
     shortDesc: "Premium bond offering with 80% return over 5 years for accredited investors",
     minAmount: 1000000,
-    targetAmount: 10000000,
-    returnRate: "80%",
     duration: "5 Years",
     category: "Accredited Investors",
     featured: true,
@@ -50,8 +48,6 @@ const bondOfferings = [
     Elite investors gain unparalleled access to our most profitable projects and enjoy white-glove service throughout the investment period.`,
     shortDesc: "Elite bond with 90% return over 5 years for high net worth investors",
     minAmount: 5000000,
-    targetAmount: 50000000,
-    returnRate: "90%",
     duration: "5 Years",
     category: "Accredited Investors",
     featured: true,
@@ -77,8 +73,6 @@ const bondOfferings = [
     Perfect for investors seeking shorter-term commitments while benefiting from the oil and energy sector's strong performance.`,
     shortDesc: "Standard bond with 70% return over 2 years - entry level for accredited investors",
     minAmount: 500000,
-    targetAmount: 5000000,
-    returnRate: "70%",
     duration: "2 Years",
     category: "Accredited Investors",
     featured: false,
@@ -105,8 +99,6 @@ const bondOfferings = [
     Executive investors benefit from deep integration with our investment team and access to strategic insights into the energy market.`,
     shortDesc: "Executive bond with 90% return over 5 years for strategic investors",
     minAmount: 2000000,
-    targetAmount: 20000000,
-    returnRate: "90%",
     duration: "5 Years",
     category: "Accredited Investors",
     featured: true,
@@ -161,4 +153,5 @@ seedBondOfferings()
   .catch((error) => {
     console.error('💥 Fatal error:', error);
     process.exit(1);
+
   });
