@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
 import { FiCreditCard, FiDollarSign, FiCheckCircle } from 'react-icons/fi';
+import { useUser } from '../context/UserContext'; // Import useUser hook
 
 interface Wallet {
   id: string;
   coinHost: string;
   walletAddress: string;
-}
-
-interface UserProfile {
-  bankName: string | null;
-  accountName: string | null;
-  bankAccountNumber: string | null;
-  routingCode: string | null;
-  wallets: Wallet[];
 }
 
 interface Investment {
@@ -24,9 +17,10 @@ interface Investment {
   };
 }
 
+// Remove the User interface from here since we're getting it from context
 interface WithdrawalModalProps {
   investment: Investment;
-  userProfile: UserProfile | null;
+  // user: User; // Remove this prop since we'll get it from context
   onClose: () => void;
   onConfirm: (data: WithdrawalData) => void;
 }
@@ -45,21 +39,22 @@ interface WithdrawalData {
 
 const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
   investment,
-  userProfile,
+  // user, // Remove from props
   onClose,
   onConfirm
 }) => {
+  const { user } = useUser(); // Get user from context
   const [step, setStep] = useState(1);
   const [withdrawalType, setWithdrawalType] = useState<'BANK_TRANSFER' | 'CRYPTO_WALLET' | null>(null);
   const [useSavedDetails, setUseSavedDetails] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
-  
+
   // Form state
   const [bankDetails, setBankDetails] = useState({
-    bankName: userProfile?.bankName || '',
-    accountName: userProfile?.accountName || '',
-    accountNumber: userProfile?.bankAccountNumber || '',
-    routingCode: userProfile?.routingCode || ''
+    bankName: user?.bankName || '',
+    accountName: user?.accountName || '',
+    accountNumber: user?.bankAccountNumber || '',
+    routingCode: user?.routingCode || ''
   });
   
   const [walletDetails, setWalletDetails] = useState({
@@ -97,7 +92,7 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
   };
 
   const handleWalletSelect = (walletId: string) => {
-    const wallet = userProfile?.wallets.find(w => w.id === walletId);
+    const wallet = user?.wallets?.find((w: Wallet) => w.id === walletId);
     if (wallet) {
       setWalletDetails({
         coinHost: wallet.coinHost,
@@ -108,7 +103,7 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
   };
 
   const handleSubmit = () => {
-    if (!withdrawalType) return;
+    if (!withdrawalType || !user) return;
 
     // Validate amount
     if (withdrawalAmount <= 0) {
@@ -121,7 +116,7 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
       return;
     }
 
-    const withdrawalData = {
+    const withdrawalData: WithdrawalData = {
       userInvestmentId: investment.id,
       amount: withdrawalAmount,
       type: withdrawalType
@@ -294,7 +289,7 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
               </div>
 
               {/* Use Saved Details Toggle */}
-              {userProfile && (
+              {user && (
                 <div className="mb-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -313,15 +308,15 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
               {/* Bank Transfer Form */}
               {withdrawalType === 'BANK_TRANSFER' && (
                 <div className="space-y-4">
-                  {useSavedDetails && userProfile?.bankName ? (
+                  {useSavedDetails && user?.bankName ? (
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <h4 className="font-semibold text-gray-800 mb-2">Saved Bank Details</h4>
                       <div className="space-y-1 text-sm">
-                        <p><span className="text-gray-600">Bank:</span> {userProfile.bankName}</p>
-                        <p><span className="text-gray-600">Account Name:</span> {userProfile.accountName}</p>
-                        <p><span className="text-gray-600">Account Number:</span> {userProfile.bankAccountNumber}</p>
-                        {userProfile.routingCode && (
-                          <p><span className="text-gray-600">Routing Code:</span> {userProfile.routingCode}</p>
+                        <p><span className="text-gray-600">Bank:</span> {user.bankName}</p>
+                        <p><span className="text-gray-600">Account Name:</span> {user.accountName}</p>
+                        <p><span className="text-gray-600">Account Number:</span> {user.bankAccountNumber}</p>
+                        {user.routingCode && (
+                          <p><span className="text-gray-600">Routing Code:</span> {user.routingCode}</p>
                         )}
                       </div>
                       <button
@@ -388,11 +383,11 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
               {/* Crypto Wallet Form */}
               {withdrawalType === 'CRYPTO_WALLET' && (
                 <div className="space-y-4">
-                  {useSavedDetails && userProfile?.wallets && userProfile.wallets.length > 0 ? (
+                  {useSavedDetails && user?.wallets && user.wallets.length > 0 ? (
                     <div>
                       <h4 className="font-semibold text-gray-800 mb-3">Select Saved Wallet</h4>
                       <div className="space-y-2">
-                        {userProfile.wallets.map((wallet) => (
+                        {user.wallets.map((wallet: Wallet) => (
                           <div
                             key={wallet.id}
                             onClick={() => handleWalletSelect(wallet.id)}
