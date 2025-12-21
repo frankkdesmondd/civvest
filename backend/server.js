@@ -98,6 +98,8 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use("/api/oil", oilRoutes);
 app.use('/api/profile-picture', profilePictureRoutes);
+app.use('/api/news', newsRoutes);
+app.use('/news', newsRoutes);
 
 // FIXED: Use authenticateToken instead of isAuthenticated
 app.use('/api/user-investments', authenticateToken, userInvestmentRoutes);
