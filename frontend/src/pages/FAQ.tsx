@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Navbar from '../components/Navbar'
 import { usePageTitle } from '../hooks/usePageTitle';
-import Education from '../assets/education.jpg'
+import Education from '../assets/faq logo.jpg'
 import { FiPlus, FiMinus } from "react-icons/fi";
 import { FaArrowRight } from "react-icons/fa6";
 import { Link } from 'react-router-dom';
@@ -24,7 +24,7 @@ const FAQ: React.FC = () => {
     },
     {
       q: "Where is Civvest located?",
-      a: "Our office is located at: 2911 Turtle Creek Blvd, Ste 570, Dallas, TX 75219, USA.",
+      a: "Our office is located at: Dallas Texas.",
     },
     {
       q: "How does Civvest’s investment process work?",
