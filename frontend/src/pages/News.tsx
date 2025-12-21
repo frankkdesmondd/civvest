@@ -129,22 +129,27 @@ const News: React.FC = () => {
                       {post.excerpt}
                     </p>
 
-                    <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <FiCalendar className="text-blue-600" />
-                        <span>{formatDate(post.createdAt)}</span>
+                    {/* Date and Author Section - PROPER FIX */}
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between text-sm text-gray-500 pt-4 border-t border-gray-200">
+                      {/* Date and Author together in column on mobile */}
+                      <div className="flex flex-col mb-3 lg:mb-0 lg:flex-row lg:items-center lg:gap-6">
+                        <div className="flex items-center gap-2 mb-2 lg:mb-0">
+                          <FiCalendar className="text-blue-600" />
+                          <span>{formatDate(post.createdAt)}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <FiUser className="text-blue-600" />
+                          <span>{post.author}</span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <FiUser className="text-blue-600" />
-                        <span>{post.author}</span>
+                      {/* Civvest Energy Partners */}
+                      <div className="lg:text-right">
+                        <p className="text-xs text-gray-400">
+                          Civvest Energy Partners
+                        </p>
                       </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <p className="text-xs text-gray-400">
-                        Civvest Energy Partners
-                      </p>
                     </div>
                   </div>
                 </div>
