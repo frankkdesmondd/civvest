@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import ContactUsImage from "../assets/contact page picture.jpg";
 import ContactBody from "../components/ContactBody";
 import Footer from "../components/Footer";
 import Foot from "../components/Foot";
 import { usePageTitle } from "../hooks/usePageTitle";
-import axios from "axios";
+// import axios from "axios";
 import { FiCheck, FiAlertCircle, FiSend } from "react-icons/fi";
+import AOS from "aos";
+import "aos/dist/aos.css";
+import axiosInstance from "../config/axios";
 
 const ContactUs: React.FC = () => {
   usePageTitle("Contact Us");
@@ -40,6 +43,19 @@ const ContactUs: React.FC = () => {
     }
   };
 
+    useEffect(() => {
+      AOS.init({
+          duration: 1000,     // animation duration
+          easing: "ease-in-out",
+          once: true,         // animation runs once
+          offset: 100,        // trigger distance
+        });
+    
+        // Refresh AOS when DOM changes
+        AOS.refresh();
+  
+    }, []);
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
     
@@ -69,7 +85,7 @@ const ContactUs: React.FC = () => {
     setSuccess(false);
     
     try {
-      const response = await axios.post('https://civvest-backend.onrender.com/api/contact', {
+      const response = await axiosInstance.post('/api/contact', {
         ...formData,
         timestamp: new Date().toISOString()
       });
@@ -106,7 +122,7 @@ const ContactUs: React.FC = () => {
 
       {/* HERO SECTION */}
       <section
-        className="relative w-full min-h-screen flex flex-col items-center pt-20 px-[3em] md:px-10 pb-32 md:pb-52"
+        className="relative w-full min-h-screen flex flex-col items-center pt-20 px-[3em] md:px-10 pb-32 md:pb-52" data-aos="fade-up"
         style={{
           backgroundImage: `url(${ContactUsImage})`,
           backgroundSize: "cover",
@@ -120,8 +136,8 @@ const ContactUs: React.FC = () => {
         <div className="absolute bottom-0 left-0 w-full h-[95%] bg-linear-to-t from-[#043873] to-transparent"></div>
 
         {/* HERO TITLE AND DESCRIPTION */}
-        <div className="flex flex-col items-center mt-[11em] z-10 gap-4 text-center">
-          <p className="text-[3.5em] lg:text-[5em] text-white font-serif leading-tight">
+        <div className="flex flex-col items-center mt-[11em] z-10 gap-4 text-center" data-aos="fade-up">
+          <p className="text-[3em] lg:text-[5em] text-white font-serif leading-tight">
             Contact us to invest
           </p>
           <p className="text-white text-base md:text-xl leading-[1.2em]">
