@@ -1,4 +1,4 @@
-import React from 'react'
+import React, {useEffect} from 'react'
 import Navbar from '../components/Navbar'
 import PrincipalApproach from '../assets/principal approach logo.jpg'
 import Footer from '../components/Footer'
@@ -6,16 +6,30 @@ import Foot from '../components/Foot'
 import { usePageTitle } from "../hooks/usePageTitle";
 import PrincipledBody from '../components/PrincipledBody'
 import SecondBody from '../components/SecondBody'
+import AOS from "aos";
+import "aos/dist/aos.css";
 
 const PrincipledApproach: React.FC = () => {
   usePageTitle("Principled Approach")
+
+  useEffect(() => {
+    AOS.init({
+      duration: 1000,     // animation duration
+      easing: "ease-in-out",
+      once: true,         // animation runs once
+      offset: 100,        // trigger distance
+    });
+
+    // Refresh AOS when DOM changes
+    AOS.refresh();
+  }, []);
   
   return (
     <div className="relative w-full min-h-screen overflow-x-hidden">
       <Navbar/>
 
       {/* Hero Section */}
-      <div className="relative w-full h-[60vh] lg:h-[70vh]">
+      <div className="relative w-full h-[60vh] lg:h-[70vh]" data-aos="fade-up">
         <img
           src={PrincipalApproach}
           alt="Company View"
@@ -30,7 +44,7 @@ const PrincipledApproach: React.FC = () => {
       </div>
 
       {/* Intro Section */}
-      <div className="w-full px-6 lg:px-10 py-16 text-white bg-[#041a35] h-[66em] lg:h-[45em] mt-[-2em]">
+      <div className="w-full px-6 lg:px-10 py-16 text-white bg-[#041a35] h-[66em] lg:h-[45em] mt-[-2em]" data-aos="fade-up">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           
           {/* Left */}
