@@ -42,6 +42,7 @@ model User {
   wallets         Wallet[]                @relation("UserWallets")
   withdrawals Withdrawal[]   // ← Back relation to Withdrawal.user
 
+  roiTransactions ROITransaction[]
   approvedWithdrawals Withdrawal[] @relation("WithdrawalApprovals")  // ← Back relation to Withdrawal.approvedBy
 }
 
@@ -129,6 +130,8 @@ model UserInvestment {
   investmentId String
   amount       Float
   returnAmount Float
+  roiAmount         Float     @default(0)  // ADD THIS - available ROI to withdraw
+  totalRoiAdded     Float     @default(0)  // ADD THIS - total ROI admin has added
   startDate    DateTime?
   endDate      DateTime?
   status       String     @default("PENDING")
@@ -137,6 +140,25 @@ model UserInvestment {
   investment   Investment @relation(fields: [investmentId], references: [id])
   user         User       @relation(fields: [userId], references: [id])
   withdrawals Withdrawal[]    // ← Back relation to Withdrawal.investment
+  roiTransactions   ROITransaction[]
+}
+
+model ROITransaction {
+  id                String    @id @default(cuid())
+  userId            String
+  userInvestmentId  String
+  amount            Float
+  type              String    // 'ADDITION' or 'WITHDRAWAL'
+  adminId           String?   // If added by admin
+  previousRoiAmount Float
+  newRoiAmount      Float
+  previousUserRoi   Float
+  newUserRoi        Float
+  notes             String?
+  createdAt         DateTime  @default(now())
+  
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userInvestment    UserInvestment @relation(fields: [userInvestmentId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
