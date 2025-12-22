@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import Navbar from "../components/Navbar";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useToast } from "../context/ToastContext"; 
 import ContactUsImage from "../assets/contact page picture.jpg";
 import Shell from "../assets/shell.jpg";
 import Civittas from "../assets/civitas.jpg";
@@ -12,11 +13,11 @@ import Foot from "../components/Foot";
 import Reasons from "../components/Reasons";
 import AdditionalOil from "../components/AdditionalOil";
 import LearnDown from "../components/LearnDown";
-import axios from "axios";
-import { FiCheck, FiAlertCircle } from "react-icons/fi";
+import axiosInstance from "../config/axios";
 
 const LearnAbout: React.FC = () => {
   usePageTitle("Invest in Oil & Gas wells");
+  const { showToast } = useToast();
 
   const formRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
@@ -28,8 +29,6 @@ const LearnAbout: React.FC = () => {
   });
   
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const scrollToForm = () => {
@@ -72,23 +71,22 @@ const LearnAbout: React.FC = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      setError("Please fill in all required fields correctly");
+      showToast("Please fill in all required fields correctly", "error");
       return;
     }
     
     setLoading(true);
-    setError("");
-    setSuccess(false);
     
     try {
-      const response = await axios.post('https://civvest-backend.onrender.com/api/contact', {
+      const response = await axiosInstance.post('/api/contact', {
         ...formData,
         source: 'Learn About Page - Oil & Gas Investment',
         timestamp: new Date().toISOString()
       });
       
       if (response.data.success) {
-        setSuccess(true);
+        showToast("Thank you for your interest in oil & gas investments. We'll contact you shortly!", "success");
+        
         // Reset form
         setFormData({
           name: "",
@@ -97,17 +95,12 @@ const LearnAbout: React.FC = () => {
           message: "",
           accreditedInvestor: false
         });
-        
-        // Auto-hide success message after 5 seconds
-        setTimeout(() => {
-          setSuccess(false);
-        }, 5000);
       } else {
-        setError(response.data.error || "Failed to send message");
+        showToast(response.data.error || "Failed to send message", "error");
       }
     } catch (err: any) {
       console.error("Contact form error:", err);
-      setError(err.response?.data?.error || "Failed to send message. Please try again.");
+      showToast(err.response?.data?.error || "Failed to send message. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -122,8 +115,8 @@ const LearnAbout: React.FC = () => {
           relative 
           flex 
           flex-col lg:flex-row 
-          mt-[10em] h-[120em]
-          lg:h-[80em] 
+          mt-[10em] 
+          min-h-[120em] lg:min-h-[80em]
           px-[1.5em] sm:px-[2em] lg:px-[3em] 
           gap-[3em] lg:gap-[5em]
         "
@@ -136,8 +129,8 @@ const LearnAbout: React.FC = () => {
         {/* DARK BLUE OVERLAY */}
         <div className="absolute inset-0 bg-[#041a35]/70"></div>
 
-        {/* BOTTOM BLUE FADE */}
-        <div className="absolute bottom-0 left-0 w-full h-[150%] bg-linear-to-t from-[#041a35] to-transparent"></div>
+        {/* BOTTOM BLUE FADE - Fixed height */}
+        <div className="absolute bottom-0 left-0 w-full h-[10em] bg-linear-to-t from-[#041a35] to-transparent"></div>
 
         {/* LEFT WHITE BOX */}
         <div
@@ -149,8 +142,11 @@ const LearnAbout: React.FC = () => {
             py-[3em] sm:py-[4em] 
             z-20 
             w-full lg:w-[27em] 
-            gap-[1.6em] h-[65em] lg:h-[55em]
+            gap-[1.6em] 
+            min-h-[65em] lg:min-h-[55em]
             rounded-lg
+            self-start
+            mt-[2em] lg:mt-0
           "
         >
           <p className="text-[2.2em] sm:text-[3em] md:text-[3.6em] font-serif leading-[1em]">
@@ -188,7 +184,7 @@ const LearnAbout: React.FC = () => {
         </div>
 
         {/* RIGHT SIDE FORM */}
-        <div className="flex flex-col text-white z-20 items-start mt-[1em] lg:mt-[4em] w-full">
+        <div className="flex flex-col text-white z-20 items-start mt-[1em] lg:mt-[4em] w-full flex-1">
           <p className="text-[1.8em] lg:text-[2.8em] font-serif">
             Invest In Oil And Gas Wells
           </p>
@@ -196,31 +192,6 @@ const LearnAbout: React.FC = () => {
           <p className="text-[1.1em] sm:text-[1.3em] md:text-[1.4em]">
             Fill out the form below for more on American oil investments
           </p>
-
-          {/* SUCCESS/ERROR MESSAGES */}
-          {success && (
-            <div className="w-full max-w-4xl z-20 mb-4 mt-4">
-              <div className="bg-green-500/20 border border-green-500 text-green-200 px-4 py-3 rounded-lg flex items-start">
-                <FiCheck className="mr-3 mt-1 shrink-0" />
-                <div>
-                  <p className="font-semibold">Message Sent Successfully!</p>
-                  <p className="text-sm mt-1">Thank you for your interest in oil & gas investments. We'll contact you shortly.</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="w-full max-w-4xl z-20 mb-4 mt-4">
-              <div className="bg-red-500/20 border border-red-500 text-red-200 px-4 py-3 rounded-lg flex items-start">
-                <FiAlertCircle className="mr-3 mt-1 shrink-0" />
-                <div>
-                  <p className="font-semibold">Error Sending Message</p>
-                  <p className="text-sm mt-1">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* FORM */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-6 lg:gap-8 mt-4 w-full max-w-4xl z-10">
@@ -356,31 +327,6 @@ const LearnAbout: React.FC = () => {
       {/* SECOND FORM SECTION (Scrolled to) */}
       <div ref={formRef} className="flex flex-col text-[#244772] z-20 mt-4 sm:mt-6 md:mt-8 lg:mt-[4em] w-full px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 items-center">
         
-        {/* SUCCESS/ERROR MESSAGES for second form */}
-        {success && (
-          <div className="w-full max-w-7xl z-20 mb-4">
-            <div className="bg-green-500/20 border border-green-500 text-green-200 px-4 py-3 rounded-lg flex items-start">
-              <FiCheck className="mr-3 mt-1 shrink-0" />
-              <div>
-                <p className="font-semibold">Message Sent Successfully!</p>
-                <p className="text-sm mt-1">Thank you for your interest in oil & gas investments. We'll contact you shortly.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="w-full max-w-7xl z-20 mb-4">
-            <div className="bg-red-500/20 border border-red-500 text-red-200 px-4 py-3 rounded-lg flex items-start">
-              <FiAlertCircle className="mr-3 mt-1 shrink-0" />
-              <div>
-                <p className="font-semibold">Error Sending Message</p>
-                <p className="text-sm mt-1">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Header */}
         <div className="text-center w-full max-w-7xl">
           <p className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.8em] font-serif mb-2 sm:mb-3">
@@ -539,4 +485,3 @@ const LearnAbout: React.FC = () => {
 };
 
 export default LearnAbout;
-
