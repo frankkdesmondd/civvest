@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useToast } from "../context/ToastContext"; 
@@ -14,6 +14,8 @@ import Reasons from "../components/Reasons";
 import AdditionalOil from "../components/AdditionalOil";
 import LearnDown from "../components/LearnDown";
 import axiosInstance from "../config/axios";
+import AOS from "aos";
+import "aos/dist/aos.css";
 
 const LearnAbout: React.FC = () => {
   usePageTitle("Invest in Oil & Gas wells");
@@ -27,6 +29,18 @@ const LearnAbout: React.FC = () => {
     message: "",
     accreditedInvestor: false
   });
+
+  useEffect(() => {
+    AOS.init({
+      duration: 1000,     // animation duration
+      easing: "ease-in-out",
+      once: true,         // animation runs once
+      offset: 100,        // trigger distance
+    });
+
+    // Refresh AOS when DOM changes
+    AOS.refresh();
+  }, []);
   
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -147,7 +161,7 @@ const LearnAbout: React.FC = () => {
             rounded-lg
             self-start
             mt-[2em] lg:mt-0
-          "
+          " data-aos='fade-up'
         >
           <p className="text-[2.2em] sm:text-[3em] md:text-[3.6em] font-serif leading-[1em]">
             Strategic Oil Investments
@@ -184,7 +198,7 @@ const LearnAbout: React.FC = () => {
         </div>
 
         {/* RIGHT SIDE FORM */}
-        <div className="flex flex-col text-white z-20 items-start mt-[1em] lg:mt-[4em] w-full flex-1">
+        <div className="flex flex-col text-white z-20 items-start mt-[1em] lg:mt-[4em] w-full flex-1" data-aos='fade-up'>
           <p className="text-[1.8em] lg:text-[2.8em] font-serif">
             Invest In Oil And Gas Wells
           </p>
