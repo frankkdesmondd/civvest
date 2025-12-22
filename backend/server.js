@@ -93,7 +93,6 @@ app.use('/uploads/profile-pictures', express.static(path.join(__dirname, 'upload
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/investments', investmentRoutes);
-app.use('/api/news', newsRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use("/api/oil", oilRoutes);
@@ -215,3 +214,4 @@ app.listen((Port), () => {
   console.log(`📧 SMTP configured for: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT}`);
   console.log(`🍪 Cookie support: Enabled (credentials: true)`);
 });
+
