@@ -1,4 +1,4 @@
-import React from 'react'
+import React, {useEffect} from 'react'
 import Navbar from '../components/Navbar'
 import { HomeUtils } from '../utils/HomeUtils'
 import SecondBody from '../components/SecondBody'
@@ -6,17 +6,31 @@ import Footer from '../components/Footer'
 import Foot from '../components/Foot'
 import { usePageTitle } from "../hooks/usePageTitle";
 import { Link } from 'react-router-dom'
-import OurCompany from '../assets/our company logo (2).jpg'
+import OurCompany from '../assets/our company logo.jpg'
+import AOS from "aos";
+import "aos/dist/aos.css";
 
 const Company: React.FC = () => {
   usePageTitle("Our Company");
+
+  useEffect(() => {
+    AOS.init({
+      duration: 1000,     // animation duration
+      easing: "ease-in-out",
+      once: true,         // animation runs once
+      offset: 100,        // trigger distance
+    });
+
+    // Refresh AOS when DOM changes
+    AOS.refresh();
+  }, []);
 
   return (
     <div className="relative w-full min-h-screen bg-[#041a35] overflow-x-hidden">
       {/* Navbar */}
       <Navbar/>
 
-      <div className="relative w-full h-[50vh] lg:h-[70vh]">
+      <div className="relative w-full h-[50vh] lg:h-[70vh]" data-aos="fade-up">
         <img
           src={OurCompany}
           alt="Company View"
@@ -33,7 +47,7 @@ const Company: React.FC = () => {
       </div>
 
       {/* Intro Section */}
-      <div className="w-full max-w-[1200px] mx-auto px-6 lg:px-10 py-16 text-white">
+      <div className="w-full max-w-[1200px] mx-auto px-6 lg:px-10 py-16 text-white" data-aos="fade-up">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           
           {/* Left */}
@@ -237,4 +251,3 @@ const Company: React.FC = () => {
 }
 
 export default Company
-
