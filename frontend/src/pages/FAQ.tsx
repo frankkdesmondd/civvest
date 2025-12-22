@@ -1,12 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import { usePageTitle } from '../hooks/usePageTitle';
 import Education from '../assets/faq logo.jpg'
 import { FiPlus, FiMinus } from "react-icons/fi";
 import { FaArrowRight } from "react-icons/fa6";
-import { Link } from 'react-router-dom';
 import Footer from '../components/Footer';
 import Foot from '../components/Foot';
+import AOS from "aos";
+import "aos/dist/aos.css";
 
 const FAQ: React.FC = () => {
   usePageTitle("FAQs");
@@ -16,6 +17,19 @@ const FAQ: React.FC = () => {
   const toggleFAQ = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
   };
+
+    useEffect(() => {
+      AOS.init({
+          duration: 1000,     // animation duration
+          easing: "ease-in-out",
+          once: true,         // animation runs once
+          offset: 100,        // trigger distance
+        });
+    
+        // Refresh AOS when DOM changes
+        AOS.refresh();
+  
+    }, []);
 
   const questions = [
     {
@@ -67,7 +81,7 @@ const FAQ: React.FC = () => {
   return (
     <div className='relative w-full min-h-screen bg-[#041a35] overflow-x-hidden'>
       <Navbar/>
-      <div className="relative w-full h-[80vh] lg:h-[120vh]">
+      <div className="relative w-full h-[80vh] lg:h-[120vh]" data-aos="fade-up">
         <img
           src={Education}
           alt="FAQ Image"
@@ -76,25 +90,23 @@ const FAQ: React.FC = () => {
 
         {/* Dark Blur Overlay */}
         <div className="absolute top-0 left-0 w-full h-full bg-black/70 backdrop-blur-[2px] pointer-events-none z-10"></div>
-        <Link to='/contact-us'>
-          <div className="flex flex-col absolute top-[5em] lg:top-[3.5em] left-10 mt-[10em] lg:mt-[18.7em] align-start z-20">
-            <p className="text-[3em] lg:text-[5em] text-white text-start font-serif font-semibold">
-              FAQs
-            </p>
-            <div className='flex gap-4 cursor-pointer bg-blue-300 px-[2em] py-[0.7em] text-[1.3em] rounded-[0.3em] hover:bg-blue-500 items-center hover:text-white'>
-              <button className="flex cursor-pointer">
-                Contact Us
-              </button>
-              <FaArrowRight className='text-[1em]'/>
-            </div>
+        <div className="flex flex-col absolute top-[5em] lg:top-[3.5em] left-10 mt-[10em] lg:mt-[18.7em] align-start z-20">
+          <p className="text-[3em] lg:text-[5em] text-white text-start font-serif font-semibold">
+            FAQs
+          </p>
+          <div className='flex gap-4 cursor-pointer bg-blue-300 px-[2em] py-[0.7em] text-[1.3em] rounded-[0.3em] hover:bg-blue-500 items-center hover:text-white'>
+            <button className="flex cursor-pointer">
+              Contact Us
+            </button>
+            <FaArrowRight className='text-[1em]'/>
           </div>
-        </Link>
+        </div>
       </div>
 
       {/* ================================
             FAQ ACCORDION SECTION
       ================================= */}
-      <div className="w-full bg-white py-16 px-6 md:px-20 lg:px-40">
+      <div className="w-full bg-white py-16 px-6 md:px-20 lg:px-40" data-aos="fade-up">
         
         <p className="text-gray-700 text-xl font-semibold">GET THE ANSWERS YOU NEED</p>
         <p className="text-[2em] font-bold text-[#041a35] mt-2">
