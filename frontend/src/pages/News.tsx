@@ -7,6 +7,8 @@ import { FiCalendar, FiUser } from 'react-icons/fi';
 import NewsImage from '../assets/news image.jpg'
 import { HomeUtils } from '../utils/HomeUtils';
 import axiosInstance from '../config/axios';
+import AOS from "aos";
+import "aos/dist/aos.css";
 
 interface NewsPost {
   id: string;
@@ -25,6 +27,16 @@ const News: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    AOS.init({
+        duration: 1000,     // animation duration
+        easing: "ease-in-out",
+        once: true,         // animation runs once
+        offset: 100,        // trigger distance
+      });
+  
+      // Refresh AOS when DOM changes
+      AOS.refresh();
+
     fetchNews();
   }, []);
 
@@ -62,7 +74,7 @@ const News: React.FC = () => {
     <Navbar />
 
     {/* HERO SECTION WITH BACKGROUND */}
-    <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[80vh]">
+    <div className="relative w-full h-[60vh] md:h-[70vh] lg:h-[80vh]" data-aos="fade-up">
       <img
         src={NewsImage}
         alt="News"
@@ -81,7 +93,7 @@ const News: React.FC = () => {
     </div>
 
     {/* MAIN CONTENT */}
-    <div className="relative z-10 -mt-16 px-4 md:px-8 pb-20">
+    <div className="relative z-10 -mt-16 px-4 md:px-8 pb-20" data-aos="fade-up">
       <div className="max-w-7xl mx-auto">
 
         {news.length === 0 ? (
@@ -107,10 +119,10 @@ const News: React.FC = () => {
                       src={`https://civvest-backend.onrender.com${post.imageUrl}`}
                       alt={post.title}
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src =
-                          "https://via.placeholder.com/400x300?text=News+Image";
-                      }}
+                      // onError={(e) => {
+                      //   e.currentTarget.src =
+                      //     "https://via.placeholder.com/400x300?text=News+Image";
+                      // }}
                     />
                     <div className="absolute top-4 right-4">
                       <span className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full">
