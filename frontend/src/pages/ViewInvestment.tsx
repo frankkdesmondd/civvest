@@ -82,7 +82,7 @@ const ViewInvestment: React.FC = () => {
       <Navbar />
       <InvestHeroSection />
 
-      <div className='flex flex-col mt-[3em] px-[2em] gap-[1em] mb-[5em]'>
+      <div className='flex flex-col mt-[3em] px-[2em] gap-[1em] mb-[5em]' data-aos="fade-up">
         <p className='flex text-[#043873] text-[3em] font-semibold'>Our Bond Offerings</p>
 
         <p className='flex text-[#043873] text-[1.3em] font-semibold'>
@@ -299,3 +299,4 @@ const ViewInvestment: React.FC = () => {
 };
 
 export default ViewInvestment;
+
