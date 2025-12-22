@@ -4,7 +4,7 @@ import { FaPhoneAlt } from "react-icons/fa";
 
 const ContactBody: React.FC = () => {
   return (
-    <div className="relative flex justify-center z-10 mt-[-5em] mb-[30em] px-4">
+    <div className="relative flex justify-center z-10 mt-[-5em] mb-[20em] lg:mb-[30em] px-4">
 
       {/* MAIN BOX */}
       <div
