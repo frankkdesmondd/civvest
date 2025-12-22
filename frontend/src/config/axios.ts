@@ -49,8 +49,12 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem('user');
       localStorage.removeItem('token');
       
-      // Only redirect if not already on signin page
-      if (!window.location.pathname.includes('/signin')) {
+      // Define public routes that don't require authentication
+      const publicRoutes = ['/', '/signin', '/signup', '/login', '/home'];
+      const currentPath = window.location.pathname;
+      
+      // Only redirect if not on a public route
+      if (!publicRoutes.includes(currentPath)) {
         window.location.href = '/signin';
       }
     }
@@ -60,8 +64,3 @@ axiosInstance.interceptors.response.use(
 );
 
 export default axiosInstance;
-
-
-
-
-
