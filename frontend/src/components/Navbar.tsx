@@ -496,13 +496,13 @@ const Navbar: React.FC = () => {
             {!user && (
               <>
                 <Link to="/signin" onClick={closeMobileMenu}>
-                  <p className="hover:bg-gray-100 py-3 px-2 rounded-md transition bg-blue-600 text-white text-center font-semibold">
+                  <p className="hover:bg-gray-100 py-3 px-2 rounded-md transition bg-[#041a35] text-white text-center font-semibold">
                     Sign In
                   </p>
                 </Link>
                 <hr className="w-full" />
                 <Link to="/signup" onClick={closeMobileMenu}>
-                  <p className="hover:bg-gray-100 py-3 px-2 rounded-md transition bg-blue-100 text-blue-600 text-center font-semibold mb-4">
+                  <p className="hover:bg-gray-100 py-3 px-2 rounded-md transition bg-blue-100 text-[#041a35] text-center font-semibold mb-4">
                     Create Account
                   </p>
                 </Link>
@@ -595,3 +595,4 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
+
