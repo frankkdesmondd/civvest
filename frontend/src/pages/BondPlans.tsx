@@ -74,7 +74,7 @@ const BondPlans: React.FC = () => {
           className="w-full h-full object-cover"
         />
         <div className="absolute top-0 left-0 w-full h-full bg-black/70 backdrop-blur-[2px] pointer-events-none z-10"></div>
-          <div className="flex flex-col absolute top-[5.2em] lg:top-[3.5em] left-10 mt-[7em] lg:mt-[10em] align-start z-20 pr-[2em]">
+          <div className="flex flex-col absolute top-[5.2em] lg:top-[3.5em] left-10 mt-[7em] lg:mt-[7em] align-start z-20 pr-[2em]">
             <p className="text-[1em] lg:text-[1.2em] text-white text-start font-serif font-semibold">
               Register For A Bond Offering Webinar
             </p>
@@ -228,5 +228,6 @@ const InfoRow = ({
 );
 
 export default BondPlans;
+
 
 
