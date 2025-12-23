@@ -15,8 +15,8 @@ model User {
   resetTokenExp   DateTime?
   accountNumber   String                  @unique
   balance         Float                   @default(0)
-  roi             Float                   @default(0)        // NEW: ROI field
-  referralBonus   Float                   @default(0)        // NEW: Referral bonus
+  roi             Float                   @default(0)       
+  referralBonus   Float                   @default(0)        
   createdAt       DateTime                @default(now())
   firstName       String
   lastName        String
@@ -130,8 +130,8 @@ model UserInvestment {
   investmentId String
   amount       Float
   returnAmount Float
-  roiAmount         Float     @default(0)  // ADD THIS - available ROI to withdraw
-  totalRoiAdded     Float     @default(0)  // ADD THIS - total ROI admin has added
+  roiAmount         Float     @default(0)  
+  totalRoiAdded     Float     @default(0)  
   startDate    DateTime?
   endDate      DateTime?
   status       String     @default("PENDING")
