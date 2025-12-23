@@ -757,50 +757,33 @@ router.put('/user-investments/:investmentId/roi', authenticateToken, isAdmin, as
       return res.status(400).json({ error: 'Valid ROI amount required (must be >= 0)' });
     }
 
-    // Find the investment
+    // Find the investment - FIXED VERSION
     const investment = await prisma.userInvestment.findUnique({
-  where: { id: investmentId },
-  include: {
-    user: {
-      select: { 
-        id: true, 
-        firstName: true, 
-        lastName: true, 
-        email: true, 
-        roi: true 
-      }
-    },
-    investment: {
-      select: { 
-        title: true, 
-        category: true 
-      }
-    }
-  },
-  // ADD THIS SELECT STATEMENT
-  select: {
-    id: true,
-    userId: true,
-    status: true,
-    roiAmount: true,       // Fetch this
-    totalRoiAdded: true,   // Also fetch this to avoid data mismatch
-    user: { // Keep the include for user as is
+      where: { id: investmentId },
+      // CORRECT: Use ONLY select, not include
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        roi: true
+        userId: true,
+        status: true,
+        roiAmount: true,
+        totalRoiAdded: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            roi: true
+          }
+        },
+        investment: {
+          select: {
+            title: true,
+            category: true
+          }
+        }
       }
-    },
-    investment: { // Keep the include for investment as is
-      select: {
-        title: true,
-        category: true
-      }
-    }
-  }
-});
+    });
 
     if (!investment) {
       console.error('[ROI Update] Investment not found:', investmentId);
@@ -831,15 +814,14 @@ router.put('/user-investments/:investmentId/roi', authenticateToken, isAdmin, as
 
     // Simple update - just update the two fields
     const updatedInvestment = await prisma.userInvestment.update({
-  where: { id: investmentId },
-  data: { 
-    roiAmount: newRoiAmount,
-    // Also increment the totalRoiAdded by the difference
-    totalRoiAdded: {
-      increment: roiDifference
-    }
-  }
-});
+      where: { id: investmentId },
+      data: { 
+        roiAmount: newRoiAmount,
+        totalRoiAdded: {
+          increment: roiDifference
+        }
+      }
+    });
 
     console.log(`[ROI Update] Updated investment ROI to ${updatedInvestment.roiAmount}`);
 
@@ -967,3 +949,4 @@ router.get('/debug/:userId/investments', authenticateToken, isAdmin, (req, res) 
 
 
 export default router;
+
