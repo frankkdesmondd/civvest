@@ -191,6 +191,67 @@ router.get('/stats', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
+router.get('/users/:userId/investments', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    console.log(`[ROI Edit] Fetching investments for user ${userId}`);
+    
+    const investments = await prisma.userInvestment.findMany({
+      where: { 
+        userId: userId,
+        status: 'ACTIVE'
+      },
+      include: {
+        investment: {
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            returnRate: true,
+            duration: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const formattedInvestments = investments.map(inv => {
+      const daysRemaining = inv.endDate ? 
+        Math.ceil((new Date(inv.endDate) - new Date()) / (1000 * 60 * 60 * 24)) : 
+        null;
+      
+      return {
+        id: inv.id,
+        userId: inv.userId,
+        amount: inv.amount,
+        returnAmount: inv.returnAmount,
+        roiAmount: inv.roiAmount || 0,
+        totalRoiAdded: inv.totalRoiAdded || 0,
+        status: inv.status,
+        startDate: inv.startDate,
+        endDate: inv.endDate,
+        createdAt: inv.createdAt,
+        updatedAt: inv.updatedAt,
+        investment: inv.investment,
+        daysRemaining,
+        isMatured: daysRemaining !== null && daysRemaining <= 0
+      };
+    });
+
+    console.log(`[ROI Edit] Found ${formattedInvestments.length} active investments`);
+    
+    res.json(formattedInvestments);
+    
+  } catch (error) {
+    console.error('[ROI Edit] Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch user investments',
+      details: error.message 
+    });
+  }
+});
+
 // Delete user (Admin only)
 router.delete('/users/:id', authenticateToken, isAdmin, async (req, res) => {
   try {
@@ -483,6 +544,7 @@ router.post('/investments/:investmentId/add-roi', authenticateToken, isAdmin, as
   }
 });
 
+
 // GET /api/admin/users/:userId/investments-with-roi
 router.get('/users/:userId/investments-with-roi', async (req, res) => {
   try {
@@ -681,144 +743,167 @@ router.get('/user-investments/all', authenticateToken, isAdmin, async (req, res)
   }
 });
 
-// GET user's investments (Admin can view any user's investments)
-// GET user's investments (for ROI editing)
-router.get('/users/:userId/investments', authenticateToken, isAdmin, async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    console.log(`[ROI Edit] Fetching investments for user ${userId}`);
-    
-    const investments = await prisma.userInvestment.findMany({
-      where: { 
-        userId: userId,
-        status: { in: ['ACTIVE', 'PENDING', 'COMPLETED'] } // Include all statuses
-      },
-      include: {
-        investment: {
-          select: {
-            id: true,
-            title: true,
-            category: true,
-            returnRate: true,
-            duration: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-
-    // Format the investments with ROI data
-    const formattedInvestments = investments.map(inv => ({
-      id: inv.id,
-      userId: inv.userId,
-      amount: inv.amount,
-      returnAmount: inv.returnAmount,
-      roiAmount: inv.roiAmount || 0,
-      totalRoiAdded: inv.totalRoiAdded || 0,
-      status: inv.status,
-      startDate: inv.startDate,
-      endDate: inv.endDate,
-      createdAt: inv.createdAt,
-      updatedAt: inv.updatedAt,
-      investment: inv.investment,
-      // Calculate days remaining if needed
-      daysRemaining: inv.endDate ? 
-        Math.ceil((new Date(inv.endDate) - new Date()) / (1000 * 60 * 60 * 24)) : 
-        null
-    }));
-
-    console.log(`[ROI Edit] Found ${formattedInvestments.length} investments for user ${userId}`);
-    
-    res.json(formattedInvestments);
-    
-  } catch (error) {
-    console.error('[ROI Edit] Error fetching user investments:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch user investments',
-      details: error.message 
-    });
-  }
-});
-
 router.put('/user-investments/:investmentId/roi', authenticateToken, isAdmin, async (req, res) => {
   try {
     const { investmentId } = req.params;
     const { roiAmount } = req.body;
     
-    if (!roiAmount || isNaN(parseFloat(roiAmount))) {
-      return res.status(400).json({ error: 'Valid ROI amount is required' });
+    console.log(`[ROI Update] Starting update for investment ${investmentId}`);
+    console.log(`[ROI Update] New ROI amount: ${roiAmount}`);
+    
+    // Validate ROI amount
+    if (roiAmount === undefined || roiAmount === null || isNaN(parseFloat(roiAmount)) || parseFloat(roiAmount) < 0) {
+      console.error('[ROI Update] Invalid ROI amount:', roiAmount);
+      return res.status(400).json({ error: 'Valid ROI amount required (must be >= 0)' });
     }
 
+    // Find the investment
     const investment = await prisma.userInvestment.findUnique({
-      where: { id: investmentId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true
-          }
-        }
+  where: { id: investmentId },
+  include: {
+    user: {
+      select: { 
+        id: true, 
+        firstName: true, 
+        lastName: true, 
+        email: true, 
+        roi: true 
       }
-    });
+    },
+    investment: {
+      select: { 
+        title: true, 
+        category: true 
+      }
+    }
+  },
+  // ADD THIS SELECT STATEMENT
+  select: {
+    id: true,
+    userId: true,
+    status: true,
+    roiAmount: true,       // Fetch this
+    totalRoiAdded: true,   // Also fetch this to avoid data mismatch
+    user: { // Keep the include for user as is
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        roi: true
+      }
+    },
+    investment: { // Keep the include for investment as is
+      select: {
+        title: true,
+        category: true
+      }
+    }
+  }
+});
 
     if (!investment) {
+      console.error('[ROI Update] Investment not found:', investmentId);
       return res.status(404).json({ error: 'Investment not found' });
     }
 
-    // Update investment ROI
+    console.log(`[ROI Update] Found investment for user ${investment.userId}`);
+    console.log(`[ROI Update] Current investment ROI: ${investment.roiAmount || 0}`);
+    console.log(`[ROI Update] Current user total ROI: ${investment.user.roi || 0}`);
+
+    // Only allow ROI updates for ACTIVE investments
+    if (investment.status !== 'ACTIVE') {
+      console.error('[ROI Update] Investment not active:', investment.status);
+      return res.status(400).json({ 
+        error: 'ROI can only be updated for active investments',
+        currentStatus: investment.status 
+      });
+    }
+
+    const newRoiAmount = parseFloat(roiAmount);
+    const previousRoiAmount = investment.roiAmount || 0;
+    const roiDifference = newRoiAmount - previousRoiAmount;
+    const previousUserRoi = investment.user.roi || 0;
+    const newUserRoi = previousUserRoi + roiDifference;
+
+    console.log(`[ROI Update] ROI difference: ${roiDifference}`);
+    console.log(`[ROI Update] User ROI will change: ${previousUserRoi} -> ${newUserRoi}`);
+
+    // Simple update - just update the two fields
     const updatedInvestment = await prisma.userInvestment.update({
-      where: { id: investmentId },
-      data: { 
-        roiAmount: parseFloat(roiAmount),
-        totalRoiAdded: {
-          increment: parseFloat(roiAmount) - (investment.roiAmount || 0)
-        }
+  where: { id: investmentId },
+  data: { 
+    roiAmount: newRoiAmount,
+    // Also increment the totalRoiAdded by the difference
+    totalRoiAdded: {
+      increment: roiDifference
+    }
+  }
+});
+
+    console.log(`[ROI Update] Updated investment ROI to ${updatedInvestment.roiAmount}`);
+
+    // Update user's total ROI
+    const updatedUser = await prisma.user.update({
+      where: { id: investment.userId },
+      data: {
+        roi: newUserRoi
       },
-      include: {
-        investment: true
+      select: { 
+        id: true, 
+        roi: true, 
+        email: true, 
+        firstName: true, 
+        lastName: true 
       }
     });
 
-    // Create ROI transaction record
-    await prisma.roiTransaction.create({
-      data: {
-        userId: investment.userId,
-        userInvestmentId: investmentId,
-        amount: parseFloat(roiAmount),
-        type: 'SET',
-        adminId: req.user?.id,
-        previousRoiAmount: investment.roiAmount || 0,
-        newRoiAmount: parseFloat(roiAmount),
-        notes: `Admin manually set ROI for ${investment.investment.title}`
-      }
-    });
+    console.log(`[ROI Update] Updated user total ROI to ${updatedUser.roi}`);
 
-    // Create notification for user
-    await prisma.notification.create({
-      data: {
-        userId: investment.userId,
-        title: 'Investment ROI Updated',
-        message: `ROI for your ${investment.investment.title} investment has been set to $${parseFloat(roiAmount).toFixed(2)}. You can now withdraw this amount.`,
-        type: 'ROI_UPDATE'
-      }
-    });
+    // Try to create notification (optional, won't fail if it errors)
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: investment.userId,
+          title: 'Investment ROI Updated',
+          message: `Your ${investment.investment.title} investment now has ${newRoiAmount.toFixed(2)} in available ROI.`,
+          type: 'ACCOUNT'
+        }
+      });
+      console.log(`[ROI Update] Notification created successfully`);
+    } catch (notifError) {
+      console.warn('[ROI Update] Could not create notification:', notifError.message);
+    }
+
+    console.log(`[ROI Update] Update completed successfully`);
 
     res.json({
       success: true,
-      message: 'Investment ROI updated successfully',
+      message: `Successfully set ROI to ${newRoiAmount.toFixed(2)}`,
       investment: {
         id: updatedInvestment.id,
         roiAmount: updatedInvestment.roiAmount,
         userId: updatedInvestment.userId
+      },
+      updatedTotalROI: updatedUser.roi,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName
       }
     });
 
   } catch (error) {
-    console.error('Update investment ROI error:', error);
-    res.status(500).json({ error: 'Failed to update investment ROI' });
+    console.error('[ROI Update] FULL ERROR:', error);
+    console.error('[ROI Update] Error message:', error.message);
+    console.error('[ROI Update] Error code:', error.code);
+    console.error('[ROI Update] Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to update investment ROI',
+      details: error.message,
+      code: error.code
+    });
   }
 });
 
