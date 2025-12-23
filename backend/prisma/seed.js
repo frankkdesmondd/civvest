@@ -140,7 +140,7 @@ async function main() {
       shortDesc: 'Ultimate 12-month platinum tier with 65% returns.',
       imageUrl: '/uploads/investments/default-oil-6.jpg',
       minAmount: 200000,
-
+      targetAmount: 20000000,
       currentAmount: 0,
       returnRate: '65%',
       duration: '12 Months',
