@@ -203,12 +203,13 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [oilPrices, setOilPrices] = useState<any[]>([]);
   const [selectedUserForROI, setSelectedUserForROI] = useState<User | null>(null);
-  const [roiAmount, setRoiAmount] = useState('');
   const navigate = useNavigate();
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const { showToast } = useToast();
   const { updateUserById } = useUser();
+const [userInvestments, setUserInvestments] = useState<any[]>([]);
+const [roiAmounts, setRoiAmounts] = useState<{[key: string]: string}>({});
 
   // Receipt Modal State
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -285,6 +286,210 @@ const [editLoading, setEditLoading] = useState(false);
     };
   }, [navigate]);
 
+  const handleOpenROIModal = async (user: User) => {
+  try {
+    console.log(`Opening ROI modal for user: ${user.id} - ${user.firstName} ${user.lastName}`);
+    
+    // Use the correct endpoint from adminRoutes.js
+    const response = await axiosInstance.get(
+      `/api/admin/users/${user.id}/investments`,
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }
+    );
+    
+    console.log('Full API response:', response);
+    console.log('Response data:', response.data);
+    
+    // The endpoint returns a direct array of investments
+    const investments = response.data;
+    
+    if (!Array.isArray(investments)) {
+      console.error('Response is not an array:', investments);
+      showToast('Invalid response format from server', 'error');
+      return;
+    }
+    
+    if (investments.length === 0) {
+      showToast('No active investments found for this user', 'info');
+      return;
+    }
+    
+    // Filter for only ACTIVE investments (user can only have ROI added to active investments)
+    const activeInvestments = investments.filter(
+      (inv: any) => inv.status === 'ACTIVE'
+    );
+    
+    if (activeInvestments.length === 0) {
+      showToast('User has no active investments. ROI can only be added to active investments.', 'info');
+      return;
+    }
+    
+    console.log(`Found ${activeInvestments.length} active investments`);
+    
+    setUserInvestments(activeInvestments);
+    setSelectedUserForROI(user);
+    
+    // Initialize ROI amounts from existing ROI values
+    const initialROIs: {[key: string]: string} = {};
+    activeInvestments.forEach((inv: any) => {
+      initialROIs[inv.id] = (inv.roiAmount || 0).toString();
+    });
+    setRoiAmounts(initialROIs);
+    
+  } catch (error: any) {
+    console.error('Failed to load user investments:', error);
+    console.error('Error details:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+    
+    if (error.response?.status === 404) {
+      showToast('Investment data not found. Please check if the user has any investments.', 'error');
+    } else if (error.response?.status === 401) {
+      showToast('Authentication failed. Please log in again.', 'error');
+      navigate('/signin');
+    } else {
+      showToast(
+        error.response?.data?.error || 'Failed to load user investments',
+        'error'
+      );
+    }
+  }
+};
+
+const handleUpdateInvestmentROI = async (investmentId: string) => {
+  const roiAmount = roiAmounts[investmentId];
+  if (!roiAmount || !selectedUserForROI) {
+    showToast('Please enter a valid ROI amount', 'error');
+    return;
+  }
+  
+  const amount = parseFloat(roiAmount);
+  if (isNaN(amount) || amount <= 0) {
+    showToast('ROI amount must be greater than 0', 'error');
+    return;
+  }
+  
+  try {
+    console.log(`Updating ROI for investment ${investmentId} to ${amount}`);
+    
+    // FIXED: Ensure the token is properly formatted
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showToast('Authentication required. Please log in again.', 'error');
+      navigate('/signin');
+      return;
+    }
+    
+    // FIXED: Use simpler payload structure
+    const response = await axiosInstance.put(
+      `/api/admin/user-investments/${investmentId}/roi`,
+      { roiAmount: amount.toString() }, // Send as string for validation
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    
+    console.log('Update ROI response:', response.data);
+    
+    showToast('Investment ROI updated successfully!', 'success');
+    
+    // Update local state immediately
+    setUserInvestments(prev => prev.map(inv => 
+      inv.id === investmentId 
+        ? {
+            ...inv, 
+            roiAmount: amount,
+            totalRoiAdded: (inv.totalRoiAdded || 0) + (amount - (inv.roiAmount || 0))
+          }
+        : inv
+    ));
+    
+    // Update the user's total ROI in the context
+    if (response.data.updatedTotalROI !== undefined) {
+      updateUserById(selectedUserForROI.id, { 
+        roi: response.data.updatedTotalROI 
+      });
+    }
+    
+    // Clear the ROI amount input for this specific investment
+    setRoiAmounts(prev => {
+      const newRoiAmounts = { ...prev };
+      delete newRoiAmounts[investmentId];
+      return newRoiAmounts;
+    });
+    
+    // Broadcast update events for real-time sync
+    window.dispatchEvent(new CustomEvent('investmentROIUpdated', {
+      detail: {
+        userId: selectedUserForROI.id,
+        investmentId,
+        newROI: amount
+      }
+    }));
+    
+    window.dispatchEvent(new CustomEvent('roiUpdated', {
+      detail: {
+        userId: selectedUserForROI.id,
+        newROI: response.data.updatedTotalROI || selectedUserForROI.roi + amount,
+        source: 'admin-update'
+      }
+    }));
+    
+    // Refresh user investments for this specific user
+    await handleOpenROIModal(selectedUserForROI);
+    
+  } catch (error: any) {
+    console.error('Failed to update investment ROI:', error);
+    console.error('Full error object:', error);
+    
+    // Log more details about the request
+    console.error('Request details:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      data: error.config?.data,
+      headers: error.config?.headers
+    });
+    
+    if (error.response) {
+      console.error('Response error:', {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+      
+      if (error.response.status === 401) {
+        showToast('Authentication failed. Please log in again.', 'error');
+        navigate('/signin');
+      } else if (error.response.status === 400) {
+        showToast(error.response.data.error || 'Invalid request', 'error');
+      } else if (error.response.status === 404) {
+        showToast('Investment not found. It may have been deleted.', 'error');
+      } else if (error.response.data?.error) {
+        showToast(error.response.data.error, 'error');
+      } else {
+        showToast('Failed to update investment ROI', 'error');
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response received:', error.request);
+      showToast('No response from server. Please check your connection.', 'error');
+    } else {
+      // Something happened in setting up the request
+      console.error('Request setup error:', error.message);
+      showToast('Failed to send request: ' + error.message, 'error');
+    }
+  }
+};
+
+
   // Function to open confirm modal
   const openConfirmModal = (
     title: string,
@@ -312,7 +517,7 @@ const [editLoading, setEditLoading] = useState(false);
   const fetchAllData = async () => {
     setLoading(true);
     await Promise.all([
-      fetchStats(), 
+      fetchStats(),
       fetchUsers(), 
       fetchNews(), 
       fetchInvestments(), 
@@ -395,48 +600,48 @@ const [editLoading, setEditLoading] = useState(false);
     setShowRejectModal(true);
   };
 
-  const handleUpdateROI = async () => {
-  if (!selectedUserForROI || !roiAmount) {
-    showToast('Please enter a valid ROI amount', "error");
-    return;
-  }
+//   const handleUpdateROI = async () => {
+//   if (!selectedUserForROI || !roiAmount) {
+//     showToast('Please enter a valid ROI amount', "error");
+//     return;
+//   }
 
-  try {
-    const response = await axiosInstance.put(
-      `/api/admin/users/${selectedUserForROI.id}/roi`, 
-      { roi: parseFloat(roiAmount) }
-    );
+//   try {
+//     const response = await axiosInstance.put(
+//       `/api/admin/users/${selectedUserForROI.id}/roi`, 
+//       { roi: parseFloat(roiAmount) }
+//     );
     
-    showToast('ROI updated successfully', "success");
+//     showToast('ROI updated successfully', "success");
     
-    // Update the user's context if they're currently logged in
-    updateUserById(selectedUserForROI.id, { 
-      roi: response.data.updatedRoi || parseFloat(roiAmount) 
-    });
+//     // Update the user's context if they're currently logged in
+//     updateUserById(selectedUserForROI.id, { 
+//       roi: response.data.updatedRoi || parseFloat(roiAmount) 
+//     });
     
-    // Broadcast ROI update event
-    window.dispatchEvent(new CustomEvent('roiUpdated', {
-      detail: {
-        userId: selectedUserForROI.id,
-        newROI: response.data.updatedRoi || parseFloat(roiAmount),
-        source: 'admin-dashboard'
-      }
-    }));
+//     // Broadcast ROI update event
+//     window.dispatchEvent(new CustomEvent('roiUpdated', {
+//       detail: {
+//         userId: selectedUserForROI.id,
+//         newROI: response.data.updatedRoi || parseFloat(roiAmount),
+//         source: 'admin-dashboard'
+//       }
+//     }));
     
-    // Clear modal state
-    setSelectedUserForROI(null);
-    setRoiAmount('');
+//     // Clear modal state
+//     setSelectedUserForROI(null);
+//     setRoiAmount('');
     
-    // Refresh users list to show updated ROI
-    await fetchUsers();
+//     // Refresh users list to show updated ROI
+//     await fetchUsers();
     
-    // Also refresh stats if needed
-    await fetchStats();
-  } catch (error: any) {
-    console.error('Update ROI error:', error);
-    showToast("ROI failed to update", "error");
-  }
-};
+//     // Also refresh stats if needed
+//     await fetchStats();
+//   } catch (error: any) {
+//     console.error('Update ROI error:', error);
+//     showToast("ROI failed to update", "error");
+//   }
+// };
 
   const generateOilPriceData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
@@ -1167,15 +1372,13 @@ const resetEditModal = () => {
                               >
                                 <FiEdit className="inline mr-1" /> Balance
                               </button>
-                              <button 
-                                onClick={() => {
-                                  setSelectedUserForROI(user);
-                                  setRoiAmount((user.roi || 0).toString());
-                                }} 
-                                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
-                              >
-                                <FiEdit className="inline mr-1" /> ROI
-                              </button>
+                             
+<button 
+  onClick={() => handleOpenROIModal(user)} 
+  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
+>
+  <FiEdit className="inline mr-1" /> ROI
+</button>
                               <button 
                                 onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)} 
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
@@ -1233,40 +1436,186 @@ const resetEditModal = () => {
 
                 {/* ROI Edit Modal */}
                 {selectedUserForROI && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full">
-                      <h2 className="text-xl md:text-2xl font-bold mb-4">Edit ROI</h2>
-                      <p className="mb-2 text-sm md:text-base">User: <span className="font-semibold">{selectedUserForROI.firstName} {selectedUserForROI.lastName}</span></p>
-                      <p className="mb-6 text-sm md:text-base">Current ROI: <span className="font-bold text-purple-600">
-                        ${Math.floor(selectedUserForROI.roi || 0)}
-                      </span></p>
-                      <input
-                        type="number"
-                        value={roiAmount}
-                        onChange={(e) => setRoiAmount(e.target.value)}
-                        placeholder="Enter new ROI amount"
-                        className="w-full px-4 py-3 border rounded-lg mb-6 text-sm md:text-base"
-                      />
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <button 
-                          onClick={handleUpdateROI} 
-                          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold text-sm md:text-base"
-                        >
-                          Update ROI
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setSelectedUserForROI(null);
-                            setRoiAmount('');
-                          }} 
-                          className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded-lg text-sm md:text-base"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl p-6 md:p-8 max-w-4xl w-full max-h-[90vh] overflow-auto">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+            Edit ROI for {selectedUserForROI.firstName} {selectedUserForROI.lastName}
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Account: {selectedUserForROI.accountNumber}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setSelectedUserForROI(null);
+            setUserInvestments([]);
+            setRoiAmounts({});
+          }}
+          className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+        >
+          ×
+        </button>
+      </div>
+      
+      {userInvestments.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg mb-4">
+            No active investments found
+          </p>
+          <p className="text-sm text-gray-400">
+            ROI can only be added to active investments
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Summary Card */}
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-purple-800 mb-2">Investment Summary</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-purple-600">Total Investments:</p>
+                <p className="font-bold text-purple-800">{userInvestments.length}</p>
+              </div>
+              <div>
+                <p className="text-purple-600">Total Invested:</p>
+                <p className="font-bold text-purple-800">
+                  ${userInvestments.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-purple-600">Current Total ROI:</p>
+                <p className="font-bold text-purple-800">
+                  ${userInvestments.reduce((sum, inv) => sum + (inv.roiAmount || 0), 0).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <p className="text-purple-600">User's Total ROI:</p>
+                <p className="font-bold text-purple-800">
+                  ${(selectedUserForROI.roi || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Investment Cards */}
+          {userInvestments.map(investment => {
+            const daysRemaining = investment.endDate 
+              ? Math.ceil((new Date(investment.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+              : null;
+            const isMatured = daysRemaining !== null && daysRemaining <= 0;
+            
+            return (
+              <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-800 text-lg">
+                      {investment.investment.title}
+                    </h4>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                        {investment.investment.category}
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                        isMatured 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {isMatured ? 'Matured' : `${daysRemaining} days remaining`}
+                      </span>
                     </div>
                   </div>
+                </div>
+                
+                {/* Investment Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Principal</p>
+                    <p className="font-bold text-gray-800">
+                      ${investment.amount.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Current ROI</p>
+                    <p className="font-bold text-purple-600">
+                      ${(investment.roiAmount || 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Return Rate</p>
+                    <p className="font-bold text-blue-600">
+                      {investment.investment.returnRate}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Duration</p>
+                    <p className="font-bold text-gray-700">
+                      {investment.investment.duration}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ROI Input Section */}
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Set ROI Amount (USD)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={roiAmounts[investment.id] || ''}
+                      onChange={(e) => setRoiAmounts(prev => ({
+                        ...prev,
+                        [investment.id]: e.target.value
+                      }))}
+                      placeholder="Enter ROI amount"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      This will be the total available ROI for this investment
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleUpdateInvestmentROI(investment.id)}
+                    disabled={!roiAmounts[investment.id] || parseFloat(roiAmounts[investment.id]) <= 0}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    Update ROI
+                  </button>
+                </div>
+
+                {/* Info Note */}
+                {isMatured && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-xs text-green-700">
+                      ✓ Investment has matured. User can withdraw ROI once you set it.
+                    </p>
+                  </div>
                 )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      <div className="mt-6 pt-6 border-t">
+        <button 
+          onClick={() => {
+            setSelectedUserForROI(null);
+            setUserInvestments([]);
+            setRoiAmounts({});
+          }} 
+          className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg font-semibold transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
               </div>
             )}
 
@@ -1834,4 +2183,3 @@ const resetEditModal = () => {
 };
 
 export default AdminDashboard;
-
