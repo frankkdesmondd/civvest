@@ -13,7 +13,7 @@ interface Investment {
   id: string;
   amount: number;
   returnAmount: number;
-  roiAmount?: number; // Make optional
+  roiAmount: number; // Make optional
   totalRoiAdded?: number; // Make optional
   startDate: string | null;
   endDate: string | null;
@@ -485,3 +485,4 @@ const Withdrawal: React.FC = () => {
 };
 
 export default Withdrawal;
+
