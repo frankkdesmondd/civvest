@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react'
 import Navbar from '../components/Navbar'
-import PrincipalApproach from '../assets/principal approach logo.jpg'
+import PrincipalApproach from '../assets/principal-approach-page-img.jpg'
 import Footer from '../components/Footer'
 import Foot from '../components/Foot'
 import { usePageTitle } from "../hooks/usePageTitle";

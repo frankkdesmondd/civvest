@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import { usePageTitle } from '../hooks/usePageTitle';
-import Education from '../assets/faq logo.jpg'
+// import Education from '../assets/faq logo.jpg'
+import Education from '../assets/faq-page-img.jpg'
 import { FiPlus, FiMinus } from "react-icons/fi";
 import { FaArrowRight } from "react-icons/fa6";
 import Footer from '../components/Footer';
@@ -24,7 +25,7 @@ const FAQ: React.FC = () => {
           easing: "ease-in-out",
           once: true,         // animation runs once
           offset: 100,        // trigger distance
-        });
+        });0
     
         // Refresh AOS when DOM changes
         AOS.refresh();

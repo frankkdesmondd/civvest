@@ -1,7 +1,7 @@
 import CompanyLogo from '../assets/civvest company logo.png'
 import BackgroundVideo from '../assets/oil.mp4'
 import SignUpLogo from '../assets/signup logo.png'
-import CompanyView  from '../assets/company logo.jpg'
+import CompanyView  from '../assets/company-bio.jpg'
 import FounderPartner from '../assets/founding partner.jpeg'
 import ManagingPartner from '../assets/managing partner.jpeg'
 import ChiefOperatingOfficer from '../assets/chief operating officer.jpeg'
