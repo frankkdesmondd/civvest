@@ -6,8 +6,7 @@ import Footer from '../components/Footer';
 import Foot from '../components/Foot';
 import InvestmentImage from '../assets/Investment Image.jpeg';
 import MainBonding from '../assets/main bonding.jpg';
-import { FiDollarSign, FiTrendingUp, FiClock, FiArrowLeft, FiCheckCircle, FiCalendar } from 'react-icons/fi';
-import { HomeUtils } from '../utils/HomeUtils';
+import { FiDollarSign, FiClock, FiArrowLeft, FiCheckCircle, FiCalendar } from 'react-icons/fi';
 
 interface Investment {
   id: string;
@@ -197,9 +196,8 @@ const InvestmentDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
-        <img src={HomeUtils[0].companyLogo} alt="" className='w-[8em]'/>
-        <p className='text-white'>Page Loading......</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
       </div>
     );
   }
@@ -271,14 +269,6 @@ const InvestmentDetail: React.FC = () => {
                       <span className="text-sm">Minimum Amount</span>
                     </div>
                     <p className="text-2xl font-bold text-gray-800">${investment.minAmount.toLocaleString()}</p>
-                  </div>
-
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center gap-2 text-gray-600 mb-2">
-                      <FiTrendingUp />
-                      <span className="text-sm">Return Rate</span>
-                    </div>
-                    <p className="text-2xl font-bold text-green-600">{investment.returnRate}</p>
                   </div>
 
                   <div className="bg-gray-50 p-4 rounded-lg">
@@ -652,9 +642,3 @@ const ApplicationFormModal: React.FC<{
 };
 
 export default InvestmentDetail;
-
-
-
-
-
-
