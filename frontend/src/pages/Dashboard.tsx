@@ -1023,7 +1023,7 @@ const Dashboard: React.FC = () => {
               investment: {
                 title: selectedInvestment.investment.title,
                 category: selectedInvestment.investment.category
-              }
+              } as any
             }}
             maxAmount={selectedInvestment.roiAmount || 0}
             onClose={() => {
@@ -1039,3 +1039,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
