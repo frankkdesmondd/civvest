@@ -412,12 +412,6 @@ const Navbar: React.FC = () => {
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 z-50">
                       <div className="px-4 py-2 border-b border-gray-200">
                         <div className="flex items-center gap-3">
-                          <ProfilePicture 
-                            size="lg"
-                            showBorder={true}
-                            borderColor="border-blue-500"
-                            forceRefresh={forceRefresh > 0}
-                          />
                           {user && (
                             <div>
                               <p className="text-sm font-semibold text-gray-800">
@@ -459,11 +453,18 @@ const Navbar: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <Link to="/signin">
-                <button className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-md font-semibold">
-                  Sign In
-                </button>
-              </Link>
+              <div className="flex flex-col lg:flex-row gap-4">
+                <Link to="/signin">
+                  <button className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-md font-semibold cursor-pointer">
+                    Sign In
+                  </button>
+                </Link>
+                <Link to="/signup">
+                  <button className="bg-blue-300 hover:bg-blue-950 hover:text-white px-6 py-2 rounded-md font-semibold text-black cursor-pointer">
+                    Sign Up
+                  </button>
+                </Link>
+              </div>
             )}
           </div>
 
@@ -595,4 +596,5 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
+
 
