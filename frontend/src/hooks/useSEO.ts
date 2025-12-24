@@ -137,7 +137,7 @@ function addStructuredData(data: any) {
       "name": "Civvest Energy Partners",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://www.civvest.com/logo.png"
+        "url": "https://www.civvest.com/civvest logo.jpg"
       }
     },
     "datePublished": data.publishedTime,
