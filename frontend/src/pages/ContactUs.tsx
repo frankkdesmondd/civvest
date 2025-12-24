@@ -4,15 +4,21 @@ import ContactUsImage from "../assets/contact page picture.jpg";
 import ContactBody from "../components/ContactBody";
 import Footer from "../components/Footer";
 import Foot from "../components/Foot";
-import { usePageTitle } from "../hooks/usePageTitle";
-// import axios from "axios";
 import { FiCheck, FiAlertCircle, FiSend } from "react-icons/fi";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import axiosInstance from "../config/axios";
+import { useSEO } from "../hooks/useSEO";
 
 const ContactUs: React.FC = () => {
-  usePageTitle("Contact Us");
+  useSEO({
+    title: "Contact Us",
+    description: "Encountering any issues or have any question? Feel free to contact us",
+    keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
+    image: "https://www.civvest.com/civvest logo.jpg", 
+    url: "https://www.civvest.com/contact-us",
+    type: "website"
+  });
   
   const [formData, setFormData] = useState({
     name: "",
@@ -50,11 +56,38 @@ const ContactUs: React.FC = () => {
           once: true,         // animation runs once
           offset: 100,        // trigger distance
         });
-    
-        // Refresh AOS when DOM changes
+  
         AOS.refresh();
   
     }, []);
+
+    useEffect(() => {
+    const breadcrumbScript = document.createElement('script');
+    breadcrumbScript.type = 'application/ld+json';
+    breadcrumbScript.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.civvest.com"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Our Company",
+          "item": "https://www.civvest.com/contact-us"
+        }
+      ]
+    });
+    document.head.appendChild(breadcrumbScript);
+    
+    return () => {
+      breadcrumbScript.remove();
+    };
+  }, []);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -118,6 +151,27 @@ const ContactUs: React.FC = () => {
 
   return (
     <div className="w-full h-full">
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Civvest Energy Partners",
+          "url": "https://www.civvest.com",
+          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "description": "Leading renewable energy investment platform providing sustainable energy solutions",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Dallas, Texas",
+            "addressCountry": "USA"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "(192)924-81175",
+            "contactType": "Customer Service"
+          }
+        })}
+      </script>
+
       <Navbar />
 
       {/* HERO SECTION */}
