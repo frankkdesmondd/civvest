@@ -218,13 +218,11 @@ router.get('/my-roi-withdrawals', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     
-    const withdrawals = await prisma.withdrawal.findMany({
-      where: { 
+     const withdrawals = await prisma.withdrawal.findMany({
+      where: {
         userId,
         investment: {
-          userInvestment: {
-            roiAmount: { gt: 0 } // Only ROI withdrawals
-          }
+          roiAmount: { gt: 0 }
         }
       },
       include: {
@@ -249,3 +247,4 @@ router.get('/my-roi-withdrawals', authenticateToken, async (req, res) => {
 });
 
 export default router;
+
