@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FiCheckCircle, FiClock, FiXCircle, FiDollarSign, FiX } from 'react-icons/fi';
-import CompanyLogo from '../assets/company logo.jpg'
+import CompanyLogo from '../assets/civvest icon.png'
 
 interface WithdrawalHistoryProps {
   withdrawals: any[];
@@ -39,7 +39,7 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({ withdrawal, isOpen, o
           <div className="bg-blue-950 p-6 border-b border-blue-700">
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-3">
-                <div className="bg-white rounded-lg p-2">
+                <div className="bg-white rounded-lg p-1">
                   {/* Replace with your actual company logo */}
                   <img src={CompanyLogo} alt="" />
                 </div>
@@ -284,3 +284,4 @@ const WithdrawalHistory: React.FC<WithdrawalHistoryProps> = ({ withdrawals, onRe
 };
 
 export default WithdrawalHistory;
+
