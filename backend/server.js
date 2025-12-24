@@ -23,7 +23,6 @@ import { authenticateToken } from './middleware/authMiddleware.js';
 import withdrawalRoutes from './routes/withdrawalRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
 import profilePictureRoutes from './routes/profilePictureRoutes.js';
-import testRoutes from "./routes/test.js";
 
 dotenv.config()
 
@@ -109,7 +108,6 @@ app.use('/api/deposits', depositRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/contact', contactRoutes);
-app.use("/api", testRoutes);
 
 // Admin middleware function
 const isAdmin = (req, res, next) => {
