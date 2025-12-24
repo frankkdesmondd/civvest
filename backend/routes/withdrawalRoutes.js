@@ -95,7 +95,7 @@ router.post('/request', authenticateToken, async (req, res) => {
         data: { roi: { decrement: amount } }
       });
 
-      await tx.roiTransaction.create({
+      await tx.ROITransaction.create({
         data: {
           userId: userId,
           userInvestmentId: userInvestmentId,
@@ -247,4 +247,5 @@ router.get('/my-roi-withdrawals', authenticateToken, async (req, res) => {
 });
 
 export default router;
+
 
