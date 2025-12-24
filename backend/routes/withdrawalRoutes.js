@@ -272,7 +272,31 @@ router.get('/admin/all', authenticateToken, async (req, res) => {
   }
 });
 
+// Admin updates withdrawal status
+router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) => {
+  try {
+    const { withdrawalId } = req.params;
+    const { status, adminNotes } = req.body;
+    
+    const withdrawal = await prisma.withdrawal.update({
+      where: { id: withdrawalId },
+      data: { 
+        status,
+        adminNotes,
+        approvedById: req.user.id,
+        approvedAt: status === 'APPROVED' ? new Date() : null
+      }
+    });
+    
+    res.json(withdrawal);
+  } catch (error) {
+    console.error('Update withdrawal status error:', error);
+    res.status(500).json({ error: 'Failed to update withdrawal status' });
+  }
+});
+
 export default router;
+
 
 
 
