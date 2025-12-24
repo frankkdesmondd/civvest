@@ -1,14 +1,70 @@
-import React from 'react'
+import React, {useEffect} from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import Foot from '../components/Foot'
-import { usePageTitle } from "../hooks/usePageTitle";
+import { useSEO } from "../hooks/useSEO";
 
 const PrivacyPolicy: React.FC = () => {
-  usePageTitle("Privacy Policy");
+  useSEO({
+    title: "Privacy and Policy",
+    description: "Take a llok at Civvest terms and services while using our platform",
+    keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
+    image: "https://www.civvest.com/civvest logo.jpg", 
+    url: "https://www.civvest.com/privacy-policy",
+    type: "website"
+  });
+
+  useEffect(() => {
+      const breadcrumbScript = document.createElement('script');
+      breadcrumbScript.type = 'application/ld+json';
+      breadcrumbScript.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.civvest.com"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Privacy and Policy",
+            "item": "https://www.civvest.com/privacy-policy"
+          }
+        ]
+      });
+      document.head.appendChild(breadcrumbScript);
+      
+      return () => {
+        breadcrumbScript.remove();
+      };
+    }, []);
 
   return (
     <div>
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Civvest Energy Partners",
+          "url": "https://www.civvest.com",
+          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "description": "Leading renewable energy investment platform providing sustainable energy solutions",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Dallas, Texas",
+            "addressCountry": "USA"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "(192)924-81175",
+            "contactType": "Customer Service"
+          }
+        })}
+      </script>
+
       <Navbar/>
       <div className='flex flex-col items-start text-start mt-[14em] gap-[3em] px-[2em] lg:px-[4em]'>
         <div className='flex flex-col gap-[1em]'>
