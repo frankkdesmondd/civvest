@@ -246,6 +246,33 @@ router.get('/my-roi-withdrawals', authenticateToken, async (req, res) => {
   }
 });
 
+// Admin gets all withdrawal requests
+router.get('/admin/all', authenticateToken, async (req, res) => {
+  try {
+    const withdrawals = await prisma.withdrawal.findMany({
+      include: {
+        user: {
+          select: { firstName: true, lastName: true, email: true }
+        },
+        investment: {
+          include: {
+            investment: {
+              select: { title: true, category: true }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json(withdrawals);
+  } catch (error) {
+    console.error('Admin fetch withdrawals error:', error);
+    res.status(500).json({ error: 'Failed to fetch withdrawal requests' });
+  }
+});
+
 export default router;
+
 
 
