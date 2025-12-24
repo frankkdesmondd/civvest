@@ -142,8 +142,8 @@ const PrivacyPolicy: React.FC = () => {
           <p className='flex flex-wrap'> If you have any questions, concerns, or requests regarding this Privacy Policy, please contact us:</p>
           <p className='flex font-bold text-[#0d2e92]'>Civvest Energy Partners</p>
           <div className=''>
-            <p> Address: 2911 Turtle Creek Blvd Ste 570, Dallas, TX 75219</p>
-            <p>Phone: +19292481175</p>
+            <p> Address: Dallas, Texas</p>
+            <p>Phone: (929) 248-1175</p>
             <p>Email: info@civvest.com</p>
           </div>
           <p>Thank you for using civvest.com and agreeing to our Terms of Service.</p>
@@ -156,3 +156,4 @@ const PrivacyPolicy: React.FC = () => {
 }
 
 export default PrivacyPolicy
+
