@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+// import axios from 'axios';
 import Navbar from '../components/Navbar';
-import { usePageTitle } from "../hooks/usePageTitle";
+import { useSEO } from "../hooks/useSEO";
 import InvestHeroSection from '../components/InvestHeroSection';
 import InvestorImage from '../assets/Investment Image.jpeg';
 import MainBonding from '../assets/main bonding.jpg'; // Add this import
@@ -14,6 +14,7 @@ import TrackRecord from '../components/TrackRecord';
 import Testimonial from '../components/Testimonial';
 import Footer from '../components/Footer';
 import Foot from '../components/Foot';
+import axiosInstance from '../config/axios';
 
 interface Investment {
   id: string;
@@ -29,7 +30,14 @@ interface Investment {
 }
 
 const ViewInvestment: React.FC = () => {
-  usePageTitle("View Investment");
+  useSEO({
+      title: "View Investments",
+      description: "See our major offerings. Be part of this grand plan in the next phase of oil Investment.",
+      keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
+      image: "https://www.civvest.com/civvest logo.jpg",
+      url: "https://www.civvest.com/view-investment",
+      type: "website"
+    });
   const navigate = useNavigate();
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +54,7 @@ const ViewInvestment: React.FC = () => {
   const fetchInvestments = async () => {
     try {
       // Fetch investments that are NOT bond offerings
-      const response = await axios.get('https://civvest-backend.onrender.com/api/investments', {
+      const response = await axiosInstance.get('/api/investments', {
         params: {
           bondOffering: false // Exclude bond offerings
         }
@@ -76,8 +84,56 @@ const ViewInvestment: React.FC = () => {
     return investment.category === 'Accredited Investors' ? MainBonding : InvestorImage;
   };
 
+  useEffect(() => {
+    const breadcrumbScript = document.createElement('script');
+    breadcrumbScript.type = 'application/ld+json';
+    breadcrumbScript.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.civvest.com"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "View Investment",
+          "item": "https://www.civvest.com/view-investment"
+        }
+      ]
+    });
+    document.head.appendChild(breadcrumbScript);
+    
+    return () => {
+      breadcrumbScript.remove();
+    };
+  }, []);
+
   return (
     <div>
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Civvest Energy Partners",
+          "url": "https://www.civvest.com",
+          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "description": "Leading renewable energy investment platform providing sustainable energy solutions",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Dallas, Texas",
+            "addressCountry": "USA"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "(192)924-81175",
+            "contactType": "Customer Service"
+          }
+        })}
+      </script>
       <Navbar />
       <InvestHeroSection />
 
@@ -229,6 +285,7 @@ const ViewInvestment: React.FC = () => {
                     </div>
                     <div className='w-full h-[0.03em] bg-white'></div>
 
+
                     {/* ROI PERIOD */}
                     <div className='flex gap-[2em] justify-between'>
                       <div className='flex gap-2 items-center'>
@@ -278,5 +335,3 @@ const ViewInvestment: React.FC = () => {
 };
 
 export default ViewInvestment;
-
-
