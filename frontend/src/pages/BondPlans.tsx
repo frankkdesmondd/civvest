@@ -12,6 +12,7 @@ import Footer from "../components/Footer";
 import Foot from "../components/Foot";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, List } from "lucide-react";
+import { useSEO } from "../hooks/useSEO";
 
 interface Investment {
   id: string;
@@ -24,6 +25,15 @@ interface Investment {
 }
 
 const BondPlans: React.FC = () => {
+  useSEO({
+    title: "Our Company",
+    description: "See our major offerings. Be part of this grand plan in the next phase of oil Investment.",
+    keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
+    image: "https://www.civvest.com/civvest logo.jpg",
+    url: "https://www.civvest.com/company",
+    type: "website"
+  });
+
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -80,9 +90,58 @@ const BondPlans: React.FC = () => {
     setCurrentIndex((prev) => (prev === maxIndex ? 0 : prev + 1));
   };
 
+  useEffect(() => {
+      const breadcrumbScript = document.createElement('script');
+      breadcrumbScript.type = 'application/ld+json';
+      breadcrumbScript.textContent = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.civvest.com"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Our Company",
+            "item": "https://www.civvest.com/bond-plans"
+          }
+        ]
+      });
+      document.head.appendChild(breadcrumbScript);
+      
+      return () => {
+        breadcrumbScript.remove();
+      };
+    }, []);
+
   return (
     <div className="relative w-full min-h-screen overflow-x-hidden">
       <Navbar />
+
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Civvest Energy Partners",
+          "url": "https://www.civvest.com",
+          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "description": "Leading renewable energy investment platform providing sustainable energy solutions",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Dallas, Texas",
+            "addressCountry": "USA"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "(192)924-81175",
+            "contactType": "Customer Service"
+          }
+        })}
+      </script>
 
       {/* ================= HERO ================= */}
       <div className="relative w-full h-[80vh] lg:h-screen mt-[4em]">
