@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 // Configure multer for profile picture upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = 'uploads/profile-pictures';
+    const uploadDir = '/uploads/profile-pictures';
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
