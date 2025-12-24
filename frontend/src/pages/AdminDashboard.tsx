@@ -23,6 +23,11 @@ interface User {
   referralBonus: number;
   createdAt: string;
   _count: { userInvestments: number };
+  calculatedData?: {
+    totalInvested: number;
+    totalRoiAdded: number;
+    activeInvestments: number;
+  };
 }
 
 interface Stats {
@@ -733,22 +738,117 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
   };
 
   const fetchUsers = async () => {
-    try {
-      const res = await axiosInstance.get('/api/admin/users');
-      
-      if (Array.isArray(res.data)) {
-        setUsers(res.data);
-      } else if (res.data.users && Array.isArray(res.data.users)) {
-        setUsers(res.data.users);
-      } else {
-        console.error('Unexpected user data format:', res.data);
-        setUsers([]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
+  try {
+    const res = await axiosInstance.get('/api/admin/users');
+    
+    let usersData: any[] = [];
+    
+    // Extract users array from response
+    if (Array.isArray(res.data)) {
+      usersData = res.data;
+    } else if (res.data.users && Array.isArray(res.data.users)) {
+      usersData = res.data.users;
+    } else {
+      console.error('Unexpected user data format:', res.data);
       setUsers([]);
+      return;
     }
-  };
+    
+    // Fetch investment data for each user to calculate total ROI
+    const usersWithCalculatedROI = await Promise.all(
+      usersData.map(async (user: any) => {
+        try {
+          // Fetch user's investments
+          const investmentsRes = await axiosInstance.get(
+            `/api/admin/users/${user.id}/investments`,
+            {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
+          
+          // Calculate total ROI from all investments
+          let totalROI = 0;
+          let totalInvested = 0;
+          let totalRoiAdded = 0;
+          let activeInvestments = 0;
+          
+          if (Array.isArray(investmentsRes.data)) {
+            // Filter for ACTIVE investments only (ROI is only relevant for active investments)
+            const activeInvestmentsArray = investmentsRes.data.filter(
+              (inv: any) => inv.status === 'ACTIVE'
+            );
+            
+            activeInvestments = activeInvestmentsArray.length;
+            
+            // Calculate totals from active investments
+            totalROI = activeInvestmentsArray.reduce((sum: number, inv: any) => {
+              return sum + (inv.roiAmount || 0);
+            }, 0);
+            
+            totalInvested = activeInvestmentsArray.reduce((sum: number, inv: any) => {
+              return sum + (inv.amount || 0);
+            }, 0);
+            
+            totalRoiAdded = activeInvestmentsArray.reduce((sum: number, inv: any) => {
+              return sum + (inv.totalRoiAdded || 0);
+            }, 0);
+          }
+          
+          return {
+            id: user.id,
+            email: user.email || '',
+            firstName: user.firstName || '',
+            lastName: user.lastName || '',
+            accountNumber: user.accountNumber || '',
+            balance: user.balance || 0,
+            roi: totalROI, // Use calculated ROI from investments
+            referralBonus: user.referralBonus || 0,
+            createdAt: user.createdAt || new Date().toISOString(),
+            _count: {
+              userInvestments: activeInvestments // Count only active investments
+            },
+            // Additional calculated fields
+            calculatedData: {
+              totalInvested,
+              totalRoiAdded,
+              activeInvestments
+            }
+          };
+        } catch (error) {
+          console.error(`Failed to fetch investments for user ${user.id}:`, error);
+          // Return user with basic info if fetch fails
+          return {
+            id: user.id,
+            email: user.email || '',
+            firstName: user.firstName || '',
+            lastName: user.lastName || '',
+            accountNumber: user.accountNumber || '',
+            balance: user.balance || 0,
+            roi: user.roi || 0, // Fallback to existing ROI field
+            referralBonus: user.referralBonus || 0,
+            createdAt: user.createdAt || new Date().toISOString(),
+            _count: {
+              userInvestments: user._count?.userInvestments || 0
+            },
+            calculatedData: {
+              totalInvested: 0,
+              totalRoiAdded: 0,
+              activeInvestments: 0
+            }
+          };
+        }
+      })
+    );
+    
+    setUsers(usersWithCalculatedROI);
+  } catch (error) {
+    console.error('Failed to fetch users:', error);
+    showToast('Failed to load users', 'error');
+    setUsers([]);
+  }
+};
 
   const fetchNews = async () => {
     try {
@@ -1358,7 +1458,10 @@ const resetEditModal = () => {
                             ${Math.floor(user.balance)}
                           </td>
                           <td className="py-4 px-4 font-bold text-purple-600 text-sm md:text-base">
-                            ${Math.floor(user.roi || 0)}
+                            ${(user.roi || 0).toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
                           </td>
                           <td className="py-4 px-4 font-bold text-orange-600 text-sm md:text-base">
                             ${Math.floor(user.referralBonus || 0)}
@@ -1383,7 +1486,7 @@ const resetEditModal = () => {
                                 onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)} 
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
                               >
-                                <FiTrash2 />
+                                <FiTrash2 /> Delete
                               </button>
                             </div>
                           </td>

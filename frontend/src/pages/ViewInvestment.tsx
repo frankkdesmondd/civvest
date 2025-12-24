@@ -10,7 +10,6 @@ import { FiDollarSign } from "react-icons/fi";
 import { SlCalender } from "react-icons/sl";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { VscPercentage } from "react-icons/vsc";
 import TrackRecord from '../components/TrackRecord';
 import Testimonial from '../components/Testimonial';
 import Footer from '../components/Footer';
@@ -158,16 +157,6 @@ const ViewInvestment: React.FC = () => {
                     </div>
                     <div className='w-full h-[0.03em] bg-white'></div>
 
-                    {/* INTEREST RATE */}
-                    <div className='flex gap-[2em] justify-between'>
-                      <div className='flex gap-1 items-center'>
-                        <VscPercentage className='text-[1.2em]' />
-                        <p>Interest Rate:</p>
-                      </div>
-                      <p>{item.returnRate}</p>
-                    </div>
-                    <div className='w-full h-[0.03em] bg-white'></div>
-
                     {/* ROI PERIOD */}
                     <div className='flex gap-[2em] justify-between'>
                       <div className='flex gap-2 items-center'>
@@ -240,16 +229,6 @@ const ViewInvestment: React.FC = () => {
                     </div>
                     <div className='w-full h-[0.03em] bg-white'></div>
 
-                    {/* INTEREST RATE */}
-                    <div className='flex gap-[2em] justify-between'>
-                      <div className='flex gap-1 items-center'>
-                        <VscPercentage className='text-[1.2em]' />
-                        <p>Interest Rate:</p>
-                      </div>
-                      <p>{item.returnRate}</p>
-                    </div>
-                    <div className='w-full h-[0.03em] bg-white'></div>
-
                     {/* ROI PERIOD */}
                     <div className='flex gap-[2em] justify-between'>
                       <div className='flex gap-2 items-center'>
@@ -299,4 +278,5 @@ const ViewInvestment: React.FC = () => {
 };
 
 export default ViewInvestment;
+
 
