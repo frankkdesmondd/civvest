@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { FiCheckCircle, FiClock, FiXCircle, FiDollarSign, FiX } from 'react-icons/fi';
-import CompanyLogo from '../assets/civvest icon.png'
+import { FiCheckCircle, FiClock, FiXCircle, FiDollarSign, FiX, FiCalendar, FiCreditCard, FiInfo } from 'react-icons/fi';
+import CivvestLogo from '../assets/civvest logo.jpg'
 
 interface WithdrawalHistoryProps {
   withdrawals: any[];
@@ -34,36 +34,37 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({ withdrawal, isOpen, o
       
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-linear-to-b from-blue-900 to-blue-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="bg-linear-to-b from-blue-900 to-blue-800 rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col">
           {/* Modal Header with Company Logo */}
-          <div className="bg-blue-950 p-6 border-b border-blue-700">
+          <div className="bg-blue-950 p-4 border-b border-blue-700">
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-3">
                 <div className="bg-white rounded-lg p-1">
-                  {/* Replace with your actual company logo */}
-                  <img src={CompanyLogo} alt="" />
+                  <img src={CivvestLogo} alt="" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Withdrawal Details</h2>
-                  <p className="text-blue-200 text-sm">Transaction Information</p>
+                  <h2 className="text-xl font-bold text-white">Withdrawal Details</h2>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="text-white hover:text-blue-200 transition-colors"
+                className="text-white hover:text-blue-200 transition-colors p-1"
               >
-                <FiX size={24} />
+                <FiX size={20} />
               </button>
             </div>
           </div>
 
-          {/* Modal Body */}
-          <div className="p-6 space-y-6">
-            {/* Status Section */}
-            <div className="bg-blue-800/50 rounded-xl p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-blue-200">Status</span>
-                <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${
+          {/* Modal Body - Scrollable */}
+          <div className="overflow-y-auto p-5 space-y-4">
+            {/* Status & Amount Row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-blue-800/50 rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <FiInfo className="text-blue-200" size={14} />
+                  <span className="text-blue-200 text-xs">Status</span>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold block w-fit ${
                   withdrawal.status === 'APPROVED' ? 'bg-green-500/20 text-green-300' :
                   withdrawal.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-300' :
                   withdrawal.status === 'REJECTED' ? 'bg-red-500/20 text-red-300' :
@@ -72,71 +73,79 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({ withdrawal, isOpen, o
                   {withdrawal.status}
                 </span>
               </div>
-            </div>
-
-            {/* Amount Section */}
-            <div className="bg-blue-800/50 rounded-xl p-4">
-              <div className="text-center mb-2">
-                <p className="text-blue-200 text-sm">Withdrawal Amount</p>
-                <p className="text-3xl font-bold text-white">${withdrawal.amount.toFixed(2)}</p>
+              
+              <div className="bg-blue-800/50 rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <FiDollarSign className="text-blue-200" size={14} />
+                  <span className="text-blue-200 text-xs">Amount</span>
+                </div>
+                <p className="text-xl font-bold text-white">${withdrawal.amount.toFixed(2)}</p>
               </div>
             </div>
 
             {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-800/50 rounded-xl p-4">
-                <p className="text-blue-200 text-sm mb-1">Transaction Type</p>
-                <p className="text-white font-semibold">
-                  {withdrawal.type === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Crypto Wallet'}
-                </p>
+            <div className="bg-blue-800/30 rounded-xl p-3 space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <FiCreditCard className="text-blue-200" size={16} />
+                <h3 className="text-white font-semibold text-sm">Transaction Details</h3>
               </div>
               
-              <div className="bg-blue-800/50 rounded-xl p-4">
-                <p className="text-blue-200 text-sm mb-1">Date & Time</p>
-                <p className="text-white font-semibold">{formatDate(withdrawal.createdAt)}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-blue-200 text-xs mb-1">Type</p>
+                  <p className="text-white text-sm font-medium">
+                    {withdrawal.type === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Crypto Wallet'}
+                  </p>
+                </div>
+                
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <FiCalendar className="text-blue-200" size={12} />
+                    <p className="text-blue-200 text-xs">Date</p>
+                  </div>
+                  <p className="text-white text-sm font-medium">{formatDate(withdrawal.createdAt)}</p>
+                </div>
               </div>
               
-              <div className="bg-blue-800/50 rounded-xl p-4 col-span-2">
-                <p className="text-blue-200 text-sm mb-1">Investment</p>
-                <p className="text-white font-semibold">{withdrawal.investment.investment.title}</p>
+              <div>
+                <p className="text-blue-200 text-xs mb-1">Investment</p>
+                <p className="text-white text-sm font-medium">{withdrawal.investment.investment.title}</p>
               </div>
             </div>
 
-            {/* Additional Information */}
+            {/* Additional Information - Conditional */}
             {withdrawal.adminNotes && (
-              <div className="bg-blue-800/50 rounded-xl p-4">
-                <p className="text-blue-200 text-sm mb-2">Admin Notes</p>
-                <p className="text-white italic">{withdrawal.adminNotes}</p>
+              <div className="bg-blue-800/30 rounded-xl p-3">
+                <p className="text-blue-200 text-xs mb-2">Admin Notes</p>
+                <p className="text-white text-sm italic">{withdrawal.adminNotes}</p>
               </div>
             )}
 
             {withdrawal.approvedBy && (
-              <div className="bg-blue-800/50 rounded-xl p-4">
-                <p className="text-blue-200 text-sm mb-2">Approved By</p>
-                <p className="text-white font-semibold">
+              <div className="bg-blue-800/30 rounded-xl p-3">
+                <p className="text-blue-200 text-xs mb-2">Approved By</p>
+                <p className="text-white text-sm font-medium">
                   {withdrawal.approvedBy.firstName} {withdrawal.approvedBy.lastName}
                 </p>
               </div>
             )}
 
             {/* Transaction ID */}
-            <div className="pt-4 border-t border-blue-700">
-              <p className="text-blue-300 text-sm text-center">
-                Transaction ID: <span className="text-white font-mono">{withdrawal.id}</span>
+            <div className="bg-blue-950/50 rounded-xl p-3">
+              <p className="text-blue-300 text-xs text-center">
+                Transaction ID: <span className="text-white font-mono text-xs">{withdrawal.id}</span>
               </p>
             </div>
           </div>
 
           {/* Modal Footer */}
-          <div className="bg-blue-950 p-6 border-t border-blue-700">
-            <div className="flex justify-center">
-              <button
-                onClick={onClose}
-                className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors duration-200"
-              >
-                Close Details
-              </button>
-            </div>
+          <div className="bg-blue-950 p-4 border-t border-blue-700">
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors duration-200 text-sm"
+            >
+              Close Details
+            </button>
           </div>
         </div>
       </div>
@@ -191,7 +200,7 @@ const WithdrawalHistory: React.FC<WithdrawalHistoryProps> = ({ withdrawals, onRe
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setTimeout(() => setSelectedWithdrawal(null), 300); // Clear after animation
+    setTimeout(() => setSelectedWithdrawal(null), 300);
   };
 
   return (
@@ -284,4 +293,3 @@ const WithdrawalHistory: React.FC<WithdrawalHistoryProps> = ({ withdrawals, onRe
 };
 
 export default WithdrawalHistory;
-
