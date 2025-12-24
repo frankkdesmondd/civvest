@@ -295,7 +295,34 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
   }
 });
 
+// Get user's withdrawal history (all types)
+router.get('/my-withdrawals', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const withdrawals = await prisma.withdrawal.findMany({
+      where: { userId },
+      include: {
+        investment: {
+          include: {
+            investment: {
+              select: { title: true }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json(withdrawals);
+  } catch (error) {
+    console.error('Get withdrawals error:', error);
+    res.status(500).json({ error: 'Failed to fetch withdrawals' });
+  }
+});
+
 export default router;
+
 
 
 
