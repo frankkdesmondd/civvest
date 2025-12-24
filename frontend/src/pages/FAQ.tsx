@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
-import { usePageTitle } from '../hooks/usePageTitle';
-// import Education from '../assets/faq logo.jpg'
-import Education from '../assets/faq-page-img.jpg'
+import { useSEO } from "../hooks/useSEO";
+import Education from '../assets/faq logo.jpg'
 import { FiPlus, FiMinus } from "react-icons/fi";
 import { FaArrowRight } from "react-icons/fa6";
 import Footer from '../components/Footer';
@@ -11,7 +10,42 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 
 const FAQ: React.FC = () => {
-  usePageTitle("FAQs");
+  useSEO({
+    title: "FAQ",
+    description: "Latest questions asked about this company and quick answers to fix them.",
+    keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
+    image: "https://www.civvest.com/civvest logo.jpg", 
+    url: "https://www.civvest.com/faq",
+    type: "website"
+  });
+
+  useEffect(() => {
+    const breadcrumbScript = document.createElement('script');
+    breadcrumbScript.type = 'application/ld+json';
+    breadcrumbScript.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.civvest.com"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Company Bio",
+          "item": "https://www.civvest.com/faq"
+        }
+      ]
+    });
+    document.head.appendChild(breadcrumbScript);
+    
+    return () => {
+      breadcrumbScript.remove();
+    };
+  }, []);
 
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -25,7 +59,7 @@ const FAQ: React.FC = () => {
           easing: "ease-in-out",
           once: true,         // animation runs once
           offset: 100,        // trigger distance
-        });0
+        });
     
         // Refresh AOS when DOM changes
         AOS.refresh();
@@ -80,7 +114,29 @@ const FAQ: React.FC = () => {
   ];
 
   return (
-    <div className='relative w-full min-h-screen bg-[#041a35] overflow-x-hidden'>
+    <div className='relative w-full min-h-screen bg-[rgb(4,26,53)] overflow-x-hidden'>
+
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Civvest Energy Partners",
+          "url": "https://www.civvest.com",
+          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "description": "Leading renewable energy investment platform providing sustainable energy solutions",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Dallas, Texas",
+            "addressCountry": "USA"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "(192)924-81175",
+            "contactType": "Customer Service"
+          }
+        })}
+      </script>
+      
       <Navbar/>
       <div className="relative w-full h-[80vh] lg:h-[120vh]" data-aos="fade-up">
         <img
