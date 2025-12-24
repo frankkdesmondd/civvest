@@ -50,7 +50,7 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem('token');
       
       // Define public routes that don't require authentication
-      const publicRoutes = ['/', '/signin', '/signup', '/login', '/home'];
+      const publicRoutes = ['/', '/signin', '/signup', '/login', '/home', '/our-company', '/news', '/principled-approach', '/learn-about', 'contact-us', '/faq', '/terms-and-services', 'privacy-policy', '/news/:slug', 'view-investment'];
       const currentPath = window.location.pathname;
       
       // Only redirect if not on a public route
