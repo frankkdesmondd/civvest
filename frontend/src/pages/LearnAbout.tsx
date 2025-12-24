@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
-import { usePageTitle } from "../hooks/usePageTitle";
+import { useSEO } from "../hooks/useSEO";
 import { useToast } from "../context/ToastContext"; 
 import ContactUsImage from "../assets/contact page picture.jpg";
 import Shell from "../assets/shell.jpg";
@@ -18,7 +18,43 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 
 const LearnAbout: React.FC = () => {
-  usePageTitle("Invest in Oil & Gas wells");
+  useSEO({
+    title: "Learn About",
+    description: "Learn more about this platform, and steps to invest",
+    keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
+    image: "https://www.civvest.com/civvest logo.jpg", 
+    url: "https://www.civvest.com/learn-about",
+    type: "website"
+  });
+
+  useEffect(() => {
+    const breadcrumbScript = document.createElement('script');
+    breadcrumbScript.type = 'application/ld+json';
+    breadcrumbScript.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.civvest.com"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Learn About",
+          "item": "https://www.civvest.com/learn-about"
+        }
+      ]
+    });
+    document.head.appendChild(breadcrumbScript);
+    
+    return () => {
+      breadcrumbScript.remove();
+    };
+  }, []);
+
   const { showToast } = useToast();
 
   const formRef = useRef<HTMLDivElement>(null);
@@ -122,6 +158,27 @@ const LearnAbout: React.FC = () => {
 
   return (
     <div>
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Civvest Energy Partners",
+          "url": "https://www.civvest.com",
+          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "description": "Leading renewable energy investment platform providing sustainable energy solutions",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Dallas, Texas",
+            "addressCountry": "USA"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "(192)924-81175",
+            "contactType": "Customer Service"
+          }
+        })}
+      </script>
+
       <Navbar />
 
       <div
