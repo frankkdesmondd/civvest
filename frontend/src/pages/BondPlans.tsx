@@ -26,7 +26,7 @@ interface Investment {
 
 const BondPlans: React.FC = () => {
   useSEO({
-    title: "Our Company",
+    title: "Bond Plans",
     description: "See our major offerings. Be part of this grand plan in the next phase of oil Investment.",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
     image: "https://www.civvest.com/civvest logo.jpg",
@@ -106,7 +106,7 @@ const BondPlans: React.FC = () => {
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Our Company",
+            "name": "Bond Plans",
             "item": "https://www.civvest.com/bond-plans"
           }
         ]
