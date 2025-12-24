@@ -1,13 +1,70 @@
-import React from 'react'
-import { usePageTitle } from "../hooks/usePageTitle";
+import React, {useEffect} from 'react'
+import { useSEO } from "../hooks/useSEO";
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Foot from '../components/Foot';
 
 const TermsServices: React.FC = () => {
-  usePageTitle("Terms of Service")
+  useSEO({
+    title: "Terms and Services",
+    description: "Take a look at Civvest terms and services while using our platform",
+    keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
+    image: "https://www.civvest.com/civvest logo.jpg", 
+    url: "https://www.civvest.com/terms-and-services",
+    type: "website"
+  });
+
+  useEffect(() => {
+    const breadcrumbScript = document.createElement('script');
+    breadcrumbScript.type = 'application/ld+json';
+    breadcrumbScript.textContent = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.civvest.com"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Terms and Services",
+          "item": "https://www.civvest.com/terms-and-services"
+        }
+      ]
+    });
+    document.head.appendChild(breadcrumbScript);
+    
+    return () => {
+      breadcrumbScript.remove();
+    };
+  }, []);
+  
   return (
     <div>
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "Civvest Energy Partners",
+          "url": "https://www.civvest.com",
+          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "description": "Leading renewable energy investment platform providing sustainable energy solutions",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Dallas, Texas",
+            "addressCountry": "USA"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "telephone": "(192)924-81175",
+            "contactType": "Customer Service"
+          }
+        })}
+      </script>
+
       <Navbar/>
       <div className='flex flex-col items-start text-start mt-[14em] gap-[3em] px-[2em] lg:px-[4em]'>
         <div className='flex flex-col gap-[1em]'>
@@ -41,7 +98,7 @@ const TermsServices: React.FC = () => {
           <p className='flex flex-wrap'>To the maximum extent permitted by law, Civvest Energy Partners and its affiliates, officers, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues.</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2em] lg:text-[2.7em] font-semibold'>7. Indemnification</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>7. Indemnification</h1>
           <p className='flex flex-wrap'>You agree to indemnify and hold Civvest Energy Partners, its officers, directors, employees, and agents harmless from any claims, liabilities, damages, losses, and expenses arising out of your use of the website or violation of these Terms of Service</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
@@ -75,4 +132,3 @@ const TermsServices: React.FC = () => {
 }
 
 export default TermsServices
-
