@@ -1,12 +1,13 @@
+process.env.DEBUG = 'prisma:*';
 import express from "express";
 import oilRoutes from "./routes/oil.js";
 import cors from "cors";
-import authRoutes from "./routes/authRoutes.js"
+import authRoutes from "./routes/authRoutes.js";
 import investmentRoutes from './routes/investmentRoutes.js';
 import newsRoutes from './routes/newsRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
 import cookieParser from 'cookie-parser';
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 import userInvestmentRoutes from './routes/userInvestmentRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -22,6 +23,7 @@ import { authenticateToken } from './middleware/authMiddleware.js';
 import withdrawalRoutes from './routes/withdrawalRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
 import profilePictureRoutes from './routes/profilePictureRoutes.js';
+import testRoutes from "./routes/test.js";
 
 dotenv.config()
 
@@ -86,19 +88,16 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/uploads', express.static('uploads'));
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/uploads/profile-pictures', express.static(path.join(__dirname, 'uploads/profile-pictures')));
+app.use('/uploads', express.static('/uploads'));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/investments', investmentRoutes);
+app.use('/api/news', newsRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use("/api/oil", oilRoutes);
 app.use('/api/profile-picture', profilePictureRoutes);
-app.use('/api/news', newsRoutes);
-app.use('/news', newsRoutes);
 
 // FIXED: Use authenticateToken instead of isAuthenticated
 app.use('/api/user-investments', authenticateToken, userInvestmentRoutes);
@@ -110,12 +109,7 @@ app.use('/api/deposits', depositRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/withdrawals', withdrawalRoutes);
 app.use('/api/contact', contactRoutes);
-
-app.get('/api/investments', investmentRoutes);
-app.get('/api/investments/:slug', investmentRoutes);
-
-app.post('/api/investment-applications', authenticateToken, investmentApplicationRoutes);
-app.get('/api/investment-applications/my-applications', authenticateToken, investmentApplicationRoutes);
+app.use("/api", testRoutes);
 
 // Admin middleware function
 const isAdmin = (req, res, next) => {
@@ -214,4 +208,3 @@ app.listen((Port), () => {
   console.log(`📧 SMTP configured for: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT}`);
   console.log(`🍪 Cookie support: Enabled (credentials: true)`);
 });
-
