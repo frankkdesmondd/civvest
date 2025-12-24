@@ -39,9 +39,9 @@ const HeroSection: React.FC = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 lg:gap-[1.5em] mt-[2.4em] sm:mt-[1.6em] z-50 w-full max-w-md sm:max-w-none justify-center">
-          <Link to="/signup">
-            <button className="outline-none border border-white bg-inherit rounded-xl px-6 sm:px-[2em] py-3 text-[1em] sm:text-base lg:text-[1.2em] cursor-pointer hover:bg-[#244772] hover:text-white hover:border-[#244772] font-semibold w-[16em] sm:w-auto">
-              Sign up
+          <Link to="/bond-plans">
+            <button className="outline-none border border-white bg-inherit rounded-xl px-6 sm:px-[1.4em] py-3 text-[1em] sm:text-base lg:text-[1.2em] cursor-pointer hover:bg-[#244772] hover:text-white hover:border-[#244772] font-semibold w-[16em] sm:w-auto">
+              Bond Plans
             </button>
           </Link>
 
@@ -57,6 +57,7 @@ const HeroSection: React.FC = () => {
 };
 
 export default HeroSection;
+
 
 
 
