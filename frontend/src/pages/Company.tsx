@@ -11,7 +11,6 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 
 const Company: React.FC = () => {
-  // ✅ Using comprehensive SEO hook
   useSEO({
     title: "Our Company",
     description: "Learn about Civvest Energy Partners - a leading renewable energy investment company based in Dallas, Texas. Discover our executive team, operations, and investment philosophy.",
@@ -325,3 +324,4 @@ const Company: React.FC = () => {
 }
 
 export default Company
+
