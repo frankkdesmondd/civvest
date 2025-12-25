@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Navbar from "../components/Navbar";
 import { HomeUtils } from "../utils/HomeUtils";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +10,7 @@ import TrackRecord from "../components/TrackRecord";
 import Testimonial from "../components/Testimonial";
 import Footer from "../components/Footer";
 import Foot from "../components/Foot";
-import { motion } from "framer-motion";
+import { motion, type PanInfo } from "framer-motion";
 import { ChevronLeft, ChevronRight, List } from "lucide-react";
 import { useSEO } from "../hooks/useSEO";
 
@@ -39,8 +39,14 @@ const BondPlans: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [showAllMobile, setShowAllMobile] = useState(false);
-
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  
+  const carouselRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Minimum swipe distance (in pixels)
+  const minSwipeDistance = 50;
 
   useEffect(() => {
     fetchBondPlans();
@@ -48,7 +54,6 @@ const BondPlans: React.FC = () => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      // Reset to carousel view if switching from mobile to desktop
       if (!mobile) {
         setShowAllMobile(false);
       }
@@ -82,12 +87,53 @@ const BondPlans: React.FC = () => {
   const cardsToShow = isMobile ? 1 : 2;
   const maxIndex = Math.max(investments.length - cardsToShow, 0);
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? maxIndex : prev - 1));
+  }, [maxIndex]);
+
+  const handleNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev === maxIndex ? 0 : prev + 1));
+  }, [maxIndex]);
+
+  // Touch handlers for swipe
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
   };
 
-  const handleNext = () => {
-    setCurrentIndex((prev) => (prev === maxIndex ? 0 : prev + 1));
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      handleNext();
+    } else if (isRightSwipe) {
+      handlePrevious();
+    }
+    
+    // Reset touch coordinates
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+  // Drag handler for framer-motion (alternative approach)
+  const handleDragEnd = (_event: any, info: PanInfo) => {
+    const threshold = 50; // Minimum drag distance
+    
+    if (info.offset.x < -threshold) {
+      // Swipe left
+      handleNext();
+    } else if (info.offset.x > threshold) {
+      // Swipe right
+      handlePrevious();
+    }
   };
 
   useEffect(() => {
@@ -225,7 +271,14 @@ const BondPlans: React.FC = () => {
                 )}
 
                 {/* CAROUSEL CONTAINER */}
-                <div className="relative w-full overflow-hidden">
+                <div 
+                  ref={carouselRef}
+                  className="relative w-full overflow-hidden"
+                  // Touch events for mobile swipe
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                >
                   {/* NAVIGATION ARROWS */}
                   <button
                     onClick={handlePrevious}
@@ -247,7 +300,7 @@ const BondPlans: React.FC = () => {
                     <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
                   </button>
 
-                  {/* CAROUSEL TRACK */}
+                  {/* CAROUSEL TRACK with drag support */}
                   <motion.div
                     className="flex"
                     animate={{ 
@@ -256,6 +309,11 @@ const BondPlans: React.FC = () => {
                         : `-${currentIndex * (100 / cardsToShow)}%`
                     }}
                     transition={{ type: "spring", stiffness: 120, damping: 20 }}
+                    drag={isMobile ? "x" : false} // Enable drag on mobile only
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.2}
+                    onDragEnd={handleDragEnd}
+                    style={{ cursor: isMobile ? 'grab' : 'default' }}
                   >
                     {investments.map((item) => (
                       <div
@@ -264,7 +322,7 @@ const BondPlans: React.FC = () => {
                         className={`shrink-0 ${
                           isMobile 
                             ? "w-full px-2" 
-                            : "w-1/2 px-3" // Always 50% width for desktop (2 cards)
+                            : "w-1/2 px-3"
                         }`}
                       >
                         <InvestmentCard item={item} />
