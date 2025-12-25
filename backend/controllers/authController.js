@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { sendPasswordResetEmail } from "../services/emailService.js"
 import { verifyRecaptcha } from "../utils/recaptcha.js"
+import { sendWelcomeEmail } from './emailService.js';
 
 // Generate unique 7-digit account number
 const generateAccountNumber = async () => {
@@ -276,6 +277,10 @@ export const SignUp = async (req, res) => {
     });
 
     res.status(201).json({ user, token });
+    
+    await sendWelcomeEmail(user.email, user.name);
+    
+    res.json({ success: true, message: 'Registration successful!' });
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).json({ error: 'Failed to create account' });
@@ -398,6 +403,7 @@ export const getMe = async (req, res) => {
         firstName: true,
         lastName: true,
         role: true,
+        profilePicture: true,
         accountNumber: true,
         balance: true,
         roi: true,              // Make sure this is included
