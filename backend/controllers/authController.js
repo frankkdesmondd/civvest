@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { sendPasswordResetEmail } from "../services/emailService.js"
 import { verifyRecaptcha } from "../utils/recaptcha.js"
-import { sendWelcomeEmail } from './emailService.js';
+import { sendWelcomeEmail } from '../services/emailService.js';
 
 // Generate unique 7-digit account number
 const generateAccountNumber = async () => {
@@ -422,3 +422,4 @@ export const getMe = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user data' });
   }
 };
+
