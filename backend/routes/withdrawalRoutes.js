@@ -277,18 +277,37 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
   try {
     const { withdrawalId } = req.params;
     const { status, adminNotes } = req.body;
-    
-    const withdrawal = await prisma.withdrawal.update({
-      where: { id: withdrawalId },
-      data: { 
-        status,
-        adminNotes,
-        approvedById: req.user.id,
-        approvedAt: status === 'APPROVED' ? new Date() : null
+
+    // Use transaction to update both records
+    const result = await prisma.$transaction(async (tx) => {
+      
+      // 1. Update withdrawal status
+      const withdrawal = await tx.withdrawal.update({
+        where: { id: withdrawalId },
+        data: {
+          status,
+          adminNotes,
+          approvedById: req.user.id,
+          approvedAt: status === 'APPROVED' ? new Date() : null
+        },
+        include: {
+          investment: true // Get userInvestmentId
+        }
+      });
+
+      // 2. If approved, update investment status to COMPLETED
+      if (status === 'APPROVED' && withdrawal.userInvestmentId) {
+        await tx.userInvestment.update({
+          where: { id: withdrawal.userInvestmentId },
+          data: { status: 'COMPLETED' }
+        });
       }
+
+      return withdrawal;
     });
+
+    res.json(result);
     
-    res.json(withdrawal);
   } catch (error) {
     console.error('Update withdrawal status error:', error);
     res.status(500).json({ error: 'Failed to update withdrawal status' });
@@ -322,6 +341,7 @@ router.get('/my-withdrawals', authenticateToken, async (req, res) => {
 });
 
 export default router;
+
 
 
 
