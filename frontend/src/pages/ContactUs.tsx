@@ -4,11 +4,12 @@ import ContactUsImage from "../assets/contact page picture.jpg";
 import ContactBody from "../components/ContactBody";
 import Footer from "../components/Footer";
 import Foot from "../components/Foot";
-import { FiCheck, FiAlertCircle, FiSend } from "react-icons/fi";
+import { FiSend } from "react-icons/fi";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import axiosInstance from "../config/axios";
 import { useSEO } from "../hooks/useSEO";
+import { useToast } from "../context/ToastContext"; // Adjust the import path
 
 const ContactUs: React.FC = () => {
   useSEO({
@@ -20,6 +21,9 @@ const ContactUs: React.FC = () => {
     type: "website"
   });
   
+  // Use your toast context
+  const { showToast } = useToast();
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,8 +33,6 @@ const ContactUs: React.FC = () => {
   });
   
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -49,19 +51,18 @@ const ContactUs: React.FC = () => {
     }
   };
 
-    useEffect(() => {
-      AOS.init({
-          duration: 1000,     // animation duration
-          easing: "ease-in-out",
-          once: true,         // animation runs once
-          offset: 100,        // trigger distance
-        });
-  
-        AOS.refresh();
-  
-    }, []);
+  useEffect(() => {
+    AOS.init({
+      duration: 1000,
+      easing: "ease-in-out",
+      once: true,
+      offset: 100,
+    });
 
-    useEffect(() => {
+    AOS.refresh();
+  }, []);
+
+  useEffect(() => {
     const breadcrumbScript = document.createElement('script');
     breadcrumbScript.type = 'application/ld+json';
     breadcrumbScript.textContent = JSON.stringify({
@@ -77,7 +78,7 @@ const ContactUs: React.FC = () => {
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "Our Company",
+          "name": "Contact us",
           "item": "https://www.civvest.com/contact-us"
         }
       ]
@@ -109,13 +110,12 @@ const ContactUs: React.FC = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      setError("Please fill in all required fields correctly");
+      // Show error toast for form validation
+      showToast("Please fill in all required fields correctly", "error");
       return;
     }
     
     setLoading(true);
-    setError("");
-    setSuccess(false);
     
     try {
       const response = await axiosInstance.post('/api/contact', {
@@ -124,7 +124,9 @@ const ContactUs: React.FC = () => {
       });
       
       if (response.data.success) {
-        setSuccess(true);
+        // Show success toast
+        showToast("Message sent successfully! We'll get back to you soon.", "success");
+        
         // Reset form
         setFormData({
           name: "",
@@ -133,17 +135,14 @@ const ContactUs: React.FC = () => {
           message: "",
           accreditedInvestor: false
         });
-        
-        // Auto-hide success message after 5 seconds
-        setTimeout(() => {
-          setSuccess(false);
-        }, 5000);
       } else {
-        setError(response.data.error || "Failed to send message");
+        // Show error toast from server response
+        showToast(response.data.error || "Failed to send message", "error");
       }
     } catch (err: any) {
       console.error("Contact form error:", err);
-      setError(err.response?.data?.error || "Failed to send message. Please try again.");
+      // Show error toast for network/server errors
+      showToast(err.response?.data?.error || "Failed to send message. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -198,31 +197,6 @@ const ContactUs: React.FC = () => {
             Civvest Energy Partners offers accredited investors exclusive access to high potential opportunities in the oil and gas sector designed to strengthen portfolios through strategic energy asset acquisition.
           </p>
         </div>
-
-        {/* SUCCESS/ERROR MESSAGES */}
-        {success && (
-          <div className="w-full max-w-6xl z-20 mb-4">
-            <div className="bg-green-500/20 border border-green-500 text-green-200 px-4 py-3 rounded-lg flex items-start">
-              <FiCheck className="mr-3 mt-1 shrink-0" />
-              <div>
-                <p className="font-semibold">Message Sent Successfully!</p>
-                <p className="text-sm mt-1">Thank you for contacting Civvest. We'll get back to you shortly at {formData.email}.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="w-full max-w-6xl z-20 mb-4">
-            <div className="bg-red-500/20 border border-red-500 text-red-200 px-4 py-3 rounded-lg flex items-start">
-              <FiAlertCircle className="mr-3 mt-1 shrink-0" />
-              <div>
-                <p className="font-semibold">Error Sending Message</p>
-                <p className="text-sm mt-1">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* CONTACT FORM */}
         <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-6 lg:gap-8 mt-10 w-full max-w-6xl z-10">
