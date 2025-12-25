@@ -97,24 +97,19 @@ const News: React.FC = () => {
   };
 
   // ✅ FIX: Create proper image URL
-  const getImageUrl = (imageUrl: string) => {
+  const getImageUrl = (imageUrl: string): string => {
     if (!imageUrl) {
-      return ''; // Return empty if no image URL
+      return '/default-news-image.jpg';
     }
     
-    // If it's already a full URL, return it
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
     }
     
-    // If it's a relative path starting with /uploads/, prepend backend URL
     if (imageUrl.startsWith('/uploads/')) {
-      // Remove duplicate backend URL if already there
-      const cleanUrl = imageUrl.replace('https://civvest-backend.onrender.com', '');
-      return `https://civvest-backend.onrender.com${cleanUrl}`;
+      return `https://civvest-backend.onrender.com${imageUrl}`;
     }
     
-    // Otherwise, just prepend backend URL
     return `https://civvest-backend.onrender.com${imageUrl}`;
   };
 
@@ -253,3 +248,4 @@ const News: React.FC = () => {
 };
 
 export default News;
+
