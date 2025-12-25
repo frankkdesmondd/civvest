@@ -79,7 +79,8 @@ export const sendWelcomeEmail = async (email, userName) => {
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>Civvest</h1>
+                  <img src="https://www.civvest.com/civvest company logo.png" alt="Civvest Logo />" style="max-width: 180px; height: auto; margin-bottom: 10px;" />
+                  <h1 style="margin-top: 10px;">Civvest</h1>
                 </div>
                 <div class="welcome-banner">
                     <h2>🎉 Welcome to Civvest!</h2>
