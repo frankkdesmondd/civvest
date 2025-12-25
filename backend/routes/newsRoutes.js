@@ -1,17 +1,22 @@
-// routes/news.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { authenticateToken, isAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Configure multer for news images
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, '/uploads/news/'); // Use absolute path
+    const uploadPath = path.join(__dirname, '../uploads/news/');
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
