@@ -33,10 +33,10 @@ const PrincipledApproach: React.FC = () => {
         <img
           src={PrincipalApproach}
           alt="Company View"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover object-[center_30%]"
         />
 
-        <div className="absolute bottom-0 left-0 w-full h-32 bg-linear-to-t from-[#041a35] via-[#041a35]/80 to-transparent"></div>
+        <div className="absolute bottom-0 left-0 w-full h-40 bg-linear-to-t from-[#041a35] via-[#041a35]/80 to-transparent"></div>
 
         <p className="absolute top-[5em] lg:top-[3.5em] left-1/2 -translate-x-1/2 -translate-y-1/2 text-[3em] lg:text-[5em] text-white text-center font-serif w-[10em] lg:w-[40em] leading-[1.3em] mt-[0.8em] lg:mt-0">
           Investing Fundamentals

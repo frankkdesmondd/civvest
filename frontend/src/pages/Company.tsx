@@ -6,7 +6,7 @@ import Footer from '../components/Footer'
 import Foot from '../components/Foot'
 import { useSEO } from "../hooks/useSEO";
 import { Link } from 'react-router-dom'
-import OurCompany from '../assets/our company logo.jpg'
+import OurCompany from '../assets/our-company-page-img.jpg'
 import AOS from "aos";
 import "aos/dist/aos.css";
 
