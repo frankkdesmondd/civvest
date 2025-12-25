@@ -108,7 +108,7 @@ const Company: React.FC = () => {
           {/* Left */}
           <div className="flex flex-col gap-4">
             <h2 className="text-[1.4em] font-semibold">Let us introduce ourselves</h2>
-            <p className="text-gray-300 text-[2.5em] leading-[1.2em] font-serif w-[8em]">
+            <p className="text-gray-300 text-[2em] md:text-[2.5em] leading-[1.2em] font-serif w-[8em]">
               A few words about us
             </p>
             <div className="w-full h-px bg-white/60"></div>
@@ -120,7 +120,7 @@ const Company: React.FC = () => {
           {/* Right */}
           <div className="flex flex-col gap-4">
             <h2 className="text-[1.4em] font-semibold">Focused on</h2>
-            <p className="text-gray-300 text-[2.5em] leading-[1.2em] font-serif w-[11em]">
+            <p className="text-gray-300 text-[2em] md:text-[2.5em] leading-[1.2em] font-serif w-[11em]">
               U.S. based drilling prospects
             </p>
             <div className="w-full h-px bg-white/60"></div>

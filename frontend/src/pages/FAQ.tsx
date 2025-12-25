@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import { useSEO } from "../hooks/useSEO";
-import Education from '../assets/faq logo.jpg'
+import Education from '../assets/faq-page-img.jpg'
 import { FiPlus, FiMinus } from "react-icons/fi";
 import { FaArrowRight } from "react-icons/fa6";
 import { Link } from "react-router-dom";
