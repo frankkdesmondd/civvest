@@ -26,32 +26,21 @@ import profilePictureRoutes from './routes/profilePictureRoutes.js';
 
 dotenv.config()
 
+// Get the current directory name using ES module approach
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const uploadsDir = path.join(__dirname, 'uploads');
-const investmentsDir = path.join(uploadsDir, 'investments');
-const newsDir = path.join(uploadsDir, 'news');
+// Create absolute paths for upload directories
+const uploadsSubDirs = [
+  path.join(__dirname, 'uploads', 'news'),
+  path.join(__dirname, 'uploads', 'profile-pictures'),
+  path.join(__dirname, 'uploads', 'receipts'),
+  path.join(__dirname, 'uploads', 'deposit-receipts'),
+  path.join(__dirname, 'uploads', 'investments')
+];
 
-[uploadsDir, investmentsDir, newsDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`Created directory: ${dir}`);
-  }
-});
-
-if (!fs.existsSync('uploads/receipts')) {
-  fs.mkdirSync('uploads/receipts', { recursive: true });
-}
-
-// Add this with your other directory creation code
-if (!fs.existsSync('uploads/deposit-receipts')) {
-  fs.mkdirSync('uploads/deposit-receipts', { recursive: true });
-}
-
-// Add this with your other directory creation code in server.js
-const profilePicsDir = path.join(uploadsDir, 'profile-pictures');
-[profilePicsDir].forEach(dir => {
+// Create directories if they don't exist
+uploadsSubDirs.forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
     console.log(`Created directory: ${dir}`);
@@ -87,8 +76,8 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/uploads', express.static('uploads'));
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads/profile-pictures', express.static(path.join(__dirname, 'uploads/profile-pictures')));
 
 // Routes
@@ -155,8 +144,8 @@ app.get('/api/test-cookie', (req, res) => {
   // Set a test cookie
   res.cookie('test_cookie', 'test_value', {
     httpOnly: true,
-    secure: false, // false for local development
-    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production', // Use secure in production
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   });
   
@@ -207,4 +196,5 @@ app.listen((Port), () => {
   allowedOrigins.forEach(origin => console.log(`   - ${origin}`));
   console.log(`📧 SMTP configured for: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT}`);
   console.log(`🍪 Cookie support: Enabled (credentials: true)`);
+  console.log(`📁 Upload directory: ${path.join(__dirname, 'uploads')}`);
 });

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { sendPasswordResetEmail } from "../services/emailService.js"
 import { verifyRecaptcha } from "../utils/recaptcha.js"
+import { sendWelcomeEmail } from '../services/emailService.js';
 
 // Generate unique 7-digit account number
 const generateAccountNumber = async () => {
@@ -166,7 +167,7 @@ export const resetPassword = async (req, res) => {
     }
 };
 
-// In authController.js - Update SignUp function
+// SIGN UP
 export const SignUp = async (req, res) => {
   try {
     const { email, password, firstName, lastName, captchaToken, referralCode } = req.body;
@@ -268,6 +269,7 @@ export const SignUp = async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Set cookie
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -275,13 +277,29 @@ export const SignUp = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
-    res.status(201).json({ user, token });
+    // Send welcome email (non-blocking - don't let email failures break signup)
+    try {
+      await sendWelcomeEmail(user.email, `${user.firstName} ${user.lastName}`);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Don't fail the signup if email fails
+    }
+
+    // Send ONE response
+    res.status(201).json({ 
+      user, 
+      token,
+      success: true,
+      message: 'Registration successful!'
+    });
+
   } catch (error) {
     console.error('Signup error:', error);
     res.status(500).json({ error: 'Failed to create account' });
   }
-}
+};
 
+// SIGN IN
 export const SignIn = async (req, res) => {
   try {
     const { email, password, captchaToken } = req.body;
@@ -336,8 +354,9 @@ export const SignIn = async (req, res) => {
     console.error('Signin error:', error);
     res.status(500).json({ error: 'Failed to sign in' });
   }
-}
+};
 
+// GET USER
 export const GetUser = async (req, res) => {
   try {
     const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
@@ -371,8 +390,9 @@ export const GetUser = async (req, res) => {
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
   }
-}
+};
 
+// SIGN OUT
 export const SignOut = async (req, res) => {
   // Clear the cookie with the same options used when setting it
   res.clearCookie('token', {
@@ -383,9 +403,9 @@ export const SignOut = async (req, res) => {
   });
   
   res.json({ message: 'Signed out successfully' });
-}
+};
 
-// In authController.js
+// GET ME
 export const getMe = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -398,6 +418,7 @@ export const getMe = async (req, res) => {
         firstName: true,
         lastName: true,
         role: true,
+        profilePicture: true,
         accountNumber: true,
         balance: true,
         roi: true,              // Make sure this is included

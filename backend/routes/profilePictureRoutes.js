@@ -1,21 +1,22 @@
-// routes/profilePicture.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Configure multer for profile picture upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = 'uploads/profile-pictures';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    const uploadDir = path.join(__dirname, '../uploads/profile-pictures');
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
@@ -60,9 +61,13 @@ router.post('/upload', authenticateToken, upload.single('profilePicture'), async
 
     // Delete old profile picture if exists
     if (user.profilePicture) {
-      const oldImagePath = user.profilePicture.replace('/uploads', 'uploads');
+      // Extract filename from URL and create absolute path
+      const filename = path.basename(user.profilePicture);
+      const oldImagePath = path.join(__dirname, '../uploads/profile-pictures', filename);
+      
       if (fs.existsSync(oldImagePath)) {
         fs.unlinkSync(oldImagePath);
+        console.log('Deleted old profile picture:', oldImagePath);
       }
     }
 
@@ -123,7 +128,7 @@ router.post('/upload', authenticateToken, upload.single('profilePicture'), async
   }
 });
 
-// Remove profile picture - MAKE SURE THIS EXISTS
+// Remove profile picture
 router.delete('/remove', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -139,7 +144,9 @@ router.delete('/remove', authenticateToken, async (req, res) => {
 
     // Delete the file if exists
     if (user.profilePicture) {
-      const imagePath = user.profilePicture.replace('/uploads', 'uploads');
+      const filename = path.basename(user.profilePicture);
+      const imagePath = path.join(__dirname, '../uploads/profile-pictures', filename);
+      
       if (fs.existsSync(imagePath)) {
         try {
           fs.unlinkSync(imagePath);
