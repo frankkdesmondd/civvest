@@ -1,4 +1,4 @@
-// src/context/WebSocketContext.tsx
+// src/context/WebSocketContext.tsx - FIXED VERSION
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface WebSocketContextType {
@@ -19,7 +19,7 @@ export const useWebSocket = () => useContext(WebSocketContext);
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [listeners, setListeners] = useState<Record<string, ((data: any) => void)[]>>({});
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected] = useState(false); // You can implement actual WebSocket connection logic later
 
   // Subscribe to custom events
   const subscribe = (event: string, callback: (data: any) => void) => {
