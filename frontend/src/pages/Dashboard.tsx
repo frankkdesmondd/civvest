@@ -1,4 +1,4 @@
-// Dashboard.tsx - FIXED VERSION with corrected status handling for closed investments
+// Dashboard.tsx - UPDATED VERSION with network error handling
 import React, { useState, useEffect } from 'react';
 import CivvestLogo from '../assets/civvest company logo.png';
 import {
@@ -14,6 +14,8 @@ import {
   FiPackage,
   FiChevronLeft,
   FiChevronRight,
+  FiWifiOff,
+  FiRefreshCw,
 } from "react-icons/fi";
 import axiosInstance from "../config/axios";
 import {
@@ -71,23 +73,45 @@ const Dashboard: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [networkError, setNetworkError] = useState<boolean>(false);
+  const [retryCount, setRetryCount] = useState<number>(0);
   const { showToast } = useToast();
   const navigate = useNavigate();
 
+  // Cache user data from localStorage to prevent UI disruption
+  const [cachedUser, setCachedUser] = useState<any>(null);
+  const [cachedInvestments, setCachedInvestments] = useState<Investment[]>([]);
+
   useEffect(() => {
+    // Load cached data first
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setCachedUser(parsedUser);
+    }
+
+    // Load cached investments if available
+    const cachedInv = localStorage.getItem("cachedInvestments");
+    if (cachedInv) {
+      try {
+        setCachedInvestments(JSON.parse(cachedInv));
+      } catch (e) {
+        console.error("Failed to parse cached investments:", e);
+      }
+    }
+
     const checkMobile = () => {
       const mobile = window.innerWidth < 1024;
       setIsMobile(mobile);
       if (mobile) {
         setSidebarOpen(false);
-        setSidebarCollapsed(false); // Reset collapse on mobile
+        setSidebarCollapsed(false);
       }
     };
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
     
-    const storedUser = localStorage.getItem("user");
     if (!storedUser) {
       navigate("/signin");
       return;
@@ -101,11 +125,13 @@ const Dashboard: React.FC = () => {
 
     fetchAllData();
 
+    // Increase interval to reduce API calls
     const interval = setInterval(() => {
       console.log('Auto-refreshing dashboard data...');
       fetchAllData();
-    }, 30000);
+    }, 60000); // Changed from 30s to 60s
 
+    // Event listeners (unchanged)
     const handleUserUpdated = (event: CustomEvent) => {
       console.log('User updated event received:', event.detail);
       if (event.detail?.user) {
@@ -182,11 +208,17 @@ const Dashboard: React.FC = () => {
 
   const fetchAllData = async () => {
     console.log('Fetching all dashboard data...');
-    await Promise.all([
-      fetchUserData(),
-      fetchInvestments(),
-      generateOilPriceData()
-    ]);
+    try {
+      await Promise.all([
+        fetchUserData(),
+        fetchInvestments(),
+        generateOilPriceData()
+      ]);
+      setNetworkError(false);
+      setRetryCount(0);
+    } catch (error) {
+      console.log('Network error in fetchAllData, using cached data');
+    }
   };
 
   const fetchUserData = async () => {
@@ -196,10 +228,17 @@ const Dashboard: React.FC = () => {
       console.log('User data refreshed');
     } catch (error: any) {
       console.error("Failed to fetch user data:", error);
+      
+      // Only set error for authentication issues, not network errors
       if (error.response?.status === 401) {
         setError("Session expired. Please login again.");
         localStorage.removeItem("user");
         navigate("/signin");
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        // Network error - don't disrupt UI, just log it
+        console.log('Network error fetching user data, using cached data');
+        setNetworkError(true);
+        setRetryCount(prev => prev + 1);
       }
     }
   };
@@ -207,7 +246,9 @@ const Dashboard: React.FC = () => {
   const fetchInvestments = async () => {
     try {
       setError(null);
-      const response = await axiosInstance.get('/api/user-investments/my-investments');
+      const response = await axiosInstance.get('/api/user-investments/my-investments', {
+        timeout: 10000, // 10 second timeout
+      });
       
       console.log("Investments fetched:", response.data);
       const investmentsData = response.data.investments || response.data || [];
@@ -222,15 +263,36 @@ const Dashboard: React.FC = () => {
         : [];
       
       setInvestments(safeInvestments);
+      
+      // Cache the investments for offline use
+      localStorage.setItem("cachedInvestments", JSON.stringify(safeInvestments));
+      setCachedInvestments(safeInvestments);
+      
       setLoading(false);
+      setNetworkError(false);
     } catch (error: any) {
       console.error("Failed to fetch investments:", error);
+      
+      // Don't show error for network issues, use cached data
       if (error.response?.status === 401) {
         setError("Session expired. Please login again.");
         localStorage.removeItem("user");
         navigate("/signin");
-      } else {
-        setError("Failed to load investments");
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        console.log('Network error, using cached investments');
+        setNetworkError(true);
+        
+        // Use cached investments if available
+        if (cachedInvestments.length > 0) {
+          setInvestments(cachedInvestments);
+        }
+        
+        // Show gentle notification instead of error page
+        if (retryCount < 3) {
+          setTimeout(() => {
+            fetchInvestments(); // Retry
+          }, 5000);
+        }
       }
       setLoading(false);
     }
@@ -243,6 +305,13 @@ const Dashboard: React.FC = () => {
       price: Math.floor(Math.random() * 20) + 70,
     }));
     setOilPrices(data);
+  };
+
+  const handleRetry = () => {
+    setRetryCount(0);
+    setNetworkError(false);
+    fetchAllData();
+    showToast('Attempting to reconnect...', 'info');
   };
 
   const handleWithdrawClick = (investment: Investment) => {
@@ -309,15 +378,30 @@ const Dashboard: React.FC = () => {
         return inv;
       }));
       
+      // Update cached investments
+      const updatedInvestments = investments.map(inv => {
+        if (inv.id === withdrawalData.userInvestmentId) {
+          return { 
+            ...inv, 
+            roiAmount: response.data.remainingROI || 0,
+            withdrawalStatus: 'PENDING'
+          };
+        }
+        return inv;
+      });
+      localStorage.setItem("cachedInvestments", JSON.stringify(updatedInvestments));
+      setCachedInvestments(updatedInvestments);
+      
       fetchAllData();
       setShowModal(false);
       setSelectedInvestment(null);
       
     } catch (error: any) {
       console.error('Full withdrawal error:', error);
-      console.error('Error response:', error.response?.data);
       
-      if (error.response?.status === 404) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        showToast('Network error. Please check your connection and try again.', "error");
+      } else if (error.response?.status === 404) {
         showToast('Withdrawal route not found. Please check API configuration.', "error");
       } else if (error.response?.data?.error) {
         showToast(error.response.data.error, "error");
@@ -330,15 +414,15 @@ const Dashboard: React.FC = () => {
   };
 
   const calculateTotalInvested = () => {
-    // Only count ACTIVE investments (exclude COMPLETED)
-    return investments
+    const dataToUse = investments.length > 0 ? investments : cachedInvestments;
+    return dataToUse
       .filter((inv) => inv.status === "ACTIVE")
       .reduce((sum, inv) => sum + (inv.amount || 0), 0);
   };
 
   const calculateTotalAvailableROI = () => {
-    // Only count ROI from ACTIVE investments that haven't been withdrawn
-    return investments
+    const dataToUse = investments.length > 0 ? investments : cachedInvestments;
+    return dataToUse
       .filter(inv => 
         inv.status === "ACTIVE" && 
         (inv.roiAmount || 0) > 0 &&
@@ -348,7 +432,8 @@ const Dashboard: React.FC = () => {
   };
 
   const calculateTotalROIAdded = () => {
-    return investments
+    const dataToUse = investments.length > 0 ? investments : cachedInvestments;
+    return dataToUse
       .reduce((sum, inv) => sum + (inv.totalRoiAdded || 0), 0);
   };
 
@@ -394,7 +479,6 @@ const Dashboard: React.FC = () => {
     return daysRemaining !== null && daysRemaining <= 0;
   };
 
-  // FIXED: Proper status handling for closed investments
   const getDisplayStatus = (investment: Investment) => {
     // Check if investment is closed first
     if (isInvestmentClosed(investment)) {
@@ -441,7 +525,6 @@ const Dashboard: React.FC = () => {
     };
   };
 
-  // FIXED: Proper days left text for closed investments
   const getDaysLeftText = (investment: Investment) => {
     // Check if investment is closed first
     if (isInvestmentClosed(investment)) {
@@ -468,7 +551,6 @@ const Dashboard: React.FC = () => {
     return 'N/A';
   };
 
-  // FIXED: Proper action text for closed investments
   const getActionText = (investment: Investment) => {
     // Check if investment is closed first
     if (isInvestmentClosed(investment)) {
@@ -502,7 +584,6 @@ const Dashboard: React.FC = () => {
     return 'No ROI yet';
   };
 
-  // NEW: Get ROI display color based on investment status
   const getROIColor = (investment: Investment) => {
     if (isInvestmentClosed(investment)) {
       return 'text-gray-600';
@@ -551,7 +632,11 @@ const Dashboard: React.FC = () => {
     return sidebarCollapsed ? 'ml-20' : 'ml-64';
   };
 
-  if (loading) {
+  // Get data to display (use cached if network fails)
+  const displayInvestments = investments.length > 0 ? investments : cachedInvestments;
+  const displayUser = user || cachedUser;
+
+  if (loading && investments.length === 0 && cachedInvestments.length === 0) {
     return (
       <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
         <img src={HomeUtils[0].companyLogo} alt="" className='w-16 sm:w-20 lg:w-24 xl:w-32'/>
@@ -560,7 +645,8 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  if (error) {
+  // Don't show error page for network errors, show data with warning
+  if (error && !networkError) {
     return (
       <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center p-4">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 sm:px-6 py-3 sm:py-4 rounded max-w-md w-full">
@@ -682,7 +768,7 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
 
-        {user && !sidebarCollapsed && (
+        {displayUser && !sidebarCollapsed && (
           <div className="p-4 border-t border-gray-700 mt-auto">
             <div className="flex items-center gap-3">
               <ProfilePicture 
@@ -692,13 +778,13 @@ const Dashboard: React.FC = () => {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">
-                  {user.firstName} {user.lastName}
+                  {displayUser.firstName} {displayUser.lastName}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
-                  Acc: {user.accountNumber}
+                  Acc: {displayUser.accountNumber}
                 </p>
                 <p className="text-xs text-purple-300 mt-1">
-                  ROI: ${formatCurrency(user.roi || 0)}
+                  ROI: ${formatCurrency(displayUser.roi || 0)}
                 </p>
               </div>
             </div>
@@ -722,6 +808,26 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
+        {/* Network Error Banner - Only shows when network is down */}
+        {networkError && (
+          <div className="sticky top-0 z-20 bg-yellow-50 border-b border-yellow-200 p-3">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FiWifiOff className="text-yellow-600" />
+                <span className="text-yellow-800 text-sm">
+                  Connection lost. Showing cached data. Some features may be limited.
+                </span>
+              </div>
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-2 text-yellow-700 hover:text-yellow-800 text-sm font-medium"
+              >
+                <FiRefreshCw /> Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="p-4 lg:p-6 xl:p-8">
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -732,10 +838,13 @@ const Dashboard: React.FC = () => {
               </Link>
 
               <h1 className="text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-800">
-                Welcome back, {user?.firstName}!
+                Welcome back, {displayUser?.firstName}!
               </h1>
               <p className="text-gray-600 mt-1 text-sm lg:text-base">
-                Account: {user?.accountNumber}
+                Account: {displayUser?.accountNumber}
+                {networkError && (
+                  <span className="text-yellow-600 text-xs ml-2">(cached data)</span>
+                )}
               </p>
             </div>
 
@@ -754,7 +863,7 @@ const Dashboard: React.FC = () => {
                     ${formatNumber(calculateTotalInvested())}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {investments.filter(inv => inv.status === 'ACTIVE').length} active
+                    {displayInvestments.filter(inv => inv.status === 'ACTIVE').length} active
                   </p>
                 </div>
                 <div className="bg-blue-100 p-3 rounded-full">
@@ -768,7 +877,7 @@ const Dashboard: React.FC = () => {
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">Total ROI</p>
                   <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-800 mt-2">
-                    ${formatCurrency(user?.roi || 0)}
+                    ${formatCurrency(displayUser?.roi || 0)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     ${formatCurrency(calculateTotalAvailableROI())} available
@@ -785,7 +894,7 @@ const Dashboard: React.FC = () => {
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">Referral Bonus</p>
                   <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-800 mt-2">
-                    ${formatNumber(user?.referralBonus || 0)}
+                    ${formatNumber(displayUser?.referralBonus || 0)}
                   </p>
                 </div>
                 <div className="bg-green-100 p-3 rounded-full">
@@ -825,7 +934,7 @@ const Dashboard: React.FC = () => {
                     ${formatCurrency(calculateTotalAvailableROI())}
                   </div>
                   <p className="text-purple-200 text-sm">
-                    Across {investments.filter(inv => 
+                    Across {displayInvestments.filter(inv => 
                       inv.status === 'ACTIVE' && 
                       (inv.roiAmount || 0) > 0 &&
                       inv.withdrawalStatus !== 'PROCESSED'
@@ -869,14 +978,17 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Investments Section - FIXED VERSION */}
+          {/* Investments Section */}
           <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm mb-8 sm:mb-10">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
               <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800">
                 My Investments
+                {networkError && (
+                  <span className="text-yellow-600 text-xs ml-2">(cached)</span>
+                )}
               </h2>
               
-              {investments.length === 0 && (
+              {displayInvestments.length === 0 && (
                 <Link
                   to="/view-investment"
                   className="text-blue-600 hover:underline text-xs sm:text-sm whitespace-nowrap"
@@ -886,7 +998,7 @@ const Dashboard: React.FC = () => {
               )}
             </div>
 
-            {investments.length === 0 ? (
+            {displayInvestments.length === 0 ? (
               <div className="text-center py-6 sm:py-8 lg:py-12 text-gray-500">
                 <p className="text-sm sm:text-base lg:text-lg">You haven't made any investments yet.</p>
                 <Link
@@ -900,7 +1012,7 @@ const Dashboard: React.FC = () => {
               <>
                 {/* Mobile & Tablet View - Cards */}
                 <div className="lg:hidden space-y-4">
-                  {investments.map((investment) => {
+                  {displayInvestments.map((investment) => {
                     const displayStatus = getDisplayStatus(investment);
                     const daysLeftText = getDaysLeftText(investment);
                     const actionText = getActionText(investment);
@@ -921,7 +1033,7 @@ const Dashboard: React.FC = () => {
                             </p>
                           </div>
 
-                          {/* Investment Details Grid - FIXED */}
+                          {/* Investment Details Grid */}
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <p className="text-xs text-gray-500 mb-1">Initial Investment</p>
@@ -967,7 +1079,7 @@ const Dashboard: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Action Button - FIXED */}
+                          {/* Action Button */}
                           <div className="pt-2">
                             {isClosed ? (
                               <div className="text-center p-2 bg-gray-50 rounded">
@@ -1011,7 +1123,7 @@ const Dashboard: React.FC = () => {
                   })}
                 </div>
 
-                {/* Desktop View - Table - FIXED */}
+                {/* Desktop View - Table */}
                 <div className="hidden lg:block overflow-x-auto">
                   <div className="inline-block min-w-full align-middle">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -1039,7 +1151,7 @@ const Dashboard: React.FC = () => {
                       </thead>
 
                       <tbody className="divide-y divide-gray-100">
-                        {investments.map((investment) => {
+                        {displayInvestments.map((investment) => {
                           const displayStatus = getDisplayStatus(investment);
                           const daysLeftText = getDaysLeftText(investment);
                           const actionText = getActionText(investment);
@@ -1073,7 +1185,7 @@ const Dashboard: React.FC = () => {
                                 </div>
                               </td>
 
-                              {/* ROI Available Column - FIXED */}
+                              {/* ROI Available Column */}
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <div>
                                   <p className={`text-base font-semibold ${roiColor}`}>
@@ -1095,21 +1207,21 @@ const Dashboard: React.FC = () => {
                                 </div>
                               </td>
 
-                              {/* Status Column - FIXED */}
+                              {/* Status Column */}
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${displayStatus.color}`}>
                                   {displayStatus.text}
                                 </span>
                               </td>
 
-                              {/* Days Left Column - FIXED */}
+                              {/* Days Left Column */}
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <span className="text-gray-800 text-base">
                                   {daysLeftText}
                                 </span>
                               </td>
 
-                              {/* Action Column - FIXED */}
+                              {/* Action Column */}
                               <td className="px-4 py-4 whitespace-nowrap">
                                 {isClosed ? (
                                   <span className="text-gray-500 text-sm">Closed</span>
