@@ -201,10 +201,6 @@ const Deposit: React.FC = () => {
                   <p className="font-bold text-lg">${investment.minAmount.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Return Rate</p>
-                  <p className="font-bold text-lg text-green-600">{investment.returnRate}</p>
-                </div>
-                <div>
                   <p className="text-gray-600">Duration</p>
                   <p className="font-bold text-lg">{investment.duration}</p>
                 </div>
@@ -398,3 +394,4 @@ const Deposit: React.FC = () => {
 };
 
 export default Deposit;
+
