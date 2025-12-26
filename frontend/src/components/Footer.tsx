@@ -125,7 +125,7 @@ const Footer: React.FC = () => {
 
         <div className="flex gap-2 text-white items-center justify-center lg:justify-start">
           <FaPhoneAlt className="text-[1.3em]" />
-          <p>(192)924-81175</p>
+          <p>(929) 248-1175</p>
         </div>
 
         <div className="flex flex-col text-white items-center lg:items-start">
@@ -193,3 +193,4 @@ const Footer: React.FC = () => {
 };
 
 export default Footer;
+
