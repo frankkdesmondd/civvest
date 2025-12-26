@@ -1,42 +1,16 @@
+// routes/news.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { authenticateToken, isAdmin } from '../middleware/authMiddleware.js';
+import { newsStorage } from '../config/cloudinary.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Configure multer for news images
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../uploads/news/');
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error('Only image files are allowed'));
-  }
+const upload = multer({ 
+  storage: newsStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 // Get all published news
@@ -84,25 +58,15 @@ router.get('/:slug', async (req, res) => {
 router.post('/', authenticateToken, isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { title, slug, content, excerpt, category, author, published } = req.body;
-
-    const imageUrl = req.file ? `/uploads/news/${req.file.filename}` : '';
+    
+    // Cloudinary provides the full URL in req.file.path
+    const imageUrl = req.file ? req.file.path : ''; 
 
     const post = await prisma.newsPost.create({
-      data: {
-        title,
-        slug,
-        content,
-        excerpt,
-        imageUrl,
-        category,
-        author,
-        published: published === 'true'
-      }
+      data: { title, slug, content, excerpt, imageUrl, category, author, published: published === 'true' }
     });
-
     res.status(201).json(post);
   } catch (error) {
-    console.error('Create news error:', error);
     res.status(500).json({ error: 'Failed to create news post' });
   }
 });
