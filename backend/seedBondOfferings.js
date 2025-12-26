@@ -9,11 +9,10 @@ const bondOfferings = [
     slug: "premium-bond-offering",
     description: `Invest in Civvest Energy Partners' Premium Bond Offering designed exclusively for accredited investors. 
     
-    This high-yield bond provides an exceptional 80% return over a 5-year term, backed by our proven track record in the oil and energy sector.
+    This high-yield bond provides an exceptional return over a 5-year term, backed by our proven track record in the oil and energy sector.
     
     Key Features:
     • Minimum Investment: $1,000,000
-    • Annual Interest Rate: 80% over 5 years
     • Compound Interest Earnings
     • Backed by established U.S. oil-producing operations
     • Quarterly performance updates
@@ -36,11 +35,10 @@ const bondOfferings = [
     slug: "elite-bond-offering",
     description: `Civvest Energy Partners' Elite Bond Offering represents the pinnacle of our investment opportunities, reserved for high net worth accredited investors.
     
-    With a minimum investment of $5,000,000, this exclusive bond delivers an outstanding 90% return over 5 years.
+    With a minimum investment of $5,000,000, this exclusive bond delivers an outstanding return over 5 years.
     
     Elite Benefits:
     • Minimum Investment: $5,000,000
-    • Annual Interest Rate: 90% over 5 years
     • Dedicated account manager
     • Quarterly dividend distributions
     • Exclusive investor events and site visits
@@ -48,7 +46,7 @@ const bondOfferings = [
     • Enhanced reporting and transparency
     
     Elite investors gain unparalleled access to our most profitable projects and enjoy white-glove service throughout the investment period.`,
-    shortDesc: "Elite bond with 90% return over 5 years for high net worth investors",
+    shortDesc: "Elite bond with return over 5 years for high net worth investors",
     minAmount: 5000000,
     targetAmount: 50000000,
     returnRate: "90%",
@@ -68,14 +66,13 @@ const bondOfferings = [
     
     Standard Features:
     • Minimum Investment: $500,000
-    • Annual Interest Rate: 70% over 2 years
     • Shorter investment term for faster returns
     • Monthly interest accrual
     • Comprehensive investor portal access
     • Regular performance updates
     
     Perfect for investors seeking shorter-term commitments while benefiting from the oil and energy sector's strong performance.`,
-    shortDesc: "Standard bond with 70% return over 2 years - entry level for accredited investors",
+    shortDesc: "Standard bond with return over 2 years - entry level for accredited investors",
     minAmount: 500000,
     targetAmount: 5000000,
     returnRate: "70%",
@@ -91,11 +88,10 @@ const bondOfferings = [
     slug: "executive-bond-offering",
     description: `The Executive Bond Offering from Civvest Energy Partners combines substantial returns with strategic investment positioning.
     
-    Designed for accredited investors ready to commit $2,000,000, this bond offers an impressive 90% return over 5 years.
+    Designed for accredited investors ready to commit $2,000,000, this bond offers an impressive return over 5 years.
     
     Executive Advantages:
     • Minimum Investment: $2,000,000
-    • Annual Interest Rate: 90% over 5 years
     • Enhanced investor communications
     • Semi-annual performance reviews
     • Access to executive investor webinars
@@ -162,3 +158,4 @@ seedBondOfferings()
     console.error('💥 Fatal error:', error);
     process.exit(1);
   });
+
