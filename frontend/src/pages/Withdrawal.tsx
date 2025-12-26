@@ -298,7 +298,7 @@ const Withdrawal: React.FC = () => {
               <p className="font-semibold mb-1">ROI Withdrawal Information</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>Withdrawal Eligibility: ROI can only be withdrawn after the investment has reached its full maturity period, as outlined in your investment agreement.</li>
-                <li>* Withdrawal Methods: Investors may choose to receive their ROI through:• Bank Transfer (to a verified account), or
+                <li>Withdrawal Methods: Investors may choose to receive their ROI through:• Bank Transfer (to a verified account), or
 Cryptocurrency Wallet (supported wallets only).</li>
                 <li>Processing Time: Once a valid withdrawal request is submitted and verified, processing is typically completed within 24 hours.</li>
                 <li>Early Withdrawal: ROI cannot be withdrawn before maturity under standard terms. Any exceptions are subject to specific contractual agreements or promotional conditions.</li>
@@ -484,5 +484,6 @@ Cryptocurrency Wallet (supported wallets only).</li>
 };
 
 export default Withdrawal;
+
 
 
