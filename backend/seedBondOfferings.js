@@ -19,7 +19,7 @@ const bondOfferings = [
     • Priority investor status
     
     Your investment supports ongoing energy production projects across multiple states, with funds allocated to drilling, production enhancement, and operational expansion.`,
-    shortDesc: "Premium bond offering with 80% return over 5 years for accredited investors",
+    shortDesc: "Premium bond offering with return over 5 years for accredited investors",
     minAmount: 1000000,
     targetAmount: 10000000,
     returnRate: "80%",
@@ -62,7 +62,7 @@ const bondOfferings = [
     slug: "standard-bond-offering",
     description: `Start your journey with Civvest Energy Partners through our Standard Bond Offering, the entry point for accredited investors.
     
-    With a minimum investment of $500,000, this 2-year bond provides a competitive 70% return.
+    With a minimum investment of $500,000, this 2-year bond provides a competitive return.
     
     Standard Features:
     • Minimum Investment: $500,000
@@ -99,7 +99,7 @@ const bondOfferings = [
     • Comprehensive market analysis reports
     
     Executive investors benefit from deep integration with our investment team and access to strategic insights into the energy market.`,
-    shortDesc: "Executive bond with 90% return over 5 years for strategic investors",
+    shortDesc: "Executive bond with return over 5 years for strategic investors",
     minAmount: 2000000,
     targetAmount: 20000000,
     returnRate: "90%",
@@ -158,4 +158,5 @@ seedBondOfferings()
     console.error('💥 Fatal error:', error);
     process.exit(1);
   });
+
 
