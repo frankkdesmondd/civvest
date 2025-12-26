@@ -31,7 +31,7 @@ async function seedBondPlans() {
     {
       title: "Elite Bond Offering",
       description: "Top-tier bond offering with maximum returns for elite investors. This is our highest-level bond offering with exceptional returns and priority access to new investment opportunities.",
-      shortDesc: "Elite bond offering with 90% return over 5 years",
+      shortDesc: "Elite bond offering with return over 5 years",
       minAmount: 5000000,
       targetAmount: 200000000,
       returnRate: "90%",
@@ -103,3 +103,4 @@ seedBondPlans()
     await prisma.$disconnect();
 
   });
+
