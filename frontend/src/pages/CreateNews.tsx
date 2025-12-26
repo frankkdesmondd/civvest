@@ -56,15 +56,29 @@ const CreateNews: React.FC = () => {
       
       if (image) {
         data.append('image', image);
+        console.log('Image file being sent:', image.name, image.type, image.size);
+      } else {
+        console.log('No image selected');
       }
 
-      await axiosInstance.post('/api/news', data);
+      // Debug: Check what's in FormData
+      for (let [key, value] of data.entries()) {
+        console.log(`${key}:`, value);
+      }
 
+      const response = await axiosInstance.post('/api/news', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      console.log('Response:', response.data);
       showToast('News post created successfully!', 'success');
       navigate('/admin-dashboard');
     } catch (error: any) {
-      console.error('Create news error:', error);
-      showToast(error.response?.data?.error, 'error');
+      console.error('Create news error details:', error);
+      console.error('Error response:', error.response?.data);
+      showToast(error.response?.data?.error || 'Failed to create news post', 'error');
     } finally {
       setLoading(false);
     }
