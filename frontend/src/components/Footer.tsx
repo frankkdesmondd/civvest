@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { HomeUtils } from '../utils/HomeUtils'
 import { FaPhoneAlt } from "react-icons/fa";
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import axiosInstance from '../config/axios';
 
 interface NewsPost {
   id: string;
@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
   useEffect(() => {
     const fetchLatestNews = async () => {
       try {
-        const response = await axios.get('https://civvest-backend.onrender.com/api/news');
+        const response = await axiosInstance.get('/api/news'); // Use relative path
         // Get only the first 2 articles
         setLatestNews(response.data.slice(0, 2));
       } catch (error) {
@@ -50,6 +50,38 @@ const Footer: React.FC = () => {
     });
   };
 
+  // Fix: Proper image URL handling function
+  const getImageUrl = (imageUrl: string): string => {
+    if (!imageUrl || imageUrl.trim() === '') {
+      // Return a default image or placeholder
+      return 'https//www.civvest.com/civvest logo.jpg';
+    }
+    
+    // If it's already a full URL (from Cloudinary), use it directly
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    
+    // If it's stored as a relative path (legacy), prepend backend URL
+    if (imageUrl.startsWith('/uploads/')) {
+      return `https://civvest-backend.onrender.com${imageUrl}`;
+    }
+    
+    // Fallback to placeholder
+    return 'https//www.civvest.com/civvest logo.jpg';
+  };
+
+  // Debug logging to see what URLs we're getting
+  useEffect(() => {
+    if (latestNews.length > 0) {
+      console.log('Footer - Latest news data:', latestNews);
+      latestNews.forEach((article, index) => {
+        console.log(`Article ${index} imageUrl:`, article.imageUrl);
+        console.log(`Generated URL:`, getImageUrl(article.imageUrl));
+      });
+    }
+  }, [latestNews]);
+
   return (
     <div className="flex flex-col lg:flex-row px-[1.5em] lg:px-[3em] bg-[#041a35] py-[3em] lg:py-[3em] gap-[3em] lg:gap-[4em] justify-between text-center lg:text-left items-center lg:items-start">
 
@@ -58,9 +90,9 @@ const Footer: React.FC = () => {
         <p className="text-white text-[1.5em] lg:text-[1.4em]">About Civvest Energy Partners</p>
         <div className="w-full bg-blue-300 h-[0.06em]"></div>
 
-        <div className="flex flex-col items-center lg:items-start gap-4 lg:gap-0 justify-center lg:justify-start">
+        <div className="flex gap-4 items-center justify-center lg:justify-start">
           <img src={HomeUtils[0].companyLogo} alt="" className="w-[8em]" />
-          <p className="text-[1.2em] lg:text-[1.8em] text-white leading-9">ENERGY PARTNERS</p>
+          <p className="text-[1.8em] text-white leading-9">Energy Partners</p>
         </div>
 
         <p className="text-white">
@@ -93,7 +125,7 @@ const Footer: React.FC = () => {
 
         <div className="flex gap-2 text-white items-center justify-center lg:justify-start">
           <FaPhoneAlt className="text-[1.3em]" />
-          <p>(929) 248-1175</p>
+          <p>(192)924-81175</p>
         </div>
 
         <div className="flex flex-col text-white items-center lg:items-start">
@@ -119,14 +151,15 @@ const Footer: React.FC = () => {
                 to={`/news/${article.slug}`}
                 className="flex gap-3 hover:bg-white/10 p-2 rounded-lg transition-colors"
               >
-                {/* News Image */}
+                {/* News Image - FIXED URL */}
                 <div className="w-[5em] h-[5em] shrink-0 rounded overflow-hidden bg-gray-700">
                   <img
-                    src={`https://civvest-backend.onrender.com${article.imageUrl}`}
+                    src={getImageUrl(article.imageUrl)}
                     alt={article.title}
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
-                      e.currentTarget.src = 'https://via.placeholder.com/80x80?text=News';
+                      // Fallback if image fails to load
+                      e.currentTarget.src = 'https://via.placeholder.com/80x80/041a35/ffffff?text=News';
                     }}
                   />
                 </div>
@@ -160,10 +193,3 @@ const Footer: React.FC = () => {
 };
 
 export default Footer;
-
-
-
-
-
-
-
