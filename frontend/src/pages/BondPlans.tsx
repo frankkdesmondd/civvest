@@ -30,7 +30,7 @@ const BondPlans: React.FC = () => {
     description: "See our major offerings. Be part of this grand plan in the next phase of oil Investment.",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
     image: "https://www.civvest.com/civvest logo.jpg",
-    url: "https://www.civvest.com/company",
+    url: "https://www.civvest.com/bond-plans",
     type: "website"
   });
 
@@ -183,7 +183,7 @@ const BondPlans: React.FC = () => {
           },
           "contactPoint": {
             "@type": "ContactPoint",
-            "telephone": "(192)924-81175",
+            "telephone": "(929) 248-1175",
             "contactType": "Customer Service"
           }
         })}
@@ -419,3 +419,4 @@ const InfoRow = ({
 );
 
 export default BondPlans;
+
