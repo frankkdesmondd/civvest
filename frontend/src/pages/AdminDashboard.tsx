@@ -1646,12 +1646,6 @@ const resetEditModal = () => {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600 mb-1">Return Rate</p>
-                    <p className="font-bold text-blue-600">
-                      {investment.investment.returnRate}
-                    </p>
-                  </div>
-                  <div>
                     <p className="text-xs text-gray-600 mb-1">Duration</p>
                     <p className="font-bold text-gray-700">
                       {investment.investment.duration}
@@ -2286,3 +2280,4 @@ const resetEditModal = () => {
 };
 
 export default AdminDashboard;
+
