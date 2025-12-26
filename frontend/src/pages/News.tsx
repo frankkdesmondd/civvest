@@ -98,20 +98,29 @@ const News: React.FC = () => {
 
   // ✅ FIX: Create proper image URL
   const getImageUrl = (imageUrl: string): string => {
-    if (!imageUrl) {
-      return '/default-news-image.jpg';
-    }
-    
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-    
-    if (imageUrl.startsWith('/uploads/')) {
-      return `https://civvest-backend.onrender.com${imageUrl}`;
-    }
-    
-    return `https://civvest-backend.onrender.com${imageUrl}`;
-  };
+  if (!imageUrl || imageUrl.trim() === '') {
+    console.log('No image URL provided');
+    return '/civvest logo.jpg'; // Make sure this file exists in public folder
+  }
+  
+  // Log for debugging
+  console.log('Original imageUrl:', imageUrl);
+  
+  // If it's already a full URL, return it
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+  
+  // For local development or if Cloudinary URL is missing protocol
+  if (imageUrl.startsWith('civvest/news')) {
+    // Extract public ID and construct proper URL
+    const publicId = imageUrl.split('/').slice(-2).join('/');
+    return `https://res.cloudinary.com/${import.meta.env.CLOUDINARY_CLOUD_NAME}/image/upload/${publicId}`;
+  }
+  
+  // Default fallback
+  return '/civvest logo.jpg';
+};
 
   if (loading) {
     return (
@@ -248,4 +257,3 @@ const News: React.FC = () => {
 };
 
 export default News;
-
