@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import Foot from '../components/Foot';
 import { FiCalendar, FiUser, FiArrowLeft } from 'react-icons/fi';
 import axiosInstance from '../config/axios';
+import { HomeUtils } from '../utils/HomeUtils';
 
 interface NewsPost {
   id: string;
@@ -52,10 +53,37 @@ const NewsDetail: React.FC = () => {
     });
   };
 
+  // ✅ FIX: Create proper image URL
+  const getImageUrl = (imageUrl: string): string => {
+    if (!imageUrl || imageUrl.trim() === '') {
+      console.log('No image URL provided');
+      return '/civvest logo.jpg'; // Make sure this file exists in public folder
+    }
+    
+    // Log for debugging
+    console.log('Original imageUrl:', imageUrl);
+    
+    // If it's already a full URL, return it
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+    
+    // For local development or if Cloudinary URL is missing protocol
+    if (imageUrl.startsWith('civvest/news')) {
+      // Extract public ID and construct proper URL
+      const publicId = imageUrl.split('/').slice(-2).join('/');
+      return `https://res.cloudinary.com/${import.meta.env.CLOUDINARY_CLOUD_NAME}/image/upload/${publicId}`;
+    }
+    
+    // Default fallback
+    return '/civvest logo.jpg';
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
+        <img src={HomeUtils[0].companyLogo} alt="" className='w-[8em]'/>
+        <p className='text-white'>Page Loading......</p>
       </div>
     );
   }
@@ -92,15 +120,12 @@ const NewsDetail: React.FC = () => {
 
           {/* Article */}
           <article className="bg-white rounded-xl shadow-lg overflow-hidden">
-            {/* Featured Image */}
+            {/* Featured Image - ✅ FIXED: No fallback */}
             <div className="relative h-96 overflow-hidden">
               <img
-                src={`https://civvest-backend.onrender.com${post.imageUrl}`}
+                src={getImageUrl(post.imageUrl)}
                 alt={post.title}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = 'https://via.placeholder.com/800x400?text=News+Image';
-                }}
               />
               <div className="absolute top-4 left-4">
                 <span className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-full">
@@ -144,12 +169,9 @@ const NewsDetail: React.FC = () => {
                   >
                     <div className="relative h-40 overflow-hidden">
                       <img
-                        src={`https://civvest-backend.onrender.com${related.imageUrl}`}
+                        src={getImageUrl(related.imageUrl)}
                         alt={related.title}
                         className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = 'https://via.placeholder.com/400x200?text=News';
-                        }}
                       />
                     </div>
                     <div className="p-4">
