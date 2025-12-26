@@ -22,13 +22,13 @@ const HeroSection: React.FC = () => {
 
       {/* Content */}
       <div className="flex flex-col relative z-40 text-center text-white items-center px-4 w-full mt-[1em] sm:mt-[2em] lg:mt-[4em]" data-aos="fade-up">
-        <h1 className="hidden lg:flex font-serif text-[3em] sm:text-4xl lg:text-[4.5em] leading-tight mt-[1.8em]">
+        <h1 className="hidden lg:flex font-serif text-[2em] lg:text-[4.5em] leading-tight mt-[1.8em]">
           Strategic
         </h1>
-        <h1 className="hidden lg:flex font-serif text-[3em] sm:text-4xl lg:text-[4.5em] leading-tight">
+        <h1 className="hidden lg:flex font-serif text-[2em] lg:text-[4.5em] leading-tight">
           Oil & Gas Investing
         </h1>
-        <h1 className="flex lg:hidden font-serif text-[2.7em] md:text-[3em] w-auto max-w-[16em] leading-[1.2em] px-[0.2em] mt-[2.8em]">
+        <h1 className="flex lg:hidden font-serif text-[2.4em] md:text-[3em] w-auto max-w-[16em] leading-[1.2em] px-[0.2em] mt-[3.3em]">
           Strategic Oil & Gas Investment
         </h1>
 
