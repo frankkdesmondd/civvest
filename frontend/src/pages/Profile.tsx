@@ -78,9 +78,6 @@ const Profile: React.FC = () => {
     
     // Dispatch event to update all profile picture components
     window.dispatchEvent(new CustomEvent('profilePictureUpdated'));
-    
-    // Show success message
-    showToast('Profile picture updated globally!', 'success');
   };
 
   const fetchProfile = async () => {
@@ -647,6 +644,7 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
 
 
 
