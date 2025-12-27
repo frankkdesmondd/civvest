@@ -72,7 +72,7 @@ const PrivacyPolicy: React.FC = () => {
           <p className='flex flex-wrap'>Effective Date: 11/17/2023</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>1. Introduction</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>1. Introduction</h1>
           <p className='flex flex-wrap'> Welcome to 
           civvest.com, owned and operated by civvest Energy Partners(“we,”
           “us,” or “our”). We value your privacy and are committed to protecting your
@@ -80,7 +80,7 @@ const PrivacyPolicy: React.FC = () => {
           and safeguard your information when you use our website.</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>2. Information We Collect</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>2. Information We Collect</h1>
           <p className='flex flex-wrap'> We may collect the following types of information when you visit civvest.com:</p>
           <p className='flex flex-wrap'>– Log Information: We collect information that your browser sends whenever you
             visit our website. This may include your IP address, browser type, pages visited,
@@ -94,7 +94,7 @@ const PrivacyPolicy: React.FC = () => {
           </p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'> 3. How We Use Your Information</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'> 3. How We Use Your Information</h1>
           <p className='flex flex-wrap'>We use the collected information for various purposes, including:</p>
           <p>– Website Improvement: Analyzing usage patterns and user preferences to
            improve our website’s functionality and content</p>
@@ -108,7 +108,7 @@ const PrivacyPolicy: React.FC = () => {
           </p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>4. Third-Party Disclosure</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>4. Third-Party Disclosure</h1>
           <p className='flex flex-wrap'> We may share your information with third parties under the following circumstances:</p>
           <p>– Service Providers: We may engage third-party service providers to assist us in various aspects of our operations, such as website analytics or communication services.</p>
           <p>
@@ -117,12 +117,12 @@ const PrivacyPolicy: React.FC = () => {
           </p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>5. Your Choices</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>5. Your Choices</h1>
           <p className='flex flex-wrap'>– Cookies: You can usually set your browser to refuse cookies or indicate when a cookie is being sent. However, some features of our website may not function properly without cookies</p>
           <p>– Marketing Communications: You can choose to opt-out of receiving marketing communications from us by following the unsubscribe instructions in the communication.</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>6. Data Security</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>6. Data Security</h1>
           <p className='flex flex-wrap'> We implement reasonable security measures to protect your information from unauthorized access, alteration, disclosure, or destruction. However, no method of data transmission over the internet or electronic storage is completely secure.</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
@@ -130,15 +130,15 @@ const PrivacyPolicy: React.FC = () => {
           <p className='flex flex-wrap'>Our website may contain links to third-party websites. We are not responsible for the privacy practices or content of these websites. We encourage you to read the privacy policies of any linked site.</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>8. Children’s Privacy</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>8. Children’s Privacy</h1>
           <p className='flex flex-wrap'>Our website is not intended for individuals under the age of 13. We do not knowingly collect personal information from children. If you believe we have inadvertently collected such information, please contact us to have it removed.</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>9. Changes to this Privacy Policy</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>9. Changes to this Privacy Policy</h1>
           <p className='flex flex-wrap'> We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. The updated policy will be posted on our website.</p>
         </div>
         <div className='flex flex-col gap-[1em] mb-[4em]'>
-          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>10. Contact Us</h1>
+          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>10. Contact Us</h1>
           <p className='flex flex-wrap'> If you have any questions, concerns, or requests regarding this Privacy Policy, please contact us:</p>
           <p className='flex font-bold text-[#0d2e92]'>Civvest Energy Partners</p>
           <div className=''>
@@ -156,5 +156,6 @@ const PrivacyPolicy: React.FC = () => {
 }
 
 export default PrivacyPolicy
+
 
 
