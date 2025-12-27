@@ -92,7 +92,7 @@ const Footer: React.FC = () => {
 
         <div className="flex gap-4 items-center justify-center lg:justify-start">
           <img src={HomeUtils[0].companyLogo} alt="" className="w-[8em]" />
-          <p className="text-[1.8em] text-white leading-9">Energy Partners</p>
+          <p className="text-[1.4em] lg:text-[1.8em] text-white leading-9">Energy Partners</p>
         </div>
 
         <p className="text-white">
@@ -142,7 +142,10 @@ const Footer: React.FC = () => {
         <div className="w-full bg-blue-300 h-[0.06em]"></div>
 
         {loading ? (
-          <div className="text-gray-400 text-sm">Loading news...</div>
+          <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
+            <img src={HomeUtils[0].companyLogo} alt="" className='w-[8em]'/>
+            <p className='text-white'>Loading News.....</p>
+          </div>
         ) : latestNews.length > 0 ? (
           <div className="flex flex-col gap-4">
             {latestNews.map((article) => (
@@ -193,4 +196,5 @@ const Footer: React.FC = () => {
 };
 
 export default Footer;
+
 
