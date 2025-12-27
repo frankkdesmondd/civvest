@@ -42,6 +42,8 @@ model User {
   wallets         Wallet[]                @relation("UserWallets")
   withdrawals Withdrawal[]   // ← Back relation to Withdrawal.user
 
+  referralsMade  Referral[] @relation("Referrer")
+  referredByUser User?      @relation("Referee", fields: [referredBy], references: [referralCode])
   roiTransactions ROITransaction[]
   approvedWithdrawals Withdrawal[] @relation("WithdrawalApprovals")  // ← Back relation to Withdrawal.approvedBy
 }
