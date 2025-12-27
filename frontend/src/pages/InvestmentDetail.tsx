@@ -6,6 +6,7 @@ import Footer from '../components/Footer';
 import Foot from '../components/Foot';
 import InvestmentImage from '../assets/Investment Image.jpeg';
 import MainBonding from '../assets/main bonding.jpg';
+import { HomeUtils } from '../utils/HomeUtils'
 import { FiDollarSign, FiClock, FiArrowLeft, FiCheckCircle, FiCalendar } from 'react-icons/fi';
 
 interface Investment {
@@ -643,5 +644,6 @@ const ApplicationFormModal: React.FC<{
 };
 
 export default InvestmentDetail;
+
 
 
