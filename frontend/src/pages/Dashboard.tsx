@@ -1,6 +1,7 @@
 // Dashboard.tsx - UPDATED VERSION with network error handling
 import React, { useState, useEffect } from 'react';
 import CivvestLogo from '../assets/civvest company logo.png';
+import ReferralWithdrawalModal from "../components/ReferralWithdrawalModal";
 import {
   FiDollarSign,
   FiTrendingUp,
@@ -74,6 +75,7 @@ const Dashboard: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   const [networkError, setNetworkError] = useState<boolean>(false);
+  const [showReferralWithdrawalModal, setShowReferralWithdrawalModal] = useState(false);
   const [retryCount, setRetryCount] = useState<number>(0);
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -890,18 +892,40 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-xs sm:text-sm">Referral Bonus</p>
-                  <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-800 mt-2">
-                    ${formatNumber(displayUser?.referralBonus || 0)}
-                  </p>
-                </div>
-                <div className="bg-green-100 p-3 rounded-full">
-                  <FiActivity className="text-green-600 text-xl lg:text-2xl" />
-                </div>
-              </div>
-            </div>
+  <div className="flex items-center justify-between">
+    <div>
+      <p className="text-gray-600 text-xs sm:text-sm">Referral Bonus</p>
+      <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-800 mt-2">
+        ${formatNumber(displayUser?.referralBonus || 0)}
+      </p>
+      <div className="flex items-center gap-2 mt-1">
+        <p className="text-xs text-gray-500">
+          Referrals: {displayUser?.referralCount || 0}/10
+        </p>
+        {(displayUser?.referralCount || 0) >= 10 ? (
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+            ✓ Eligible
+          </span>
+        ) : (
+          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+            {10 - (displayUser?.referralCount || 0)} more needed
+          </span>
+        )}
+      </div>
+    </div>
+    <div className="bg-green-100 p-3 rounded-full">
+      <FiActivity className="text-green-600 text-xl lg:text-2xl" />
+    </div>
+  </div>
+  {(displayUser?.referralBonus || 0) > 0 && (displayUser?.referralCount || 0) >= 10 && (
+    <button
+      onClick={() => setShowReferralWithdrawalModal(true)}
+      className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-semibold transition"
+    >
+      Withdraw Bonus
+    </button>
+  )}
+</div>
 
             <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
@@ -1277,6 +1301,20 @@ const Dashboard: React.FC = () => {
               setSelectedInvestment(null);
             }}
             onConfirm={handleConfirmWithdrawal}
+          />
+        )}
+
+        {showReferralWithdrawalModal && displayUser && (
+          <ReferralWithdrawalModal
+            onClose={() => setShowReferralWithdrawalModal(false)}
+            onSuccess={() => {
+              refreshUser();
+              fetchAllData();
+            }}
+            user={{
+              referralBonus: displayUser.referralBonus,
+              referralCount: displayUser.referralCount
+            }}
           />
         )}
       </div>
