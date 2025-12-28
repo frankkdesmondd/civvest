@@ -21,6 +21,7 @@ interface User {
   balance: number;
   roi: number;
   referralBonus: number;
+  referralCount: number;
   createdAt: string;
   _count: { userInvestments: number };
   calculatedData?: {
@@ -180,6 +181,19 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (tab: any) => void; c
           <FiDollarSign className="text-xl" />
           {!collapsed && <span>Deposits</span>}
         </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('referral-withdrawals');
+            isMobile && setCollapsed(true);
+          }}
+          className={`flex items-center gap-3 sm:gap-3 p-2 sm:p-2 hover:bg-gray-700 transition rounded w-full text-left ${
+            activeTab === 'referral-withdrawals' ? 'bg-blue-600 text-white' : 'text-gray-300'
+          }`}
+        >
+          <FiDollarSign className="text-xl" />
+          {!collapsed && <span>Referral Withdrawals</span>}
+        </button>
       </nav>
 
       <div className="px-2 py-4 border-t border-gray-700">
@@ -193,7 +207,7 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (tab: any) => void; c
 };
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'investments' | 'news' | 'withdrawals' | 'deposits'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'investments' | 'news' | 'withdrawals' | 'deposits' | 'referral-withdrawals'>('overview');
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -208,6 +222,13 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [oilPrices, setOilPrices] = useState<any[]>([]);
   const [selectedUserForROI, setSelectedUserForROI] = useState<User | null>(null);
+  const [selectedUserForReferral, setSelectedUserForReferral] = useState<User | null>(null);
+  const [referralBonusAmount, setReferralBonusAmount] = useState('');
+  const [referralCountAmount, setReferralCountAmount] = useState('');
+  const [referralAction, setReferralAction] = useState<'ADD' | 'SET' | 'SUBTRACT'>('ADD');
+  const [referralWithdrawals, setReferralWithdrawals] = useState<any[]>([]);
+  const [showReferralBonusModal, setShowReferralBonusModal] = useState(false);
+  const [showReferralCountModal, setShowReferralCountModal] = useState(false);
   const navigate = useNavigate();
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
@@ -291,11 +312,20 @@ const [editLoading, setEditLoading] = useState(false);
     };
   }, [navigate]);
 
+  const fetchReferralWithdrawals = async () => {
+  try {
+    const res = await axiosInstance.get('/api/referral-withdrawals/admin/referral-requests');
+    setReferralWithdrawals(res.data);
+  } catch (error) {
+    console.error('Failed to fetch referral withdrawals:', error);
+    showToast('Failed to load referral withdrawals', 'error');
+  }
+};
+
   const handleOpenROIModal = async (user: User) => {
   try {
     console.log(`Opening ROI modal for user: ${user.id} - ${user.firstName} ${user.lastName}`);
     
-    // Use the correct endpoint from adminRoutes.js
     const response = await axiosInstance.get(
       `/api/admin/users/${user.id}/investments`,
       {
@@ -317,14 +347,12 @@ const [editLoading, setEditLoading] = useState(false);
       return;
     }
     
-    if (investments.length === 0) {
-      showToast('No active investments found for this user', 'info');
-      return;
-    }
-    
-    // Filter for only ACTIVE investments (user can only have ROI added to active investments)
+    // Filter for only ACTIVE/PENDING investments (user can only have ROI added to active investments)
+    // Also filter out investments with PROCESSED withdrawals
     const activeInvestments = investments.filter(
-      (inv: any) => inv.status === 'ACTIVE'
+      (inv: any) => 
+        (inv.status === 'ACTIVE' || inv.status === 'PENDING') && 
+        inv.withdrawalStatus !== 'PROCESSED'
     );
     
     if (activeInvestments.length === 0) {
@@ -528,7 +556,8 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
       fetchInvestments(), 
       fetchRecentActivities(), 
       fetchDeposits(),
-      fetchWithdrawals()
+      fetchWithdrawals(),
+      fetchReferralWithdrawals()
     ]);
     setLoading(false);
   };
@@ -546,15 +575,18 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
   const handleApproveWithdrawal = async (withdrawalId: string) => {
   openConfirmModal(
     'Approve Withdrawal',
-    'Are you sure you want to approve this withdrawal request?',
+    'Are you sure you want to approve this withdrawal? This will close the investment and update user balance.',
     async () => {
       try {
         const response = await axiosInstance.put(
           `/api/withdrawals/admin/${withdrawalId}/status`,
-          { status: 'APPROVED' }
+          { 
+            status: 'APPROVED',
+            closeInvestment: true // Add this flag to tell backend to close investment
+          }
         );
         
-        showToast('Withdrawal approved!', 'success');
+        showToast('Withdrawal approved! Investment closed.', 'success');
         
         // Update the user's balance in context if they're logged in
         if (response.data.userId && response.data.newBalance) {
@@ -570,10 +602,43 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
               source: 'withdrawal-approval'
             }
           }));
+
+          // Broadcast withdrawal approval notification
+          window.dispatchEvent(new CustomEvent('withdrawalApproved', {
+            detail: {
+              userId: response.data.userId,
+              withdrawalId: withdrawalId,
+              amount: response.data.amount,
+              investmentId: response.data.investmentId,
+              status: 'APPROVED',
+              source: 'admin-approval'
+            }
+          }));
+
+          // Broadcast investment closure
+          window.dispatchEvent(new CustomEvent('investmentClosed', {
+            detail: {
+              userId: response.data.userId,
+              investmentId: response.data.investmentId,
+              withdrawalId: withdrawalId,
+              status: 'COMPLETED',
+              closedAt: new Date().toISOString()
+            }
+          }));
         }
         
+        // Refresh all data
         fetchWithdrawals();
         fetchUsers();
+        fetchInvestments();
+        
+        // Update local state immediately for user investments
+        if (response.data.investmentId) {
+          setUserInvestments(prev => 
+            prev.filter(inv => inv.id !== response.data.investmentId)
+          );
+        }
+        
       } catch (error: any) {
         showToast(error.response?.data?.error || 'Failed to approve withdrawal', 'error');
       }
@@ -600,53 +665,108 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
     }
   };
 
+  const handleUpdateReferralBonus = async () => {
+  if (!selectedUserForReferral || !referralBonusAmount) {
+    showToast('Please enter a valid amount', 'error');
+    return;
+  }
+
+  try {
+    await axiosInstance.put(
+      `/api/admin/users/${selectedUserForReferral.id}/referral-bonus`,
+      { referralBonus: parseFloat(referralBonusAmount), action: referralAction }
+    );
+    
+    showToast('Referral bonus updated successfully', 'success');
+    setShowReferralBonusModal(false);
+    setSelectedUserForReferral(null);
+    setReferralBonusAmount('');
+    fetchUsers();
+  } catch (error: any) {
+    showToast(error.response?.data?.error || 'Failed to update referral bonus', 'error');
+  }
+};
+
+const handleUpdateReferralCount = async () => {
+  if (!selectedUserForReferral || !referralCountAmount) {
+    showToast('Please enter a valid count', 'error');
+    return;
+  }
+
+  try {
+    await axiosInstance.put(
+      `/api/admin/users/${selectedUserForReferral.id}/referral-count`,
+      { referralCount: parseInt(referralCountAmount), action: referralAction }
+    );
+    
+    showToast('Referral count updated successfully', 'success');
+    setShowReferralCountModal(false);
+    setSelectedUserForReferral(null);
+    setReferralCountAmount('');
+    fetchUsers();
+  } catch (error: any) {
+    showToast(error.response?.data?.error || 'Failed to update referral count', 'error');
+  }
+};
+
+const handleAddReferral = async (userId: string) => {
+  const bonusAmount = prompt('Enter referral bonus amount:');
+  if (!bonusAmount) return;
+
+  try {
+    await axiosInstance.post(`/api/admin/users/${userId}/add-referral`, {
+      bonusAmount: parseFloat(bonusAmount)
+    });
+    
+    showToast('Referral added successfully (count +1, bonus added)', 'success');
+    fetchUsers();
+  } catch (error: any) {
+    showToast(error.response?.data?.error || 'Failed to add referral', 'error');
+  }
+};
+
+const handleApproveReferralWithdrawal = async (withdrawalId: string) => {
+  openConfirmModal(
+    'Approve Referral Withdrawal',
+    'Are you sure you want to approve this referral bonus withdrawal?',
+    async () => {
+      try {
+        await axiosInstance.put(
+          `/api/referral-withdrawals/admin/referral/${withdrawalId}/status`,
+          { status: 'APPROVED' }
+        );
+        showToast('Referral withdrawal approved!', 'success');
+        fetchReferralWithdrawals();
+      } catch (error: any) {
+        showToast(error.response?.data?.error || 'Failed to approve withdrawal', 'error');
+      }
+    },
+    'info',
+    'Approve',
+    'Cancel'
+  );
+};
+
+const handleRejectReferralWithdrawal = async (withdrawalId: string) => {
+  const reason = prompt('Enter rejection reason:');
+  if (!reason) return;
+
+  try {
+    await axiosInstance.put(
+      `/api/referral-withdrawals/admin/referral/${withdrawalId}/status`,
+      { status: 'REJECTED', adminNotes: reason }
+    );
+    showToast('Referral withdrawal rejected and amount refunded', 'success');
+    fetchReferralWithdrawals();
+  } catch (error: any) {
+    showToast(error.response?.data?.error || 'Failed to reject withdrawal', 'error');
+  }
+};
+
   const openRejectModal = (withdrawalId: string) => {
     setSelectedWithdrawalForRejection(withdrawalId);
     setShowRejectModal(true);
   };
-
-//   const handleUpdateROI = async () => {
-//   if (!selectedUserForROI || !roiAmount) {
-//     showToast('Please enter a valid ROI amount', "error");
-//     return;
-//   }
-
-//   try {
-//     const response = await axiosInstance.put(
-//       `/api/admin/users/${selectedUserForROI.id}/roi`, 
-//       { roi: parseFloat(roiAmount) }
-//     );
-    
-//     showToast('ROI updated successfully', "success");
-    
-//     // Update the user's context if they're currently logged in
-//     updateUserById(selectedUserForROI.id, { 
-//       roi: response.data.updatedRoi || parseFloat(roiAmount) 
-//     });
-    
-//     // Broadcast ROI update event
-//     window.dispatchEvent(new CustomEvent('roiUpdated', {
-//       detail: {
-//         userId: selectedUserForROI.id,
-//         newROI: response.data.updatedRoi || parseFloat(roiAmount),
-//         source: 'admin-dashboard'
-//       }
-//     }));
-    
-//     // Clear modal state
-//     setSelectedUserForROI(null);
-//     setRoiAmount('');
-    
-//     // Refresh users list to show updated ROI
-//     await fetchUsers();
-    
-//     // Also refresh stats if needed
-//     await fetchStats();
-//   } catch (error: any) {
-//     console.error('Update ROI error:', error);
-//     showToast("ROI failed to update", "error");
-//   }
-// };
 
   const generateOilPriceData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
@@ -776,22 +896,28 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
           
           if (Array.isArray(investmentsRes.data)) {
             // Filter for ACTIVE investments only (ROI is only relevant for active investments)
+            // IMPORTANT: Exclude COMPLETED/CLOSED investments
             const activeInvestmentsArray = investmentsRes.data.filter(
-              (inv: any) => inv.status === 'ACTIVE'
+              (inv: any) => inv.status === 'ACTIVE' || inv.status === 'PENDING'
             );
             
-            activeInvestments = activeInvestmentsArray.length;
+            // Filter out investments with PROCESSED withdrawals
+            const nonProcessedInvestments = activeInvestmentsArray.filter(
+              (inv: any) => inv.withdrawalStatus !== 'PROCESSED'
+            );
             
-            // Calculate totals from active investments
-            totalROI = activeInvestmentsArray.reduce((sum: number, inv: any) => {
+            activeInvestments = nonProcessedInvestments.length;
+            
+            // Calculate totals from active investments only
+            totalROI = nonProcessedInvestments.reduce((sum: number, inv: any) => {
               return sum + (inv.roiAmount || 0);
             }, 0);
             
-            totalInvested = activeInvestmentsArray.reduce((sum: number, inv: any) => {
+            totalInvested = nonProcessedInvestments.reduce((sum: number, inv: any) => {
               return sum + (inv.amount || 0);
             }, 0);
             
-            totalRoiAdded = activeInvestmentsArray.reduce((sum: number, inv: any) => {
+            totalRoiAdded = nonProcessedInvestments.reduce((sum: number, inv: any) => {
               return sum + (inv.totalRoiAdded || 0);
             }, 0);
           }
@@ -803,8 +929,9 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
             lastName: user.lastName || '',
             accountNumber: user.accountNumber || '',
             balance: user.balance || 0,
-            roi: totalROI, // Use calculated ROI from investments
+            roi: totalROI, // Use calculated ROI from active investments only
             referralBonus: user.referralBonus || 0,
+            referralCount: user.referralCount || 0, // ADD THIS LINE - include referralCount from user data
             createdAt: user.createdAt || new Date().toISOString(),
             _count: {
               userInvestments: activeInvestments // Count only active investments
@@ -828,6 +955,7 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
             balance: user.balance || 0,
             roi: user.roi || 0, // Fallback to existing ROI field
             referralBonus: user.referralBonus || 0,
+            referralCount: user.referralCount || 0, // ADD THIS LINE HERE TOO
             createdAt: user.createdAt || new Date().toISOString(),
             _count: {
               userInvestments: user._count?.userInvestments || 0
@@ -1476,12 +1604,40 @@ const resetEditModal = () => {
                                 <FiEdit className="inline mr-1" /> Balance
                               </button>
                              
-<button 
-  onClick={() => handleOpenROIModal(user)} 
-  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
->
-  <FiEdit className="inline mr-1" /> ROI
-</button>
+                              <button 
+                                onClick={() => handleOpenROIModal(user)} 
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
+                              >
+                                <FiEdit className="inline mr-1" /> ROI
+                              </button>
+
+                              <button 
+                                onClick={() => {
+                                  setSelectedUserForReferral(user);
+                                  setShowReferralBonusModal(true);
+                                }} 
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
+                              >
+                                <FiEdit className="inline mr-1" /> Referral $
+                              </button>
+
+                              <button 
+                                onClick={() => {
+                                  setSelectedUserForReferral(user);
+                                  setShowReferralCountModal(true);
+                                }} 
+                                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
+                              >
+                                <FiEdit className="inline mr-1" /> Ref Count
+                              </button>
+                              
+                              <button 
+                                onClick={() => handleAddReferral(user.id)} 
+                                className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
+                              >
+                                <FiPlus className="inline mr-1" /> Add Ref
+                              </button>
+                              
                               <button 
                                 onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)} 
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
@@ -1646,6 +1802,12 @@ const resetEditModal = () => {
                     </p>
                   </div>
                   <div>
+                    <p className="text-xs text-gray-600 mb-1">Return Rate</p>
+                    <p className="font-bold text-blue-600">
+                      {investment.investment.returnRate}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-xs text-gray-600 mb-1">Duration</p>
                     <p className="font-bold text-gray-700">
                       {investment.investment.duration}
@@ -1715,6 +1877,112 @@ const resetEditModal = () => {
 )}
               </div>
             )}
+
+            {showReferralBonusModal && selectedUserForReferral && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full">
+      <h2 className="text-xl md:text-2xl font-bold mb-4">Edit Referral Bonus</h2>
+      <p className="mb-2 text-sm md:text-base">
+        User: <span className="font-semibold">
+          {selectedUserForReferral.firstName} {selectedUserForReferral.lastName}
+        </span>
+      </p>
+      <p className="mb-6 text-sm md:text-base">
+        Current: <span className="font-bold text-green-600">
+          ${selectedUserForReferral.referralBonus.toFixed(2)}
+        </span>
+      </p>
+      <select 
+        value={referralAction} 
+        onChange={(e) => setReferralAction(e.target.value as any)} 
+        className="w-full px-4 py-3 border rounded-lg mb-4 text-sm md:text-base"
+      >
+        <option value="ADD">Add</option>
+        <option value="SUBTRACT">Subtract</option>
+        <option value="SET">Set</option>
+      </select>
+      <input 
+        type="number" 
+        step="0.01"
+        value={referralBonusAmount} 
+        onChange={(e) => setReferralBonusAmount(e.target.value)} 
+        placeholder="Amount" 
+        className="w-full px-4 py-3 border rounded-lg mb-6 text-sm md:text-base" 
+      />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <button 
+          onClick={handleUpdateReferralBonus} 
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg text-sm md:text-base"
+        >
+          Update
+        </button>
+        <button 
+          onClick={() => { 
+            setShowReferralBonusModal(false); 
+            setSelectedUserForReferral(null);
+            setReferralBonusAmount(''); 
+          }} 
+          className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded-lg text-sm md:text-base"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{showReferralCountModal && selectedUserForReferral && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full">
+      <h2 className="text-xl md:text-2xl font-bold mb-4">Edit Referral Count</h2>
+      <p className="mb-2 text-sm md:text-base">
+        User: <span className="font-semibold">
+          {selectedUserForReferral.firstName} {selectedUserForReferral.lastName}
+        </span>
+      </p>
+      <p className="mb-6 text-sm md:text-base">
+        Current: <span className="font-bold text-blue-600">
+          {selectedUserForReferral.referralCount} referrals
+        </span>
+      </p>
+      <select 
+        value={referralAction} 
+        onChange={(e) => setReferralAction(e.target.value as any)} 
+        className="w-full px-4 py-3 border rounded-lg mb-4 text-sm md:text-base"
+      >
+        <option value="ADD">Add</option>
+        <option value="SUBTRACT">Subtract</option>
+        <option value="SET">Set</option>
+      </select>
+      <input 
+        type="number" 
+        step="1"
+        value={referralCountAmount} 
+        onChange={(e) => setReferralCountAmount(e.target.value)} 
+        placeholder="Count" 
+        className="w-full px-4 py-3 border rounded-lg mb-6 text-sm md:text-base" 
+      />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <button 
+          onClick={handleUpdateReferralCount} 
+          className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg text-sm md:text-base"
+        >
+          Update
+        </button>
+        <button 
+          onClick={() => { 
+            setShowReferralCountModal(false); 
+            setSelectedUserForReferral(null);
+            setReferralCountAmount(''); 
+          }} 
+          className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded-lg text-sm md:text-base"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
             {/* Withdrawals Section */}
             {activeTab === 'withdrawals' && (
@@ -1933,6 +2201,151 @@ const resetEditModal = () => {
                 </div>
               </div>
             )}
+
+            {activeTab === 'referral-withdrawals' && (
+  <div className="space-y-6">
+    <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
+      <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-6">
+        Referral Bonus Withdrawal Requests
+      </h2>
+      
+      {referralWithdrawals.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <p className="text-base md:text-lg">No referral withdrawal requests yet</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px]">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">User</th>
+                <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Referrals</th>
+                <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Amount</th>
+                <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Type</th>
+                <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Date</th>
+                <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Status</th>
+                <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {referralWithdrawals.map((withdrawal) => (
+                <tr key={withdrawal.id} className="border-b hover:bg-gray-50 transition">
+                  <td className="py-4 px-4">
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm md:text-base">
+                        {withdrawal.user.firstName} {withdrawal.user.lastName}
+                      </p>
+                      <p className="text-xs md:text-sm text-gray-600">{withdrawal.user.email}</p>
+                      <p className="text-xs text-gray-500">Acc: {withdrawal.user.accountNumber}</p>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
+                      {withdrawal.user.referralCount} referrals
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <p className="font-bold text-green-600 text-sm md:text-lg">
+                      ${withdrawal.amount.toFixed(2)}
+                    </p>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
+                      withdrawal.type === 'BANK_TRANSFER' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {withdrawal.type === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Crypto Wallet'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="whitespace-nowrap">
+                      <p className="text-xs md:text-sm text-gray-600">
+                        {new Date(withdrawal.createdAt).toLocaleDateString()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(withdrawal.createdAt).toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
+                      withdrawal.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                      withdrawal.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      withdrawal.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {withdrawal.status}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    {withdrawal.status === 'PENDING' ? (
+                      <div className="flex flex-col xs:flex-row gap-2">
+                        <button
+                          onClick={() => handleApproveReferralWithdrawal(withdrawal.id)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleRejectReferralWithdrawal(withdrawal.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-gray-500 text-xs md:text-sm">
+                        {withdrawal.status === 'APPROVED' ? 'Approved' : 'Rejected'}
+                        {withdrawal.approvedBy && 
+                          ` by ${withdrawal.approvedBy.firstName} ${withdrawal.approvedBy.lastName}`}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+
+    {/* Stats Cards */}
+    <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+        <p className="text-gray-600 text-xs md:text-sm mb-2">Total Requests</p>
+        <p className="text-2xl md:text-3xl font-bold text-gray-800">
+          {referralWithdrawals.length}
+        </p>
+      </div>
+      <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+        <p className="text-gray-600 text-xs md:text-sm mb-2">Pending</p>
+        <p className="text-2xl md:text-3xl font-bold text-yellow-600">
+          {referralWithdrawals.filter(w => w.status === 'PENDING').length}
+        </p>
+      </div>
+      <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+        <p className="text-gray-600 text-xs md:text-sm mb-2">Approved</p>
+        <p className="text-2xl md:text-3xl font-bold text-green-600">
+          {referralWithdrawals.filter(w => w.status === 'APPROVED').length}
+        </p>
+      </div>
+      <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+        <p className="text-gray-600 text-xs md:text-sm mb-2">Total Amount</p>
+        <p className="text-2xl md:text-3xl font-bold text-blue-600">
+          ${referralWithdrawals
+            .filter(w => w.status === 'APPROVED')
+            .reduce((sum, w) => sum + w.amount, 0)
+            .toFixed(2)}
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+
 
             {/* Deposits Section */}
             {activeTab === 'deposits' && (
@@ -2280,4 +2693,3 @@ const resetEditModal = () => {
 };
 
 export default AdminDashboard;
-
