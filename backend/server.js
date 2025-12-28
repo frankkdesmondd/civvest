@@ -23,6 +23,7 @@ import { authenticateToken } from './middleware/authMiddleware.js';
 import withdrawalRoutes from './routes/withdrawalRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
 import profilePictureRoutes from './routes/profilePictureRoutes.js';
+import referralWithdrawalRoutes from './routes/referralWithdrawalRoutes.js';
 
 dotenv.config()
 
@@ -88,6 +89,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use("/api/oil", oilRoutes);
 app.use('/api/profile-picture', profilePictureRoutes);
+app.use('/api/referral-withdrawals', referralWithdrawalRoutes);
 
 // FIXED: Use authenticateToken instead of isAuthenticated
 app.use('/api/user-investments', authenticateToken, userInvestmentRoutes);
