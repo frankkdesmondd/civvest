@@ -44,6 +44,8 @@ model User {
   wallets             Wallet[]                @relation("UserWallets")
   approvedWithdrawals Withdrawal[]            @relation("WithdrawalApprovals")
   withdrawals         Withdrawal[]
+  referralWithdrawals ReferralWithdrawal[]    @relation("UserReferralWithdrawals")
+  approvedReferralWithdrawals ReferralWithdrawal[] @relation("ReferralWithdrawalApprover")
 }
 
 model Wallet {
@@ -58,7 +60,7 @@ model Wallet {
 model ReferralWithdrawal {
   id            String   @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation("UserReferralWithdrawals", fields: [userId], references: [id])
   amount        Float
   type          String   // 'BANK_TRANSFER' or 'CRYPTO_WALLET'
   status        String   @default("PENDING") // 'PENDING', 'APPROVED', 'REJECTED', 'PROCESSED'
