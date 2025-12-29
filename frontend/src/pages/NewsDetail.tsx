@@ -136,7 +136,7 @@ const NewsDetail: React.FC = () => {
 
             {/* Content */}
             <div className="p-8">
-              <h1 className="text-4xl font-bold text-gray-800 mb-4">{post.title}</h1>
+              <h1 className="text-[1.5em] lg:text-4xl font-bold text-gray-800 mb-4">{post.title}</h1>
               
               <div className="flex items-center gap-6 text-gray-600 mb-6 pb-6 border-b">
                 <div className="flex items-center gap-2">
@@ -200,3 +200,4 @@ const NewsDetail: React.FC = () => {
 };
 
 export default NewsDetail;
+
