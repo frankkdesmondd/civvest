@@ -34,8 +34,6 @@ model User {
   roi                 Float                   @default(0)
   routingCode         String?
   state               String?
-  
-  // Existing relations
   deposits            Deposit[]               @relation("UserDeposits")
   applications        InvestmentApplication[] @relation("UserApplications")
   messages            Message[]               @relation("SentMessages")
@@ -46,10 +44,6 @@ model User {
   wallets             Wallet[]                @relation("UserWallets")
   approvedWithdrawals Withdrawal[]            @relation("WithdrawalApprovals")
   withdrawals         Withdrawal[]
-  
-  // ADD THESE TWO LINES for ReferralWithdrawal relations:
-  referralWithdrawals          ReferralWithdrawal[] @relation("ReferralWithdrawalUser")
-  approvedReferralWithdrawals  ReferralWithdrawal[] @relation("ReferralWithdrawalApprover")
 }
 
 model Wallet {
@@ -64,8 +58,7 @@ model Wallet {
 model ReferralWithdrawal {
   id            String   @id @default(cuid())
   userId        String
-  // Add relation name here:
-  user          User     @relation("ReferralWithdrawalUser", fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
   amount        Float
   type          String   // 'BANK_TRANSFER' or 'CRYPTO_WALLET'
   status        String   @default("PENDING") // 'PENDING', 'APPROVED', 'REJECTED', 'PROCESSED'
@@ -82,7 +75,6 @@ model ReferralWithdrawal {
   
   adminNotes    String?
   approvedById  String?
-  // This already has a relation name:
   approvedBy    User?    @relation("ReferralWithdrawalApprover", fields: [approvedById], references: [id])
   approvedAt    DateTime?
   
@@ -114,8 +106,6 @@ model Investment {
   minAmount       Float
   targetAmount    Float
   currentAmount   Float                   @default(0)
-  returnRate      String
-  duration        String
   category        String
   featured        Boolean                 @default(false)
   status          InvestmentStatus        @default(ACTIVE)
@@ -166,7 +156,6 @@ model UserInvestment {
   amount          Float
   returnAmount    Float
   startDate       DateTime?
-  endDate         DateTime?
   status          String           @default("PENDING")
   createdAt       DateTime         @default(now())
   depositId       String?
