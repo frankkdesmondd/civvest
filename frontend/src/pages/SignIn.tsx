@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import ReCAPTCHA from 'react-google-recaptcha';
+// import ReCAPTCHA from 'react-google-recaptcha';
 import { HomeUtils } from '../utils/HomeUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FiEye, FiEyeOff } from 'react-icons/fi'; // import eye icons
 
 const SignIn: React.FC = () => {
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false); // new state
@@ -14,21 +14,21 @@ const SignIn: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+  // const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
-  const handleCaptchaChange = (token: string | null) => {
-    setCaptchaToken(token);
-  };
+  // const handleCaptchaChange = (token: string | null) => {
+  //   setCaptchaToken(token);
+  // };
 
   const handleLogin = async () => {
     setError('');
 
-    console.log('Login attempt:', { email, password: '***', captchaToken: !!captchaToken });
+    // console.log('Login attempt:', { email, password: '***', captchaToken: !!captchaToken });
 
-    if (!captchaToken) {
-      setError("Please verify that you're not a robot.");
-      return;
-    }
+    // if (!captchaToken) {
+    //   setError("Please verify that you're not a robot.");
+    //   return;
+    // }
 
     setLoading(true);
 
@@ -37,7 +37,7 @@ const SignIn: React.FC = () => {
       const response = await axios.post('https://civvest-backend.onrender.com/api/auth/signin', {
         email,
         password,
-        captchaToken
+        // captchaToken
       }, { withCredentials: true });
 
       console.log('Login response:', response.data);
@@ -104,9 +104,9 @@ const SignIn: React.FC = () => {
             </button>
           </div>
 
-          <div className="my-4">
+          {/* <div className="my-4">
             <ReCAPTCHA sitekey={siteKey} onChange={handleCaptchaChange} theme="dark" />
-          </div>
+          </div> */}
 
           <button
             onClick={handleLogin}
@@ -141,6 +141,7 @@ const SignIn: React.FC = () => {
 };
 
 export default SignIn;
+
 
 
 
