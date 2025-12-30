@@ -27,18 +27,20 @@ const PrincipledApproach: React.FC = () => {
   return (
     <div className="relative w-full min-h-screen overflow-x-hidden">
       <Navbar/>
+      {/* h-[calc(100vw-55vw)] */}
+      {/* h-[70vh] */}
 
       {/* Hero Section */}
-      <div className="relative w-full h-[60vh] lg:h-[70vh]" data-aos="fade-up">
+      <div className="relative w-full h-[59vh] md:h-[40vh] lg:h-[40vw] min-[1034px]:h-[70vh] xl:h-[70vh]" data-aos="fade-up">
         <img
           src={PrincipalApproach}
           alt="Company View"
           className="w-full h-full object-cover object-[center_30%]"
         />
 
-        <div className="absolute bottom-0 left-0 w-full h-40 bg-linear-to-t from-[#041a35] via-[#041a35]/80 to-transparent"></div>
+        <div className="absolute bottom-0 left-0 w-full h-45 md:h-58 lg:h-64 bg-linear-to-t from-[#041a35] via-[#041a35]/90 to-transparent"></div>
 
-        <p className="absolute top-[5em] lg:top-[3.5em] left-1/2 -translate-x-1/2 -translate-y-1/2 text-[3em] lg:text-[5em] text-white text-center font-serif w-[10em] lg:w-[40em] leading-[1.3em] mt-[0.8em] lg:mt-0">
+        <p className="absolute top-[33vh] md:top-[5em] lg:top-[3.6em] xl:top-[4em] left-1/2 -translate-x-1/2 -translate-y-1/2 text-[3em] lg:text-[5em] text-white text-center font-serif w-[10em] md:w-[20em] lg:w-[40em] leading-[1.3em] mt-[0.8em] lg:mt-0">
           Investing Fundamentals
         </p>
       </div>
