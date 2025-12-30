@@ -947,6 +947,178 @@ router.get('/debug/:userId/investments', authenticateToken, isAdmin, (req, res) 
   });
 });
 
+// Add these routes to your adminRoutes.js file
+
+// Update user referral bonus (Admin only)
+router.put('/users/:id/referral-bonus', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { referralBonus, action } = req.body; // action: 'SET', 'ADD', 'SUBTRACT'
+    const userId = req.params.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let newBonus;
+    let message;
+
+    switch (action) {
+      case 'SET':
+        newBonus = parseFloat(referralBonus);
+        message = `Your referral bonus has been updated to $${newBonus.toFixed(2)}`;
+        break;
+      case 'ADD':
+        newBonus = user.referralBonus + parseFloat(referralBonus);
+        message = `$${parseFloat(referralBonus).toFixed(2)} has been added to your referral bonus`;
+        break;
+      case 'SUBTRACT':
+        newBonus = user.referralBonus - parseFloat(referralBonus);
+        message = `$${parseFloat(referralBonus).toFixed(2)} has been deducted from your referral bonus`;
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    // Update user referral bonus
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { referralBonus: newBonus }
+    });
+
+    // Create notification for user
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: 'Referral Bonus Update',
+        message,
+        type: 'ACCOUNT'
+      }
+    });
+
+    res.json({
+      message: 'Referral bonus updated successfully',
+      updatedReferralBonus: updatedUser.referralBonus
+    });
+  } catch (error) {
+    console.error('Update referral bonus error:', error);
+    res.status(500).json({ error: 'Failed to update referral bonus' });
+  }
+});
+
+// Update user referral count (Admin only)
+router.put('/users/:id/referral-count', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { referralCount, action } = req.body; // action: 'SET', 'ADD', 'SUBTRACT'
+    const userId = req.params.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let newCount;
+    let message;
+
+    switch (action) {
+      case 'SET':
+        newCount = parseInt(referralCount);
+        message = `Your referral count has been updated to ${newCount}`;
+        break;
+      case 'ADD':
+        newCount = user.referralCount + parseInt(referralCount);
+        message = `${parseInt(referralCount)} referral(s) have been added to your account`;
+        break;
+      case 'SUBTRACT':
+        newCount = Math.max(0, user.referralCount - parseInt(referralCount));
+        message = `${parseInt(referralCount)} referral(s) have been removed from your account`;
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    // Update user referral count
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { referralCount: newCount }
+    });
+
+    // Create notification for user
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: 'Referral Count Update',
+        message,
+        type: 'ACCOUNT'
+      }
+    });
+
+    res.json({
+      message: 'Referral count updated successfully',
+      updatedReferralCount: updatedUser.referralCount
+    });
+  } catch (error) {
+    console.error('Update referral count error:', error);
+    res.status(500).json({ error: 'Failed to update referral count' });
+  }
+});
+
+// Add referral bonus and increment count in one operation (Admin only)
+router.post('/users/:id/add-referral', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    const { bonusAmount } = req.body;
+    const userId = req.params.id;
+
+    if (!bonusAmount || bonusAmount <= 0) {
+      return res.status(400).json({ error: 'Valid bonus amount required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update both referral count and bonus
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        referralCount: {
+          increment: 1
+        },
+        referralBonus: {
+          increment: parseFloat(bonusAmount)
+        }
+      }
+    });
+
+    // Create notification
+    await prisma.notification.create({
+      data: {
+        userId,
+        title: 'New Referral Added',
+        message: `Congratulations! A new referral has been added. You received $${parseFloat(bonusAmount).toFixed(2)} bonus. Total referrals: ${updatedUser.referralCount}`,
+        type: 'ACCOUNT'
+      }
+    });
+
+    res.json({
+      message: 'Referral added successfully',
+      updatedReferralCount: updatedUser.referralCount,
+      updatedReferralBonus: updatedUser.referralBonus
+    });
+  } catch (error) {
+    console.error('Add referral error:', error);
+    res.status(500).json({ error: 'Failed to add referral' });
+  }
+});
 
 export default router;
-

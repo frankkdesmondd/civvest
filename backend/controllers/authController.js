@@ -3,7 +3,6 @@ import crypto from "crypto"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { sendPasswordResetEmail } from "../services/emailService.js"
-import { verifyRecaptcha } from "../utils/recaptcha.js"
 import { sendWelcomeEmail } from '../services/emailService.js';
 
 // Generate unique 7-digit account number
@@ -170,13 +169,7 @@ export const resetPassword = async (req, res) => {
 // SIGN UP
 export const SignUp = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, captchaToken, referralCode } = req.body;
-
-    // Verify reCAPTCHA
-    const isValidCaptcha = await verifyRecaptcha(captchaToken);
-    if (!isValidCaptcha) {
-      return res.status(400).json({ error: 'reCAPTCHA verification failed' });
-    }
+    const { email, password, firstName, lastName, referralCode } = req.body;
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -302,13 +295,7 @@ export const SignUp = async (req, res) => {
 // SIGN IN
 export const SignIn = async (req, res) => {
   try {
-    const { email, password, captchaToken } = req.body;
-
-    // Verify reCAPTCHA using utility function
-    const isValidCaptcha = await verifyRecaptcha(captchaToken);
-    if (!isValidCaptcha) {
-      return res.status(400).json({ error: 'reCAPTCHA verification failed' });
-    }
+    const { email, password } = req.body;
 
     // Find user
     const user = await prisma.user.findUnique({ where: { email } });
@@ -421,8 +408,8 @@ export const getMe = async (req, res) => {
         profilePicture: true,
         accountNumber: true,
         balance: true,
-        roi: true,              // Make sure this is included
-        referralBonus: true,    // Make sure this is included
+        roi: true,
+        referralBonus: true,
         createdAt: true
       }
     });
@@ -437,3 +424,52 @@ export const getMe = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user data' });
   }
 };
+
+export const GetStats = async(req, res) =>{
+  try {
+    const userId = req.user.id;
+    
+    // Get user's total referral count
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        referralCount: true,
+        referralBonus: true,
+        referralCode: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get recent referrals (users referred by this user)
+    const recentReferrals = await prisma.user.findMany({
+      where: {
+        referredBy: user.referralCode
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    });
+
+    res.json({
+      totalReferrals: user.referralCount || 0,
+      totalBonus: user.referralBonus || 0,
+      recentReferrals,
+      referralCode: user.referralCode,
+      canWithdraw: user.referralCount >= 10 && user.referralBonus > 0,
+      referralsNeeded: Math.max(0, 10 - user.referralCount)
+    });
+  } catch (error) {
+    console.error('Get referral stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch referral stats' });
+  }
+}

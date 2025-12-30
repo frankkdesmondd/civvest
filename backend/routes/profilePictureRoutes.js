@@ -1,49 +1,19 @@
+// routes/profilePicture.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { profileStorage, cloudinary } from '../config/cloudinary.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // Configure multer for profile picture upload
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/profile-pictures');
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const userId = req.user.userId;
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `profile-${userId}-${uniqueSuffix}${ext}`);
-  }
-});
 
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
-    }
-  }
-});
+const upload = multer({ storage: profileStorage });
+
 
 // Upload profile picture
 router.post('/upload', authenticateToken, upload.single('profilePicture'), async (req, res) => {
@@ -60,19 +30,13 @@ router.post('/upload', authenticateToken, upload.single('profilePicture'), async
     });
 
     // Delete old profile picture if exists
-    if (user.profilePicture) {
-      // Extract filename from URL and create absolute path
-      const filename = path.basename(user.profilePicture);
-      const oldImagePath = path.join(__dirname, '../uploads/profile-pictures', filename);
-      
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-        console.log('Deleted old profile picture:', oldImagePath);
-      }
+    if (user.profilePicture && user.profilePicture.includes('cloudinary')) {
+        const publicId = user.profilePicture.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(`civvest/profile-pictures/${publicId}`);
     }
 
     // Update user with new profile picture path
-    const profilePictureUrl = `/uploads/profile-pictures/${req.file.filename}`;
+    const profilePictureUrl = req.file.path;
     
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -113,22 +77,10 @@ router.post('/upload', authenticateToken, upload.single('profilePicture'), async
 
   } catch (error) {
     console.error('Profile picture upload error:', error);
-    
-    // Clean up uploaded file if there was an error
-    if (req.file && req.file.path) {
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-    }
-    
-    res.status(500).json({ 
-      error: 'Failed to upload profile picture',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
   }
 });
 
-// Remove profile picture
+// Remove profile picture - MAKE SURE THIS EXISTS
 router.delete('/remove', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -144,9 +96,7 @@ router.delete('/remove', authenticateToken, async (req, res) => {
 
     // Delete the file if exists
     if (user.profilePicture) {
-      const filename = path.basename(user.profilePicture);
-      const imagePath = path.join(__dirname, '../uploads/profile-pictures', filename);
-      
+      const imagePath = user.profilePicture.replace('/uploads', 'uploads');
       if (fs.existsSync(imagePath)) {
         try {
           fs.unlinkSync(imagePath);

@@ -78,9 +78,6 @@ const Profile: React.FC = () => {
     
     // Dispatch event to update all profile picture components
     window.dispatchEvent(new CustomEvent('profilePictureUpdated'));
-    
-    // Show success message
-    showToast('Profile picture updated globally!', 'success');
   };
 
   const fetchProfile = async () => {
@@ -315,14 +312,14 @@ const Profile: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-1">Cannot be changed</p>
                 </div>
 
-                <div>
+                {/* <div>
                   <label className="block text-gray-600 text-sm mb-2">Member Since</label>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                     <span className="text-gray-800">
                       {new Date(profile.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                </div>
+                </div> */}
               </div>
 
               {/* Editable Fields */}
@@ -647,6 +644,8 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
+
+
 
 
 

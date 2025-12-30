@@ -1,6 +1,7 @@
-// Dashboard.tsx - Complete fixed version
+// Dashboard.tsx - UPDATED VERSION with network error handling
 import React, { useState, useEffect } from 'react';
 import CivvestLogo from '../assets/civvest company logo.png';
+import ReferralWithdrawalModal from "../components/ReferralWithdrawalModal";
 import {
   FiDollarSign,
   FiTrendingUp,
@@ -12,6 +13,10 @@ import {
   FiUser,
   FiX,
   FiPackage,
+  FiChevronLeft,
+  FiChevronRight,
+  FiWifiOff,
+  FiRefreshCw,
 } from "react-icons/fi";
 import axiosInstance from "../config/axios";
 import {
@@ -28,18 +33,19 @@ import OilChart from "../components/OilChart";
 import { HomeUtils } from "../utils/HomeUtils";
 import { useToast } from '../context/ToastContext';
 import WithdrawalModal from "../components/WithdrawalModal";
-import { useUser } from "../context/UserContext";
+import { useUser } from "../context/UserContext"
 import ProfilePicture from "../components/ProfilePicture";
 
 interface Investment {
   id: string;
   amount: number;
   returnAmount: number;
-  roiAmount: number; // Make optional
-  totalRoiAdded: number; // Make optional
+  roiAmount: number;
+  totalRoiAdded: number;
   startDate: string | null;
   endDate: string | null;
   status: string;
+  withdrawalStatus?: string;
   daysRemaining?: number | null;
   progress?: number;
   isMatured?: boolean;
@@ -65,24 +71,49 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [networkError, setNetworkError] = useState<boolean>(false);
+  const [showReferralWithdrawalModal, setShowReferralWithdrawalModal] = useState(false);
+  const [retryCount, setRetryCount] = useState<number>(0);
   const { showToast } = useToast();
   const navigate = useNavigate();
 
+  // Cache user data from localStorage to prevent UI disruption
+  const [cachedUser, setCachedUser] = useState<any>(null);
+  const [cachedInvestments, setCachedInvestments] = useState<Investment[]>([]);
+
   useEffect(() => {
+    // Load cached data first
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setCachedUser(parsedUser);
+    }
+
+    // Load cached investments if available
+    const cachedInv = localStorage.getItem("cachedInvestments");
+    if (cachedInv) {
+      try {
+        setCachedInvestments(JSON.parse(cachedInv));
+      } catch (e) {
+        console.error("Failed to parse cached investments:", e);
+      }
+    }
+
     const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
+      const mobile = window.innerWidth < 1024;
       setIsMobile(mobile);
       if (mobile) {
         setSidebarOpen(false);
+        setSidebarCollapsed(false);
       }
     };
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
     
-    const storedUser = localStorage.getItem("user");
     if (!storedUser) {
       navigate("/signin");
       return;
@@ -96,11 +127,13 @@ const Dashboard: React.FC = () => {
 
     fetchAllData();
 
+    // Increase interval to reduce API calls
     const interval = setInterval(() => {
       console.log('Auto-refreshing dashboard data...');
       fetchAllData();
-    }, 30000);
+    }, 60000); // Changed from 30s to 60s
 
+    // Event listeners (unchanged)
     const handleUserUpdated = (event: CustomEvent) => {
       console.log('User updated event received:', event.detail);
       if (event.detail?.user) {
@@ -140,19 +173,28 @@ const Dashboard: React.FC = () => {
     };
 
     const handleInvestmentROIUpdated = (event: CustomEvent) => {
-    console.log('Investment ROI updated:', event.detail);
-    if (event.detail?.userId === user?.id) {
-      showToast('Your investment ROI has been updated!', 'success');
-      fetchInvestments(); // Refresh investments to show new ROI
-    }
-  };
-  
-  window.addEventListener('investmentROIUpdated', handleInvestmentROIUpdated as EventListener);
+      console.log('Investment ROI updated:', event.detail);
+      if (event.detail?.userId === user?.id) {
+        showToast('Your investment ROI has been updated!', 'success');
+        fetchInvestments();
+      }
+    };
 
+    const handleWithdrawalApproved = (event: CustomEvent) => {
+      console.log('Withdrawal approved event received:', event.detail);
+      if (event.detail?.userId === user?.id) {
+        showToast('Your withdrawal request has been approved! Investment closed.', 'success');
+        refreshUser();
+        fetchAllData();
+      }
+    };
+    
+    window.addEventListener('investmentROIUpdated', handleInvestmentROIUpdated as EventListener);
     window.addEventListener('userUpdated', handleUserUpdated as EventListener);
     window.addEventListener('balanceUpdated', handleBalanceUpdated as EventListener);
     window.addEventListener('roiUpdated', handleROIUpdated as EventListener);
     window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('withdrawalApproved', handleWithdrawalApproved as EventListener);
     
     return () => {
       clearInterval(interval);
@@ -162,16 +204,23 @@ const Dashboard: React.FC = () => {
       window.removeEventListener('roiUpdated', handleROIUpdated as EventListener);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('investmentROIUpdated', handleInvestmentROIUpdated as EventListener);
+      window.removeEventListener('withdrawalApproved', handleWithdrawalApproved as EventListener);
     };
   }, [navigate, user?.id]);
 
   const fetchAllData = async () => {
     console.log('Fetching all dashboard data...');
-    await Promise.all([
-      fetchUserData(),
-      fetchInvestments(),
-      generateOilPriceData()
-    ]);
+    try {
+      await Promise.all([
+        fetchUserData(),
+        fetchInvestments(),
+        generateOilPriceData()
+      ]);
+      setNetworkError(false);
+      setRetryCount(0);
+    } catch (error) {
+      console.log('Network error in fetchAllData, using cached data');
+    }
   };
 
   const fetchUserData = async () => {
@@ -181,45 +230,75 @@ const Dashboard: React.FC = () => {
       console.log('User data refreshed');
     } catch (error: any) {
       console.error("Failed to fetch user data:", error);
+      
+      // Only set error for authentication issues, not network errors
       if (error.response?.status === 401) {
         setError("Session expired. Please login again.");
         localStorage.removeItem("user");
         navigate("/signin");
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        // Network error - don't disrupt UI, just log it
+        console.log('Network error fetching user data, using cached data');
+        setNetworkError(true);
+        setRetryCount(prev => prev + 1);
       }
     }
   };
 
   const fetchInvestments = async () => {
-  try {
-    setError(null);
-    const response = await axiosInstance.get('/api/user-investments/my-investments');
-    
-    console.log("Investments fetched:", response.data);
-    const investmentsData = response.data.investments || response.data || [];
-    
-    // ENSURE all investments have roiAmount and totalRoiAdded fields - THIS IS THE KEY FIX
-    const safeInvestments = Array.isArray(investmentsData) 
-      ? investmentsData.map((inv: any) => ({
-          ...inv,
-          roiAmount: inv.roiAmount ?? 0,  // ← Use nullish coalescing to ensure number
-          totalRoiAdded: inv.totalRoiAdded ?? 0  // ← Use nullish coalescing
-        }))
-      : [];
-    
-    setInvestments(safeInvestments);
-    setLoading(false);
-  } catch (error: any) {
-    console.error("Failed to fetch investments:", error);
-    if (error.response?.status === 401) {
-      setError("Session expired. Please login again.");
-      localStorage.removeItem("user");
-      navigate("/signin");
-    } else {
-      setError("Failed to load investments");
+    try {
+      setError(null);
+      const response = await axiosInstance.get('/api/user-investments/my-investments', {
+        timeout: 10000, // 10 second timeout
+      });
+      
+      console.log("Investments fetched:", response.data);
+      const investmentsData = response.data.investments || response.data || [];
+      
+      const safeInvestments = Array.isArray(investmentsData) 
+        ? investmentsData.map((inv: any) => ({
+            ...inv,
+            roiAmount: inv.roiAmount ?? 0,
+            totalRoiAdded: inv.totalRoiAdded ?? 0,
+            withdrawalStatus: inv.withdrawalStatus || null
+          }))
+        : [];
+      
+      setInvestments(safeInvestments);
+      
+      // Cache the investments for offline use
+      localStorage.setItem("cachedInvestments", JSON.stringify(safeInvestments));
+      setCachedInvestments(safeInvestments);
+      
+      setLoading(false);
+      setNetworkError(false);
+    } catch (error: any) {
+      console.error("Failed to fetch investments:", error);
+      
+      // Don't show error for network issues, use cached data
+      if (error.response?.status === 401) {
+        setError("Session expired. Please login again.");
+        localStorage.removeItem("user");
+        navigate("/signin");
+      } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        console.log('Network error, using cached investments');
+        setNetworkError(true);
+        
+        // Use cached investments if available
+        if (cachedInvestments.length > 0) {
+          setInvestments(cachedInvestments);
+        }
+        
+        // Show gentle notification instead of error page
+        if (retryCount < 3) {
+          setTimeout(() => {
+            fetchInvestments(); // Retry
+          }, 5000);
+        }
+      }
+      setLoading(false);
     }
-    setLoading(false);
-  }
-};
+  };
 
   const generateOilPriceData = () => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
@@ -230,24 +309,44 @@ const Dashboard: React.FC = () => {
     setOilPrices(data);
   };
 
+  const handleRetry = () => {
+    setRetryCount(0);
+    setNetworkError(false);
+    fetchAllData();
+    showToast('Attempting to reconnect...', 'info');
+  };
+
   const handleWithdrawClick = (investment: Investment) => {
-  console.log('Selected investment:', investment);
-  
-  // Check if investment is matured
-  if (!investment.isMatured) {
-    showToast('Investment has not matured yet. ROI withdrawal is only allowed after maturity.', 'error');
-    return;
-  }
-  
-  // Check if ROI is available
-  if ((investment.roiAmount || 0) <= 0) {
-    showToast('No ROI available to withdraw for this investment', 'error');
-    return;
-  }
-  
-  setSelectedInvestment(investment);
-  setShowModal(true);
-};
+    console.log('Selected investment:', investment);
+    
+    // Check if investment is already closed
+    if (isInvestmentClosed(investment)) {
+      showToast('This investment has already been closed', 'info');
+      return;
+    }
+    
+    // Check if withdrawal is pending
+    if (investment.withdrawalStatus === 'PENDING') {
+      showToast('Withdrawal request already pending', 'info');
+      return;
+    }
+    
+    // Check if investment is matured
+    if (!isMatured(investment)) {
+      const daysRemaining = getDaysRemaining(investment.endDate);
+      showToast(`Investment matures in ${daysRemaining || 0} days`, 'error');
+      return;
+    }
+    
+    // Check if ROI is available
+    if ((investment.roiAmount || 0) <= 0) {
+      showToast('No ROI available to withdraw for this investment', 'error');
+      return;
+    }
+    
+    setSelectedInvestment(investment);
+    setShowModal(true);
+  };
 
   const handleConfirmWithdrawal = async (withdrawalData: any) => {
     try {
@@ -258,49 +357,53 @@ const Dashboard: React.FC = () => {
         return;
       }
       
-      // Validate withdrawal amount doesn't exceed ROI
       const investment = investments.find(inv => inv.id === withdrawalData.userInvestmentId);
       if (investment && withdrawalData.amount > (investment.roiAmount || 0)) {
         showToast(`Cannot withdraw more than available ROI ($${investment.roiAmount || 0})`, "error");
         return;
       }
 
-      try {
-        const response = await axiosInstance.post('/api/withdrawals/request', withdrawalData);
-        
-        console.log('Withdrawal response:', response.data);
-        showToast(response.data.message, "success");
-        
-        // Update the UI immediately
-        if (response.data.remainingROI !== undefined) {
-          setInvestments(prev => prev.map(inv => {
-            if (inv.id === withdrawalData.userInvestmentId) {
-              return { ...inv, roiAmount: response.data.remainingROI };
-            }
-            return inv;
-          }));
+      const response = await axiosInstance.post('/api/withdrawals/request', withdrawalData);
+      
+      console.log('Withdrawal response:', response.data);
+      showToast('Withdrawal request submitted successfully!', "success");
+      
+      // Update the UI immediately - mark as pending withdrawal
+      setInvestments(prev => prev.map(inv => {
+        if (inv.id === withdrawalData.userInvestmentId) {
+          return { 
+            ...inv, 
+            roiAmount: response.data.remainingROI || 0,
+            withdrawalStatus: 'PENDING'
+          };
         }
-        
-        fetchAllData();
-        setShowModal(false);
-        setSelectedInvestment(null);
-      } catch (instanceError: any) {
-        console.log('axiosInstance failed, trying direct axios...');
-        
-        const directResponse = await axiosInstance.post('/api/withdrawals/request', withdrawalData);
-        
-        console.log('Direct withdrawal response:', directResponse.data);
-        showToast(directResponse.data.message, "success");
-        fetchAllData();
-        setShowModal(false);
-        setSelectedInvestment(null);
-      }
+        return inv;
+      }));
+      
+      // Update cached investments
+      const updatedInvestments = investments.map(inv => {
+        if (inv.id === withdrawalData.userInvestmentId) {
+          return { 
+            ...inv, 
+            roiAmount: response.data.remainingROI || 0,
+            withdrawalStatus: 'PENDING'
+          };
+        }
+        return inv;
+      });
+      localStorage.setItem("cachedInvestments", JSON.stringify(updatedInvestments));
+      setCachedInvestments(updatedInvestments);
+      
+      fetchAllData();
+      setShowModal(false);
+      setSelectedInvestment(null);
       
     } catch (error: any) {
       console.error('Full withdrawal error:', error);
-      console.error('Error response:', error.response?.data);
       
-      if (error.response?.status === 404) {
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        showToast('Network error. Please check your connection and try again.', "error");
+      } else if (error.response?.status === 404) {
         showToast('Withdrawal route not found. Please check API configuration.', "error");
       } else if (error.response?.data?.error) {
         showToast(error.response.data.error, "error");
@@ -313,19 +416,26 @@ const Dashboard: React.FC = () => {
   };
 
   const calculateTotalInvested = () => {
-    return investments
-      .filter((inv) => inv.status === "ACTIVE" || inv.status === "PENDING")
+    const dataToUse = investments.length > 0 ? investments : cachedInvestments;
+    return dataToUse
+      .filter((inv) => inv.status === "ACTIVE")
       .reduce((sum, inv) => sum + (inv.amount || 0), 0);
   };
 
   const calculateTotalAvailableROI = () => {
-    return investments
-      .filter(inv => inv.status === "ACTIVE" && (inv.roiAmount || 0) > 0)
+    const dataToUse = investments.length > 0 ? investments : cachedInvestments;
+    return dataToUse
+      .filter(inv => 
+        inv.status === "ACTIVE" && 
+        (inv.roiAmount || 0) > 0 &&
+        inv.withdrawalStatus !== 'PROCESSED'
+      )
       .reduce((sum, inv) => sum + (inv.roiAmount || 0), 0);
   };
 
   const calculateTotalROIAdded = () => {
-    return investments
+    const dataToUse = investments.length > 0 ? investments : cachedInvestments;
+    return dataToUse
       .reduce((sum, inv) => sum + (inv.totalRoiAdded || 0), 0);
   };
 
@@ -343,13 +453,144 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const isMatured = (investment: Investment) => {
+    const daysRemaining = getDaysRemaining(investment.endDate);
+    return daysRemaining !== null && daysRemaining <= 0;
+  };
+
+  const isInvestmentClosed = (investment: Investment) => {
+    return investment.status === 'COMPLETED' || investment.withdrawalStatus === 'PROCESSED';
+  };
+
   const canWithdrawInvestment = (investment: Investment) => {
+    // Can't withdraw if completed or already withdrawn
+    if (isInvestmentClosed(investment)) {
+      return false;
+    }
+    
+    // Can't withdraw if withdrawal is pending
+    if (investment.withdrawalStatus === 'PENDING') {
+      return false;
+    }
+    
     if (investment.status !== 'ACTIVE') return false;
     
     if ((investment.roiAmount || 0) <= 0) return false;
     
     const daysRemaining = getDaysRemaining(investment.endDate);
     return daysRemaining !== null && daysRemaining <= 0;
+  };
+
+  const getDisplayStatus = (investment: Investment) => {
+    // Check if investment is closed first
+    if (isInvestmentClosed(investment)) {
+      return {
+        text: 'CLOSED',
+        color: 'bg-gray-100 text-gray-800'
+      };
+    }
+    
+    // Check if withdrawal is pending
+    if (investment.withdrawalStatus === 'PENDING') {
+      return {
+        text: 'WITHDRAWAL PENDING',
+        color: 'bg-yellow-100 text-yellow-800'
+      };
+    }
+    
+    // Check if investment is pending
+    if (investment.status === 'PENDING') {
+      return {
+        text: 'PENDING',
+        color: 'bg-yellow-100 text-yellow-800'
+      };
+    }
+    
+    // For ACTIVE investments
+    if (investment.status === 'ACTIVE') {
+      if (canWithdrawInvestment(investment)) {
+        return {
+          text: 'READY TO WITHDRAW',
+          color: 'bg-green-100 text-green-800'
+        };
+      }
+      return {
+        text: 'ACTIVE',
+        color: 'bg-blue-100 text-blue-800'
+      };
+    }
+    
+    // Default fallback
+    return {
+      text: investment.status,
+      color: 'bg-gray-100 text-gray-800'
+    };
+  };
+
+  const getDaysLeftText = (investment: Investment) => {
+    // Check if investment is closed first
+    if (isInvestmentClosed(investment)) {
+      return 'N/A';
+    }
+    
+    // Check if investment is pending
+    if (investment.status === 'PENDING') {
+      return 'Awaiting';
+    }
+    
+    // For ACTIVE investments
+    if (investment.status === 'ACTIVE') {
+      const daysRemaining = getDaysRemaining(investment.endDate);
+      if (daysRemaining !== null && daysRemaining > 0) {
+        return `${daysRemaining} days`;
+      } else if (canWithdrawInvestment(investment)) {
+        return 'Matured';
+      } else {
+        return 'Calculating...';
+      }
+    }
+    
+    return 'N/A';
+  };
+
+  const getActionText = (investment: Investment) => {
+    // Check if investment is closed first
+    if (isInvestmentClosed(investment)) {
+      return 'Closed';
+    }
+    
+    // Check if withdrawal is pending
+    if (investment.withdrawalStatus === 'PENDING') {
+      return 'Pending Approval';
+    }
+    
+    // Check if investment is pending
+    if (investment.status === 'PENDING') {
+      return 'Pending';
+    }
+    
+    // Check if can withdraw
+    if (canWithdrawInvestment(investment)) {
+      return 'Withdraw ROI';
+    }
+    
+    // Check if ROI is available
+    if ((investment.roiAmount || 0) > 0) {
+      const daysRemaining = getDaysRemaining(investment.endDate);
+      if (daysRemaining !== null && daysRemaining > 0) {
+        return `Available in ${daysRemaining} days`;
+      }
+      return 'Available after maturity';
+    }
+    
+    return 'No ROI yet';
+  };
+
+  const getROIColor = (investment: Investment) => {
+    if (isInvestmentClosed(investment)) {
+      return 'text-gray-600';
+    }
+    return 'text-purple-600';
   };
 
   const formatNumber = (num: number | undefined | null) => {
@@ -375,16 +616,39 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  if (loading) {
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  const getSidebarWidth = () => {
+    if (isMobile) {
+      return sidebarOpen ? 'w-64' : 'w-0';
+    }
+    return sidebarCollapsed ? 'w-20' : 'w-64';
+  };
+
+  const getMainContentMargin = () => {
+    if (isMobile) {
+      return sidebarOpen ? 'ml-64' : 'ml-0';
+    }
+    return sidebarCollapsed ? 'ml-20' : 'ml-64';
+  };
+
+  // Get data to display (use cached if network fails)
+  const displayInvestments = investments.length > 0 ? investments : cachedInvestments;
+  const displayUser = user || cachedUser;
+
+  if (loading && investments.length === 0 && cachedInvestments.length === 0) {
     return (
       <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
-        <img src={HomeUtils[0].companyLogo} alt="" className='w-16 sm:w-20 md:w-24 lg:w-32'/>
-        <p className='text-white mt-4 text-base sm:text-lg md:text-xl'>Page Loading...</p>
+        <img src={HomeUtils[0].companyLogo} alt="" className='w-16 sm:w-20 lg:w-24 xl:w-32'/>
+        <p className='text-white mt-4 text-base sm:text-lg lg:text-xl'>Page Loading...</p>
       </div>
     );
   }
 
-  if (error) {
+  // Don't show error page for network errors, show data with warning
+  if (error && !networkError) {
     return (
       <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center p-4">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 sm:px-6 py-3 sm:py-4 rounded max-w-md w-full">
@@ -392,22 +656,6 @@ const Dashboard: React.FC = () => {
           <button 
             onClick={() => navigate("/signin")}
             className="mt-4 bg-blue-600 text-white px-4 py-2 rounded text-sm sm:text-base w-full sm:w-auto"
-          >
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-xl text-gray-700 mb-4">User not found. Please login again.</p>
-          <button 
-            onClick={() => navigate("/signin")}
-            className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
           >
             Go to Login
           </button>
@@ -428,11 +676,7 @@ const Dashboard: React.FC = () => {
 
       {/* Sidebar */}
       <div
-        className={`bg-gray-900 text-white fixed top-0 left-0 h-full transition-transform duration-300 flex flex-col z-50 ${
-          isMobile 
-            ? `w-64 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
-            : 'w-64 translate-x-0'
-        }`}
+        className={`bg-gray-900 text-white fixed top-0 left-0 h-full transition-all duration-300 flex flex-col z-50 ${getSidebarWidth()}`}
         style={{ 
           height: '100vh',
           overflowY: 'auto',
@@ -441,13 +685,22 @@ const Dashboard: React.FC = () => {
         }}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <img src={CivvestLogo} alt="Civvest Logo" className="w-12" />
-          {isMobile && (
+          {!sidebarCollapsed && (
+            <img src={CivvestLogo} alt="Civvest Logo" className="w-12" />
+          )}
+          {isMobile ? (
             <button
               onClick={() => setSidebarOpen(false)}
               className="text-2xl hover:text-gray-300 transition-colors p-1"
             >
               <FiX />
+            </button>
+          ) : (
+            <button
+              onClick={toggleSidebarCollapse}
+              className="text-2xl hover:text-gray-300 transition-colors p-1"
+            >
+              {sidebarCollapsed ? <FiChevronRight /> : <FiChevronLeft />}
             </button>
           )}
         </div>
@@ -455,47 +708,52 @@ const Dashboard: React.FC = () => {
         <div className="flex-1 mt-6 space-y-3 px-3">
           <Link
             to="/"
-            className="flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded"
+            className={`flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded ${sidebarCollapsed ? 'justify-center' : ''}`}
             onClick={closeSidebar}
+            title="Homepage"
           >
             <FiHome className="text-xl" />
-            <span className="text-sm">Homepage</span>
+            {!sidebarCollapsed && <span className="text-sm">Homepage</span>}
           </Link>
 
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 p-3 bg-blue-600 transition rounded"
+            className={`flex items-center gap-3 p-3 bg-blue-600 transition rounded ${sidebarCollapsed ? 'justify-center' : ''}`}
             onClick={closeSidebar}
+            title="Dashboard"
           >
             <FiLayers className="text-xl" />
-            <span className="text-sm">Dashboard</span>
+            {!sidebarCollapsed && <span className="text-sm">Dashboard</span>}
           </Link>
 
           <Link
             to="/view-investment"
-            className="flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded"
+            className={`flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded ${sidebarCollapsed ? 'justify-center' : ''}`}
             onClick={closeSidebar}
+            title="Investments"
           >
             <FiTrendingUp className="text-xl" />
-            <span className="text-sm">Investments</span>
+            {!sidebarCollapsed && <span className="text-sm">Investments</span>}
           </Link>
 
           <Link
             to="/profile"
-            className="flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded"
+            className={`flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded ${sidebarCollapsed ? 'justify-center' : ''}`}
             onClick={closeSidebar}
+            title="Profile"
           >
             <FiUser className="text-xl" />
-            <span className="text-sm">Profile</span>
+            {!sidebarCollapsed && <span className="text-sm">Profile</span>}
           </Link>
 
           <Link
             to="/withdrawal"
-            className="flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded"
+            className={`flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded ${sidebarCollapsed ? 'justify-center' : ''}`}
             onClick={closeSidebar}
+            title="Withdraw ROI"
           >
             <FiDollarSign className="text-xl" />
-            <span className="text-sm">Withdraw ROI</span>
+            {!sidebarCollapsed && <span className="text-sm">Withdraw ROI</span>}
           </Link>
 
           <button
@@ -504,14 +762,15 @@ const Dashboard: React.FC = () => {
               localStorage.removeItem("token");
               navigate("/signin");
             }}
-            className="flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded w-full text-left"
+            className={`flex items-center gap-3 p-3 hover:bg-gray-700 transition rounded w-full text-left ${sidebarCollapsed ? 'justify-center' : ''}`}
+            title="Logout"
           >
             <FiLogOut className="text-xl" />
-            <span className="text-sm">Logout</span>
+            {!sidebarCollapsed && <span className="text-sm">Logout</span>}
           </button>
         </div>
 
-        {user && (
+        {displayUser && !sidebarCollapsed && (
           <div className="p-4 border-t border-gray-700 mt-auto">
             <div className="flex items-center gap-3">
               <ProfilePicture 
@@ -521,13 +780,13 @@ const Dashboard: React.FC = () => {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">
-                  {user.firstName} {user.lastName}
+                  {displayUser.firstName} {displayUser.lastName}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
-                  Acc: {user.accountNumber}
+                  Acc: {displayUser.accountNumber}
                 </p>
                 <p className="text-xs text-purple-300 mt-1">
-                  ROI: ${formatCurrency(user.roi || 0)}
+                  ROI: ${formatCurrency(displayUser.roi || 0)}
                 </p>
               </div>
             </div>
@@ -536,7 +795,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 min-h-screen transition-all duration-300 ${isMobile ? 'ml-0' : 'ml-64'}`}>
+      <div className={`flex-1 min-h-screen transition-all duration-300 ${getMainContentMargin()}`}>
         {/* Mobile Header */}
         {isMobile && (
           <div className="sticky top-0 bg-gray-900 shadow-md z-30 p-4 flex items-center justify-between">
@@ -551,7 +810,27 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        <div className="p-4 md:p-6 lg:p-8">
+        {/* Network Error Banner - Only shows when network is down */}
+        {networkError && (
+          <div className="sticky top-0 z-20 bg-yellow-50 border-b border-yellow-200 p-3">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FiWifiOff className="text-yellow-600" />
+                <span className="text-yellow-800 text-sm">
+                  Connection lost. Showing cached data. Some features may be limited.
+                </span>
+              </div>
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-2 text-yellow-700 hover:text-yellow-800 text-sm font-medium"
+              >
+                <FiRefreshCw /> Retry
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="p-4 lg:p-6 xl:p-8">
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div className="w-full sm:w-auto">
@@ -560,11 +839,14 @@ const Dashboard: React.FC = () => {
                 <p>Back to Homepage</p>
               </Link>
 
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">
-                Welcome back, {user?.firstName}!
+              <h1 className="text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-800">
+                Welcome back, {displayUser?.firstName}!
               </h1>
-              <p className="text-gray-600 mt-1 text-sm md:text-base">
-                Account: {user?.accountNumber}
+              <p className="text-gray-600 mt-1 text-sm lg:text-base">
+                Account: {displayUser?.accountNumber}
+                {networkError && (
+                  <span className="text-yellow-600 text-xs ml-2">(cached data)</span>
+                )}
               </p>
             </div>
 
@@ -575,59 +857,81 @@ const Dashboard: React.FC = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">Total Invested</p>
-                  <p className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 mt-2">
+                  <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-800 mt-2">
                     ${formatNumber(calculateTotalInvested())}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {investments.filter(inv => inv.status === 'ACTIVE' || inv.status === 'PENDING').length} active
+                    {displayInvestments.filter(inv => inv.status === 'ACTIVE').length} active
                   </p>
                 </div>
                 <div className="bg-blue-100 p-3 rounded-full">
-                  <FiDollarSign className="text-blue-600 text-xl md:text-2xl" />
+                  <FiDollarSign className="text-blue-600 text-xl lg:text-2xl" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">Total ROI</p>
-                  <p className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 mt-2">
-                    ${formatCurrency(user?.roi || 0)}
+                  <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-800 mt-2">
+                    ${formatCurrency(displayUser?.roi || 0)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
                     ${formatCurrency(calculateTotalAvailableROI())} available
                   </p>
                 </div>
                 <div className="bg-purple-100 p-3 rounded-full">
-                  <FiTrendingUp className="text-purple-600 text-xl md:text-2xl" />
+                  <FiTrendingUp className="text-purple-600 text-xl lg:text-2xl" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-xs sm:text-sm">Referral Bonus</p>
-                  <p className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 mt-2">
-                    ${formatNumber(user?.referralBonus || 0)}
-                  </p>
-                </div>
-                <div className="bg-green-100 p-3 rounded-full">
-                  <FiActivity className="text-green-600 text-xl md:text-2xl" />
-                </div>
-              </div>
-            </div>
+            <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+  <div className="flex items-center justify-between">
+    <div>
+      <p className="text-gray-600 text-xs sm:text-sm">Referral Bonus</p>
+      <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-800 mt-2">
+        ${formatNumber(displayUser?.referralBonus || 0)}
+      </p>
+      <div className="flex items-center gap-2 mt-1">
+        <p className="text-xs text-gray-500">
+          Referrals: {displayUser?.referralCount || 0}/10
+        </p>
+        {(displayUser?.referralCount || 0) >= 10 ? (
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+            ✓ Eligible
+          </span>
+        ) : (
+          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">
+            {10 - (displayUser?.referralCount || 0)} more needed
+          </span>
+        )}
+      </div>
+    </div>
+    <div className="bg-green-100 p-3 rounded-full">
+      <FiActivity className="text-green-600 text-xl lg:text-2xl" />
+    </div>
+  </div>
+  {(displayUser?.referralBonus || 0) > 0 && (displayUser?.referralCount || 0) >= 10 && (
+    <button
+      onClick={() => setShowReferralWithdrawalModal(true)}
+      className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-sm font-semibold transition"
+    >
+      Withdraw Bonus
+    </button>
+  )}
+</div>
 
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-xs sm:text-sm">ROI Added</p>
-                  <p className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 mt-2">
+                  <p className="text-xl lg:text-2xl xl:text-3xl font-bold text-gray-800 mt-2">
                     ${formatCurrency(calculateTotalROIAdded())}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
@@ -635,7 +939,7 @@ const Dashboard: React.FC = () => {
                   </p>
                 </div>
                 <div className="bg-indigo-100 p-3 rounded-full">
-                  <FiPackage className="text-indigo-600 text-xl md:text-2xl" />
+                  <FiPackage className="text-indigo-600 text-xl lg:text-2xl" />
                 </div>
               </div>
             </div>
@@ -643,18 +947,22 @@ const Dashboard: React.FC = () => {
 
           {/* ROI Summary Card */}
           {calculateTotalAvailableROI() > 0 && (
-            <div className="bg-linear-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg p-4 md:p-6 mb-6 text-white">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-linear-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg p-4 lg:p-6 mb-6 text-white">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div>
                   <h2 className="text-xl font-bold mb-2">ROI Available for Withdrawal</h2>
                   <p className="text-purple-100">Total ROI that can be withdrawn from matured investments</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl md:text-4xl font-bold mb-1">
+                  <div className="text-3xl lg:text-4xl font-bold mb-1">
                     ${formatCurrency(calculateTotalAvailableROI())}
                   </div>
                   <p className="text-purple-200 text-sm">
-                    Across {investments.filter(inv => inv.status === 'ACTIVE' && (inv.roiAmount || 0) > 0).length} investment(s)
+                    Across {displayInvestments.filter(inv => 
+                      inv.status === 'ACTIVE' && 
+                      (inv.roiAmount || 0) > 0 &&
+                      inv.withdrawalStatus !== 'PROCESSED'
+                    ).length} investment(s)
                   </p>
                 </div>
               </div>
@@ -671,14 +979,14 @@ const Dashboard: React.FC = () => {
 
           {/* Oil Chart */}
           <div className="mt-6">
-            <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm">
               <OilChart />
             </div>
           </div>
 
           {/* Oil Price Trends */}
-          <div className="bg-white p-4 md:p-6 rounded-lg shadow-sm my-6">
-            <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4">
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm my-6">
+            <h2 className="text-lg lg:text-xl font-bold text-gray-800 mb-4">
               Oil Price Trends
             </h2>
             <div className="h-64">
@@ -695,13 +1003,16 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Investments Section */}
-          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm mb-8 sm:mb-10">
+          <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm mb-8 sm:mb-10">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
-              <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-800">
+              <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800">
                 My Investments
+                {networkError && (
+                  <span className="text-yellow-600 text-xs ml-2">(cached)</span>
+                )}
               </h2>
               
-              {investments.length === 0 && (
+              {displayInvestments.length === 0 && (
                 <Link
                   to="/view-investment"
                   className="text-blue-600 hover:underline text-xs sm:text-sm whitespace-nowrap"
@@ -711,294 +1022,253 @@ const Dashboard: React.FC = () => {
               )}
             </div>
 
-            {investments.length === 0 ? (
-              <div className="text-center py-6 sm:py-8 md:py-12 text-gray-500">
-                <p className="text-sm sm:text-base md:text-lg">You haven't made any investments yet.</p>
+            {displayInvestments.length === 0 ? (
+              <div className="text-center py-6 sm:py-8 lg:py-12 text-gray-500">
+                <p className="text-sm sm:text-base lg:text-lg">You haven't made any investments yet.</p>
                 <Link
                   to="/view-investment"
-                  className="text-blue-600 hover:underline mt-2 sm:mt-3 md:mt-4 inline-block text-xs sm:text-sm md:text-base"
+                  className="text-blue-600 hover:underline mt-2 sm:mt-3 lg:mt-4 inline-block text-xs sm:text-sm lg:text-base"
                 >
                   Browse available investments
                 </Link>
               </div>
             ) : (
               <>
-                {/* Mobile View - Cards */}
-                {/* Mobile View - Cards */}
-<div className="md:hidden space-y-4">
-  {investments.map((investment) => {
-    const canWithdraw = canWithdrawInvestment(investment);
-    const daysRemaining = getDaysRemaining(investment.endDate);
-    
-    return (
-      <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-        <div className="space-y-3">
-          {/* Investment Header */}
-          <div>
-            <h3 className="font-semibold text-gray-800 text-sm truncate">
-              {investment.investment.title}
-            </h3>
-            <p className="text-xs text-gray-500 truncate">
-              {investment.investment.category}
-            </p>
-          </div>
+                {/* Mobile & Tablet View - Cards */}
+                <div className="lg:hidden space-y-4">
+                  {displayInvestments.map((investment) => {
+                    const displayStatus = getDisplayStatus(investment);
+                    const daysLeftText = getDaysLeftText(investment);
+                    const actionText = getActionText(investment);
+                    const canWithdraw = canWithdrawInvestment(investment);
+                    const isClosed = isInvestmentClosed(investment);
+                    const roiColor = getROIColor(investment);
+                    
+                    return (
+                      <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <div className="space-y-3">
+                          {/* Investment Header */}
+                          <div>
+                            <h3 className="font-semibold text-gray-800 text-sm truncate">
+                              {investment.investment.title}
+                            </h3>
+                            <p className="text-xs text-gray-500 truncate">
+                              {investment.investment.category}
+                            </p>
+                          </div>
 
-          {/* Investment Details Grid - UPDATED */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Initial Investment</p>
-              <p className="font-medium text-gray-800 text-sm">
-                ${formatNumber(investment.amount)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">ROI Available</p>
-              <p className="font-medium text-purple-600 text-sm">
-                ${formatCurrency(investment.roiAmount)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Status</p>
-              <span
-                className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                  investment.status === "ACTIVE"
-                    ? "bg-blue-100 text-blue-800"
-                    : investment.status === "COMPLETED"
-                    ? "bg-green-100 text-green-800"
-                    : investment.status === "PENDING"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-gray-100 text-gray-800"
-                }`}
-              >
-                {investment.status}
-              </span>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Days Left</p>
-              {investment.status === "PENDING" ? (
-                <span className="text-yellow-600 font-semibold text-xs">
-                  Awaiting
-                </span>
-              ) : investment.status === "ACTIVE" ? (
-                daysRemaining !== null && daysRemaining > 0 ? (
-                  <span className="text-gray-800 text-sm">
-                    {daysRemaining} days
-                  </span>
-                ) : canWithdraw ? (
-                  <span className="text-green-600 font-semibold text-xs">
-                    Matured
-                  </span>
-                ) : (
-                  <span className="text-gray-500 text-xs">Calculating...</span>
-                )
-              ) : (
-                <span className="text-gray-500 text-xs">N/A</span>
-              )}
-            </div>
-          </div>
+                          {/* Investment Details Grid */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">Initial Investment</p>
+                              <p className="font-medium text-gray-800 text-sm">
+                                ${formatNumber(investment.amount)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">ROI Available</p>
+                              <p className={`font-medium text-sm ${roiColor}`}>
+                                ${formatCurrency(investment.roiAmount)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">Status</p>
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${displayStatus.color}`}>
+                                {displayStatus.text}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500 mb-1">Days Left</p>
+                              <span className="text-gray-800 text-sm">
+                                {daysLeftText}
+                              </span>
+                            </div>
+                          </div>
 
-          {/* ROI Info Box - UPDATED */}
-          {(investment.totalRoiAdded || 0) > 0 && (
-            <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
-              <div className="flex justify-between items-center text-xs mb-1">
-                <span className="text-purple-700 font-medium">Total ROI Added:</span>
-                <span className="font-bold text-purple-800">
-                  ${formatCurrency(investment.totalRoiAdded)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-purple-600">Available Now:</span>
-                <span className="font-semibold text-purple-700">
-                  ${formatCurrency(investment.roiAmount)}
-                </span>
-              </div>
-              {investment.recentRoiAdditions && investment.recentRoiAdditions.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-purple-200">
-                  <p className="text-xs text-purple-600">
-                    Latest: ${formatCurrency(investment.recentRoiAdditions[0].amount)} on{' '}
-                    {new Date(investment.recentRoiAdditions[0].date).toLocaleDateString()}
-                  </p>
+                          {/* ROI Info Box - Only show for non-closed investments */}
+                          {(investment.totalRoiAdded || 0) > 0 && !isClosed && (
+                            <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                              <div className="flex justify-between items-center text-xs mb-1">
+                                <span className="text-purple-700 font-medium">Total ROI Added:</span>
+                                <span className="font-bold text-purple-800">
+                                  ${formatCurrency(investment.totalRoiAdded)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="text-purple-600">Available Now:</span>
+                                <span className="font-semibold text-purple-700">
+                                  ${formatCurrency(investment.roiAmount)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Button */}
+                          <div className="pt-2">
+                            {isClosed ? (
+                              <div className="text-center p-2 bg-gray-50 rounded">
+                                <span className="text-gray-500 text-sm">Investment Closed</span>
+                                {investment.totalRoiAdded && investment.totalRoiAdded > 0 && (
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    Total earned: ${formatCurrency(investment.totalRoiAdded)}
+                                  </p>
+                                )}
+                              </div>
+                            ) : investment.withdrawalStatus === 'PENDING' ? (
+                              <div className="text-center p-2 bg-yellow-50 rounded">
+                                <span className="text-yellow-700 text-sm">Withdrawal Pending Approval</span>
+                              </div>
+                            ) : investment.status === "PENDING" ? (
+                              <div className="text-center p-2 bg-yellow-50 rounded">
+                                <span className="text-yellow-700 text-sm">Pending Admin Approval</span>
+                              </div>
+                            ) : canWithdraw ? (
+                              <button
+                                onClick={() => handleWithdrawClick(investment)}
+                                className="w-full bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-2 px-4 rounded-md text-sm font-semibold transition-colors"
+                              >
+                                Withdraw ${formatCurrency(investment.roiAmount)} ROI
+                              </button>
+                            ) : (investment.roiAmount || 0) > 0 ? (
+                              <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                <p className="text-sm text-purple-700 font-medium">
+                                  ${formatCurrency(investment.roiAmount)} ROI {actionText.toLowerCase().includes('available') ? 'available' : actionText}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="text-center p-2 bg-gray-50 rounded">
+                                <span className="text-gray-500 text-sm">{actionText}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Action Button */}
-          <div className="pt-2">
-            {investment.status === "PENDING" ? (
-              <div className="text-center">
-                <span className="text-gray-500 text-sm">Pending Admin Approval</span>
-              </div>
-            ) : canWithdraw ? (
-              <button
-                onClick={() => handleWithdrawClick(investment)}
-                className="w-full bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-2 px-4 rounded-md text-sm font-semibold transition-colors"
-              >
-                Withdraw ${formatCurrency(investment.roiAmount)} ROI
-              </button>
-            ) : investment.status === "COMPLETED" ? (
-              <div className="text-center">
-                <span className="text-gray-500 text-sm">Investment Completed</span>
-              </div>
-            ) : (investment.roiAmount || 0) > 0 ? (
-              <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-                <p className="text-sm text-purple-700 font-medium">
-                  ${formatCurrency(investment.roiAmount)} ROI Available
-                </p>
-                <p className="text-xs text-purple-600 mt-1">
-                  Withdrawable after maturity date
-                </p>
-              </div>
-            ) : (
-              <div className="text-center">
-                <span className="text-gray-500 text-sm">No ROI Added Yet</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  })}
-</div>
 
                 {/* Desktop View - Table */}
-                <div className="hidden md:block overflow-x-auto -mx-3 sm:mx-0">
+                <div className="hidden lg:block overflow-x-auto">
                   <div className="inline-block min-w-full align-middle">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead>
                         <tr>
-                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Investment
                           </th>
-                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Amount
                           </th>
-                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             ROI Available
                           </th>
-                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Status
                           </th>
-                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Days Left
                           </th>
-                          <th className="px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Action
                           </th>
                         </tr>
                       </thead>
 
                       <tbody className="divide-y divide-gray-100">
-                        {investments.map((investment) => {
+                        {displayInvestments.map((investment) => {
+                          const displayStatus = getDisplayStatus(investment);
+                          const daysLeftText = getDaysLeftText(investment);
+                          const actionText = getActionText(investment);
                           const canWithdraw = canWithdrawInvestment(investment);
-                          const daysRemaining = getDaysRemaining(investment.endDate);
+                          const isClosed = isInvestmentClosed(investment);
+                          const roiColor = getROIColor(investment);
                           
                           return (
                             <tr key={investment.id} className="hover:bg-gray-50 transition-colors">
-              {/* Investment Title Column */}
-              <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
-                <div>
-                  <p className="font-semibold text-gray-800 text-sm md:text-base truncate max-w-[180px] lg:max-w-[250px]">
-                    {investment.investment.title}
-                  </p>
-                  <p className="text-xs text-gray-500 truncate max-w-[180px] lg:max-w-[250px]">
-                    {investment.investment.category}
-                  </p>
-                </div>
-              </td>
+                              {/* Investment Title Column */}
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div>
+                                  <p className="font-semibold text-gray-800 text-base truncate max-w-[250px]">
+                                    {investment.investment.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate max-w-[250px]">
+                                    {investment.investment.category}
+                                  </p>
+                                </div>
+                              </td>
 
-              {/* Amount Column - UPDATED */}
-              <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
-                <div>
-                  <p className="text-gray-800 text-sm md:text-base">
-                    ${formatNumber(investment.amount)}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Initial Investment
-                  </p>
-                </div>
-              </td>
+                              {/* Amount Column */}
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div>
+                                  <p className="text-gray-800 text-base">
+                                    ${formatNumber(investment.amount)}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Initial Investment
+                                  </p>
+                                </div>
+                              </td>
 
-              {/* ROI Available Column - THIS IS THE KEY CHANGE */}
-              <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
-                <div>
-                  <p className="text-purple-600 font-semibold text-sm md:text-base">
-                    ${formatCurrency(investment.roiAmount)}
-                  </p>
-                  {(investment.totalRoiAdded || 0) > 0 && (
-                    <p className="text-xs text-purple-500">
-                      Total added: ${formatCurrency(investment.totalRoiAdded)}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    Available to withdraw
-                  </p>
-                </div>
-              </td>
+                              {/* ROI Available Column */}
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <div>
+                                  <p className={`text-base font-semibold ${roiColor}`}>
+                                    ${formatCurrency(investment.roiAmount)}
+                                  </p>
+                                  {(investment.totalRoiAdded || 0) > 0 && !isClosed && (
+                                    <p className="text-xs text-purple-500">
+                                      Total added: ${formatCurrency(investment.totalRoiAdded)}
+                                    </p>
+                                  )}
+                                  {isClosed && investment.totalRoiAdded && investment.totalRoiAdded > 0 && (
+                                    <p className="text-xs text-gray-500">
+                                      Total earned: ${formatCurrency(investment.totalRoiAdded)}
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-gray-500">
+                                    {isClosed ? 'Already withdrawn' : 'Available to withdraw'}
+                                  </p>
+                                </div>
+                              </td>
 
-              {/* Status Column */}
-              <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
-                <span
-                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    investment.status === "ACTIVE"
-                      ? "bg-blue-100 text-blue-800"
-                      : investment.status === "COMPLETED"
-                      ? "bg-green-100 text-green-800"
-                      : investment.status === "PENDING"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {investment.status}
-                </span>
-              </td>
+                              {/* Status Column */}
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${displayStatus.color}`}>
+                                  {displayStatus.text}
+                                </span>
+                              </td>
 
-              {/* Days Left Column */}
-              <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap text-gray-800 text-sm md:text-base">
-                {investment.status === "PENDING" ? (
-                  <span className="text-yellow-600 font-semibold text-xs">
-                    Awaiting
-                  </span>
-                ) : investment.status === "ACTIVE" ? (
-                  daysRemaining !== null && daysRemaining > 0 ? (
-                    <span className="text-sm">
-                      {daysRemaining} days
-                    </span>
-                  ) : canWithdraw ? (
-                    <span className="text-green-600 font-semibold text-sm">
-                      Matured
-                    </span>
-                  ) : (
-                    <span className="text-gray-500 text-xs">Calculating...</span>
-                  )
-                ) : (
-                  <span className="text-gray-500 text-xs">N/A</span>
-                )}
-              </td>
+                              {/* Days Left Column */}
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                <span className="text-gray-800 text-base">
+                                  {daysLeftText}
+                                </span>
+                              </td>
 
-              {/* Action Column */}
-              <td className="px-2 sm:px-3 md:px-4 py-3 sm:py-4 whitespace-nowrap">
-                {investment.status === "PENDING" ? (
-                  <span className="text-gray-500 text-sm">Pending</span>
-                ) : canWithdraw ? (
-                  <button
-                    onClick={() => handleWithdrawClick(investment)}
-                    className="bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-colors"
-                  >
-                    Withdraw ROI
-                  </button>
-                ) : investment.status === "COMPLETED" ? (
-                  <span className="text-gray-500 text-sm">Completed</span>
-                ) : (investment.roiAmount || 0) > 0 ? (
-                  <div className="text-xs text-purple-600">
-                    ${formatCurrency(investment.roiAmount)} available after maturity
-                  </div>
-                ) : (
-                  <span className="text-gray-500 text-sm">No ROI yet</span>
-                )}
-              </td>
-            </tr>
-
+                              {/* Action Column */}
+                              <td className="px-4 py-4 whitespace-nowrap">
+                                {isClosed ? (
+                                  <span className="text-gray-500 text-sm">Closed</span>
+                                ) : investment.withdrawalStatus === 'PENDING' ? (
+                                  <span className="text-yellow-600 text-sm">Pending Approval</span>
+                                ) : investment.status === "PENDING" ? (
+                                  <span className="text-gray-500 text-sm">Pending</span>
+                                ) : canWithdraw ? (
+                                  <button
+                                    onClick={() => handleWithdrawClick(investment)}
+                                    className="bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-colors"
+                                  >
+                                    Withdraw ROI
+                                  </button>
+                                ) : (investment.roiAmount || 0) > 0 ? (
+                                  <div className="text-xs text-purple-600">
+                                    ${formatCurrency(investment.roiAmount)} {actionText.toLowerCase().includes('available') ? 'available' : actionText}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500 text-sm">{actionText}</span>
+                                )}
+                              </td>
+                            </tr>
                           );
                         })}
                       </tbody>
@@ -1010,7 +1280,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Bottom Spacing */}
-          <div className="h-4 sm:h-6 md:h-8"></div>
+          <div className="h-4 sm:h-6 lg:h-8"></div>
         </div>
 
         {/* Withdrawal Modal */}
@@ -1033,10 +1303,23 @@ const Dashboard: React.FC = () => {
             onConfirm={handleConfirmWithdrawal}
           />
         )}
+
+        {showReferralWithdrawalModal && displayUser && (
+          <ReferralWithdrawalModal
+            onClose={() => setShowReferralWithdrawalModal(false)}
+            onSuccess={() => {
+              refreshUser();
+              fetchAllData();
+            }}
+            user={{
+              referralBonus: displayUser.referralBonus,
+              referralCount: displayUser.referralCount
+            }}
+          />
+        )}
       </div>
     </div>
   );
 };
 
 export default Dashboard;
-

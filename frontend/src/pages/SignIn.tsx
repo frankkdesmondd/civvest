@@ -1,32 +1,25 @@
 import React, { useState } from 'react';
-import ReCAPTCHA from 'react-google-recaptcha';
 import { HomeUtils } from '../utils/HomeUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { FiEye, FiEyeOff } from 'react-icons/fi'; // import eye icons
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 const SignIn: React.FC = () => {
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // new state
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-
-  const handleCaptchaChange = (token: string | null) => {
-    setCaptchaToken(token);
-  };
-
   const handleLogin = async () => {
     setError('');
 
-    console.log('Login attempt:', { email, password: '***', captchaToken: !!captchaToken });
+    console.log('Login attempt:', { email, password: '***' });
 
-    if (!captchaToken) {
-      setError("Please verify that you're not a robot.");
+    // Basic validation
+    if (!email || !password) {
+      setError("Please fill in all fields");
       return;
     }
 
@@ -36,8 +29,7 @@ const SignIn: React.FC = () => {
       console.log('Sending request to:', 'https://civvest-backend.onrender.com/api/auth/signin');
       const response = await axios.post('https://civvest-backend.onrender.com/api/auth/signin', {
         email,
-        password,
-        captchaToken
+        password
       }, { withCredentials: true });
 
       console.log('Login response:', response.data);
@@ -87,7 +79,7 @@ const SignIn: React.FC = () => {
           />
 
           {/* PASSWORD INPUT WITH EYE ICON */}
-          <div className="relative mb-3">
+          <div className="relative mb-6">
             <input
               type={showPassword ? 'text' : 'password'}
               placeholder="Password"
@@ -102,10 +94,6 @@ const SignIn: React.FC = () => {
             >
               {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </button>
-          </div>
-
-          <div className="my-4">
-            <ReCAPTCHA sitekey={siteKey} onChange={handleCaptchaChange} theme="dark" />
           </div>
 
           <button
@@ -141,6 +129,3 @@ const SignIn: React.FC = () => {
 };
 
 export default SignIn;
-
-
-

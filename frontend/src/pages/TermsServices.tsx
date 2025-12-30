@@ -59,7 +59,7 @@ const TermsServices: React.FC = () => {
           },
           "contactPoint": {
             "@type": "ContactPoint",
-            "telephone": "(192)924-81175",
+            "telephone": "(929) 248-1175",
             "contactType": "Customer Service"
           }
         })}
@@ -72,7 +72,7 @@ const TermsServices: React.FC = () => {
           <p className='flex flex-wrap'>Effective Date: 11/17/2023</p>
         </div>
         <div className='flex flex-col gap-[1em]'>
-          <h1 className='flex text-[2.2em] lg:text-[2.7em] font-semibold'>1. Acceptance of Terms</h1>
+          <h1 className='flex text-[2.4em] lg:text-[2.7em] font-semibold'>1. Acceptance of Terms</h1>
           <p className='flex flex-wrap'>Welcome to civvest.com, owned and operated by civvest Energy Partners (“we,”
             “us,” or “our”). By accessing or using our website, you agree to comply with and be bound by these Terms of Service. If you do not agree with these terms, please do not use our website</p>
         </div>
@@ -120,7 +120,7 @@ const TermsServices: React.FC = () => {
           <div className=''>
             <p>Address: Dallas, Texas 75219</p>
             <p>Phone: (929) 248-1175</p>
-            <p>Email: info@civvest.com</p>
+            <p>Email: admin@civvest.com</p>
           </div>
           <p>Thank you for using civvest.com and agreeing to our Terms of Service.</p>
         </div>
@@ -132,4 +132,5 @@ const TermsServices: React.FC = () => {
 }
 
 export default TermsServices
+
 

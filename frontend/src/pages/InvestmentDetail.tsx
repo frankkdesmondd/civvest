@@ -6,6 +6,7 @@ import Footer from '../components/Footer';
 import Foot from '../components/Foot';
 import InvestmentImage from '../assets/Investment Image.jpeg';
 import MainBonding from '../assets/main bonding.jpg';
+import { HomeUtils } from '../utils/HomeUtils'
 import { FiDollarSign, FiClock, FiArrowLeft, FiCheckCircle, FiCalendar } from 'react-icons/fi';
 
 interface Investment {
@@ -196,8 +197,9 @@ const InvestmentDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
+        <img src={HomeUtils[0].companyLogo} alt="" className='w-[8em]'/>
+        <p className='text-white'>Details Loading......</p>
       </div>
     );
   }
@@ -262,7 +264,7 @@ const InvestmentDetail: React.FC = () => {
 
                 <p className="text-gray-600 mb-6">{investment.shortDesc}</p>
 
-                <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <div className="flex items-center gap-2 text-gray-600 mb-2">
                       <FiDollarSign />
@@ -642,3 +644,6 @@ const ApplicationFormModal: React.FC<{
 };
 
 export default InvestmentDetail;
+
+
+

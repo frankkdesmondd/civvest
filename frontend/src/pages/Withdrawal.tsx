@@ -1,23 +1,29 @@
-// Withdrawal.tsx - Updated with safe checks
+// Withdrawal.tsx - COMPLETE UPDATED VERSION with proper investment closure display
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiClock, FiCheckCircle, FiAlertCircle, FiDollarSign, FiRefreshCw, FiTrendingUp } from 'react-icons/fi';
+import { FiClock, FiCheckCircle, FiDollarSign, FiRefreshCw, FiTrendingUp, FiAlertCircle} from 'react-icons/fi';
 import { HomeUtils } from '../utils/HomeUtils';
 import WithdrawalModal from '../components/WithdrawalModal';
 import WithdrawalHistory from '../components/WithdrawalHistory';
 import { useToast } from '../context/ToastContext';
 import axiosInstance from '../config/axios';
 import { useUser } from '../context/UserContext';
+import { useWebSocket } from '../context/WebSocketContext';
+
+// Define specific status types
+type InvestmentStatus = 'ACTIVE' | 'PENDING' | 'COMPLETED' | 'CANCELLED' | string;
+type WithdrawalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PROCESSED' | string;
 
 interface Investment {
   id: string;
   amount: number;
   returnAmount: number;
-  roiAmount: number; // Make optional
-  totalRoiAdded?: number; // Make optional
+  roiAmount: number;
+  totalRoiAdded?: number;
   startDate: string | null;
   endDate: string | null;
-  status: string;
+  status: InvestmentStatus;
+  withdrawalStatus?: WithdrawalStatus;
   investment: {
     title: string;
     category: string;
@@ -36,10 +42,46 @@ const Withdrawal: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const { showToast } = useToast();
   const { user } = useUser();
+  const { subscribe, unsubscribe } = useWebSocket();
 
   useEffect(() => {
     fetchAllData();
-  }, []);
+    
+    // Subscribe to real-time updates
+    const handleWithdrawalUpdate = (data: any) => {
+      console.log('Withdrawal update received:', data);
+      if (data.userId === user?.id) {
+        showToast(`Your withdrawal has been ${data.status.toLowerCase()}!`, 'success');
+        fetchAllData();
+      }
+    };
+    
+    const handleInvestmentUpdate = (data: any) => {
+      console.log('Investment update received:', data);
+      if (data.userId === user?.id) {
+        fetchAllData();
+      }
+    };
+
+    // Handle withdrawal approval notification
+    const handleWithdrawalApproved = (event: CustomEvent) => {
+      console.log('Withdrawal approved event received:', event.detail);
+      if (event.detail?.userId === user?.id) {
+        showToast('Your withdrawal request has been approved! Investment closed.', 'success');
+        fetchAllData();
+      }
+    };
+    
+    subscribe('withdrawalUpdate', handleWithdrawalUpdate);
+    subscribe('investmentUpdate', handleInvestmentUpdate);
+    window.addEventListener('withdrawalApproved', handleWithdrawalApproved as EventListener);
+    
+    return () => {
+      unsubscribe('withdrawalUpdate', handleWithdrawalUpdate);
+      unsubscribe('investmentUpdate', handleInvestmentUpdate);
+      window.removeEventListener('withdrawalApproved', handleWithdrawalApproved as EventListener);
+    };
+  }, [user?.id]);
 
   const fetchAllData = async () => {
     try {
@@ -59,12 +101,12 @@ const Withdrawal: React.FC = () => {
       const response = await axiosInstance.get('/api/user-investments/my-investments');
       const data = response.data.investments || response.data || [];
       
-      // Ensure all investments have roiAmount and totalRoiAdded fields
       const safeInvestments = Array.isArray(data) 
         ? data.map((inv: any) => ({
             ...inv,
             roiAmount: inv.roiAmount || 0,
-            totalRoiAdded: inv.totalRoiAdded || 0
+            totalRoiAdded: inv.totalRoiAdded || 0,
+            withdrawalStatus: inv.withdrawalStatus || null
           }))
         : [];
       
@@ -93,8 +135,21 @@ const Withdrawal: React.FC = () => {
   };
 
   const canWithdraw = (investment: Investment) => {
-    // Can't withdraw if pending or no dates set
+    // Check if investment is already completed or withdrawn
+    const isCompleted = investment.status === 'COMPLETED';
+    const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+    
+    if (isCompleted || isWithdrawn) {
+      return false;
+    }
+    
+    // Check if investment is active
     if (investment.status !== 'ACTIVE' || !investment.endDate || !investment.startDate) {
+      return false;
+    }
+    
+    // Check if already has pending withdrawal
+    if (investment.withdrawalStatus === 'PENDING') {
       return false;
     }
     
@@ -109,13 +164,21 @@ const Withdrawal: React.FC = () => {
   };
 
   const handleWithdrawClick = (investment: Investment) => {
-    console.log('Selected investment:', investment);
-    console.log('Investment ID:', investment.id);
-    console.log('ROI available:', investment.roiAmount || 0);
-    
-    // Validate ROI is available
-    if ((investment.roiAmount || 0) <= 0) {
-      showToast('No ROI available to withdraw for this investment', 'error');
+    // Validate investment can withdraw
+    if (!canWithdraw(investment)) {
+      const isCompleted = investment.status === 'COMPLETED';
+      const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+      
+      if (isCompleted || isWithdrawn) {
+        showToast('Investment is already closed', 'info');
+      } else {
+        const daysRemaining = getDaysRemaining(investment.endDate);
+        if (daysRemaining !== null && daysRemaining > 0) {
+          showToast(`Investment matures in ${daysRemaining} days`, 'info');
+        } else if (investment.withdrawalStatus === 'PENDING') {
+          showToast('Withdrawal request already pending', 'info');
+        }
+      }
       return;
     }
     
@@ -125,57 +188,63 @@ const Withdrawal: React.FC = () => {
 
   const handleConfirmWithdrawal = async (withdrawalData: any) => {
     try {
-      console.log('Withdrawal data being sent:', withdrawalData);
-      
-      // Validate that userInvestmentId exists
+      // Validate data
       if (!withdrawalData.userInvestmentId) {
         showToast('Error: Investment ID is missing', "error");
         return;
       }
       
-      // Validate withdrawal amount doesn't exceed ROI
       const investment = investments.find(inv => inv.id === withdrawalData.userInvestmentId);
-      if (investment && withdrawalData.amount > (investment.roiAmount || 0)) {
+      if (!investment) {
+        showToast('Investment not found', "error");
+        return;
+      }
+      
+      if (withdrawalData.amount > (investment.roiAmount || 0)) {
         showToast(`Cannot withdraw more than available ROI ($${investment.roiAmount || 0})`, "error");
         return;
       }
 
       const response = await axiosInstance.post('/api/withdrawals/request', withdrawalData);
       
-      console.log('Withdrawal response:', response.data);
-      showToast(response.data.message, "success");
+      showToast('Withdrawal request submitted successfully!', "success");
       
-      // Update the UI immediately
-      if (response.data.remainingROI !== undefined) {
-        setInvestments(prev => prev.map(inv => {
-          if (inv.id === withdrawalData.userInvestmentId) {
-            return { ...inv, roiAmount: response.data.remainingROI };
-          }
-          return inv;
-        }));
-      }
+      // Update UI immediately
+      setInvestments(prev => prev.map(inv => {
+        if (inv.id === withdrawalData.userInvestmentId) {
+          return { 
+            ...inv, 
+            roiAmount: response.data.remainingROI || 0,
+            withdrawalStatus: 'PENDING' as WithdrawalStatus
+          };
+        }
+        return inv;
+      }));
       
       fetchAllData();
       setShowModal(false);
       setSelectedInvestment(null);
       
     } catch (error: any) {
-      console.error('Full withdrawal error:', error);
-      console.error('Error response:', error.response?.data);
+      console.error('Withdrawal error:', error);
       showToast(error.response?.data?.error || 'Failed to submit withdrawal request', "error");
     }
   };
 
   const getStatusBadge = (investment: Investment) => {
-    if (investment.status === 'COMPLETED') {
+    // Check if investment has been fully withdrawn/closed
+    const isCompleted = investment.status === 'COMPLETED';
+    const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+    
+    if (isCompleted || isWithdrawn) {
       return (
         <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold flex items-center gap-1">
-          <FiCheckCircle /> Withdrawn
+          <FiCheckCircle /> Closed
         </span>
       );
     }
 
-    if (investment.status === 'PENDING_WITHDRAWAL') {
+    if (investment.withdrawalStatus === 'PENDING') {
       return (
         <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
           <FiClock /> Withdrawal Pending
@@ -191,7 +260,7 @@ const Withdrawal: React.FC = () => {
       );
     }
 
-    // Only show days remaining if dates are set
+    // For ACTIVE investments
     if (investment.status === 'ACTIVE' && investment.endDate && investment.startDate) {
       if (canWithdraw(investment)) {
         return (
@@ -202,10 +271,16 @@ const Withdrawal: React.FC = () => {
       }
 
       const daysRemaining = getDaysRemaining(investment.endDate);
-      if (daysRemaining !== null) {
+      if (daysRemaining !== null && daysRemaining > 0) {
         return (
           <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold flex items-center gap-1">
             <FiClock /> {daysRemaining} days remaining
+          </span>
+        );
+      } else if (daysRemaining !== null && daysRemaining <= 0) {
+        return (
+          <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-semibold flex items-center gap-1">
+            <FiClock /> Matured
           </span>
         );
       }
@@ -218,12 +293,17 @@ const Withdrawal: React.FC = () => {
     );
   };
 
-  // Calculate total available ROI across all investments
   const totalAvailableROI = investments
-    .filter(inv => inv.status === 'ACTIVE')
+    .filter(inv => {
+      const isCompleted = inv.status === 'COMPLETED';
+      const isWithdrawn = inv.withdrawalStatus === 'PROCESSED';
+      
+      return inv.status === 'ACTIVE' && 
+             !isWithdrawn &&
+             !isCompleted;
+    })
     .reduce((sum, inv) => sum + (inv.roiAmount || 0), 0);
 
-  // Safe formatting functions
   const formatNumber = (num: number | undefined | null) => {
     if (num === undefined || num === null || isNaN(num)) {
       return "0";
@@ -244,8 +324,8 @@ const Withdrawal: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
-        <img src={HomeUtils[0].companyLogo} alt="" className='w-16 sm:w-20 md:w-24 lg:w-32'/>
-        <p className='text-white mt-4 text-base sm:text-lg md:text-xl'>Page Loading...</p>
+        <img src={HomeUtils[0].companyLogo} alt="" className='w-16 sm:w-20 lg:w-24 xl:w-32'/>
+        <p className='text-white mt-4 text-base sm:text-lg lg:text-xl'>Page Loading...</p>
       </div>
     );
   }
@@ -258,16 +338,16 @@ const Withdrawal: React.FC = () => {
           <Link to="/dashboard" className="text-blue-600 hover:underline mb-4 inline-block">
             ← Back to Dashboard
           </Link>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">Withdraw ROI</h1>
-              <p className="text-gray-600 mt-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Withdraw ROI</h1>
+              <p className="text-gray-600 mt-2 text-sm sm:text-base">
                 Withdraw returns from your matured investments
               </p>
             </div>
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm sm:text-base"
             >
               {showHistory ? 'Back to Investments' : 'View Withdrawal History'}
             </button>
@@ -275,16 +355,24 @@ const Withdrawal: React.FC = () => {
         </div>
 
         {/* ROI Summary Card */}
-        <div className="bg-linear-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg p-6 mb-8 text-white">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="bg-linear-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg p-4 sm:p-6 mb-8 text-white">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-              <h2 className="text-xl font-bold mb-2">ROI Summary</h2>
-              <p className="text-purple-100">Total ROI available for withdrawal</p>
+              <h2 className="text-lg sm:text-xl font-bold mb-2">ROI Summary</h2>
+              <p className="text-purple-100 text-sm sm:text-base">Total ROI available for withdrawal</p>
             </div>
-            <div className="text-right">
-              <div className="text-3xl md:text-4xl font-bold mb-1">${formatCurrency(totalAvailableROI)}</div>
-              <p className="text-purple-200 text-sm">
-                Across {investments.filter(inv => inv.status === 'ACTIVE' && (inv.roiAmount || 0) > 0).length} investment(s)
+            <div className="text-left lg:text-right">
+              <div className="text-3xl lg:text-4xl font-bold mb-1">${formatCurrency(totalAvailableROI)}</div>
+              <p className="text-purple-200 text-xs sm:text-sm">
+                Across {investments.filter(inv => {
+                  const isCompleted = inv.status === 'COMPLETED';
+                  const isWithdrawn = inv.withdrawalStatus === 'PROCESSED';
+                  
+                  return inv.status === 'ACTIVE' && 
+                         (inv.roiAmount || 0) > 0 && 
+                         !isWithdrawn &&
+                         !isCompleted;
+                }).length} investment(s)
               </p>
             </div>
           </div>
@@ -297,12 +385,11 @@ const Withdrawal: React.FC = () => {
             <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">ROI Withdrawal Information</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>You can only withdraw ROI (Return on Investment), not your principal amount</li>
-                <li>ROI is added by admin to each investment separately</li>
-                <li>You can withdraw ROI after the investment maturity period</li>
-                <li>Each investment's ROI is tracked separately but summed in your total ROI</li>
-                <li>Withdrawal requests require admin approval</li>
-                <li>You can choose between bank transfer or crypto wallet transfer</li>
+                <li>Withdrawal Eligibility: ROI can only be withdrawn after the investment has reached its full maturity period, as outlined in your investment agreement.</li>
+                <li>Withdrawal Methods: Investors may choose to receive their ROI through:• Bank Transfer (to a verified account), or
+Cryptocurrency Wallet (supported wallets only).</li>
+                <li>Processing Time: Once a valid withdrawal request is submitted and verified, processing is typically completed within 24 hours.</li>
+                <li>Early Withdrawal: ROI cannot be withdrawn before maturity under standard terms. Any exceptions are subject to specific contractual agreements or promotional conditions.</li>
               </ul>
             </div>
           </div>
@@ -316,144 +403,167 @@ const Withdrawal: React.FC = () => {
           />
         )}
 
-        {/* Investments List (only show if not viewing history) */}
+        {/* Investments List */}
         {!showHistory && (
           <>
-            {/* Refresh Button */}
-            <div className="flex justify-between items-center mb-4">
-              <div className="text-gray-600">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+              <div className="text-gray-600 text-sm sm:text-base">
                 Showing {investments.length} investment{investments.length !== 1 ? 's' : ''}
               </div>
               <button
                 onClick={fetchAllData}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700 text-sm sm:text-base"
               >
                 <FiRefreshCw /> Refresh
               </button>
             </div>
 
             {investments.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-                <FiDollarSign className="text-6xl text-gray-400 mx-auto mb-4" />
-                <p className="text-xl text-gray-600 mb-4">No investments yet</p>
+              <div className="bg-white rounded-xl shadow-lg p-8 sm:p-12 text-center">
+                <FiDollarSign className="text-5xl sm:text-6xl text-gray-400 mx-auto mb-4" />
+                <p className="text-lg sm:text-xl text-gray-600 mb-4">No investments yet</p>
                 <Link
                   to="/view-investment"
-                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold"
+                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold text-sm sm:text-base"
                 >
                   Browse Investments
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {investments.map((investment) => (
-                  <div
-                    key={investment.id}
-                    className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition"
-                  >
-                    {/* Header */}
-                    <div className="bg-linear-to-r from-blue-600 to-purple-600 p-6 text-white">
-                      <h3 className="font-bold text-lg mb-2">{investment.investment.title}</h3>
-                      <span className="px-3 py-1 bg-white/20 rounded-full text-xs">
-                        {investment.investment.category}
-                      </span>
-                    </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {investments.map((investment) => {
+                  const isCompleted = investment.status === 'COMPLETED';
+                  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+                  const isClosed = isCompleted || isWithdrawn;
+                  const daysRemaining = isClosed ? null : getDaysRemaining(investment.endDate);
+                  
+                  return (
+                    <div
+                      key={investment.id}
+                      className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition"
+                    >
+                      {/* Header */}
+                      <div className={`p-6 text-white ${
+                        isClosed 
+                          ? 'bg-linear-to-r from-gray-600 to-gray-700'
+                          : 'bg-linear-to-r from-blue-600 to-purple-600'
+                      }`}>
+                        <h3 className="font-bold text-base sm:text-lg mb-2">{investment.investment.title}</h3>
+                        <span className="px-3 py-1 bg-white/20 rounded-full text-xs">
+                          {investment.investment.category}
+                        </span>
+                      </div>
 
-                    {/* Content */}
-                    <div className="p-6">
-                      <div className="space-y-4 mb-6">
-                        <div>
-                          <p className="text-gray-600 text-sm">Investment Amount</p>
-                          <p className="text-2xl font-bold text-gray-800">
-                            ${formatNumber(investment.amount)}
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-
+                      {/* Content */}
+                      <div className="p-4 sm:p-6">
+                        <div className="space-y-4 mb-6">
                           <div>
-                            <p className="text-gray-600 text-sm">Available ROI</p>
-                            <p className="text-xl font-bold text-purple-600 flex items-center gap-1">
-                              <FiTrendingUp /> ${formatCurrency(investment.roiAmount)}
+                            <p className="text-gray-600 text-xs sm:text-sm">Investment Amount</p>
+                            <p className="text-xl sm:text-2xl font-bold text-gray-800">
+                              ${formatNumber(investment.amount)}
                             </p>
                           </div>
-                        </div>
 
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Total ROI Added:</span>
-                            <span className="font-semibold">${formatCurrency(investment.totalRoiAdded)}</span>
-                          </div>
-                        </div>
-
-                        {investment.startDate && (
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <p className="text-gray-600">Start Date</p>
-                              <p className="font-semibold">
-                                {new Date(investment.startDate).toLocaleDateString()}
+                              <p className="text-gray-600 text-xs sm:text-sm">ROI Available</p>
+                              <p className={`text-lg sm:text-xl font-bold flex items-center gap-1 ${
+                                isClosed ? 'text-gray-600' : 'text-purple-600'
+                              }`}>
+                                <FiTrendingUp /> ${formatCurrency(investment.roiAmount)}
                               </p>
+                              {isClosed && investment.totalRoiAdded && investment.totalRoiAdded > 0 && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Total earned: ${formatCurrency(investment.totalRoiAdded)}
+                                </p>
+                              )}
                             </div>
-                            {investment.endDate && (
+                          </div>
+
+                          {(investment.totalRoiAdded || 0) > 0 && !isClosed && (
+                            <div className="bg-gray-50 p-3 rounded-lg">
+                              <div className="flex justify-between text-xs sm:text-sm">
+                                <span className="text-gray-600">Total ROI Added:</span>
+                                <span className="font-semibold">${formatCurrency(investment.totalRoiAdded)}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {investment.startDate && !isClosed && (
+                            <div className="grid grid-cols-2 gap-4 text-xs sm:text-sm">
                               <div>
-                                <p className="text-gray-600">End Date</p>
+                                <p className="text-gray-600">Start Date</p>
                                 <p className="font-semibold">
-                                  {new Date(investment.endDate).toLocaleDateString()}
+                                  {new Date(investment.startDate).toLocaleDateString()}
                                 </p>
                               </div>
+                              {investment.endDate && (
+                                <div>
+                                  <p className="text-gray-600">End Date</p>
+                                  <p className="font-semibold">
+                                    {new Date(investment.endDate).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="mb-4">
+                          {getStatusBadge(investment)}
+                        </div>
+
+                        {/* Withdraw Button */}
+                        {isClosed ? (
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                              <FiCheckCircle className="text-green-500" />
+                              <span>Investment closed</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              ROI already withdrawn
+                            </p>
+                          </div>
+                        ) : canWithdraw(investment) ? (
+                          <button
+                            onClick={() => handleWithdrawClick(investment)}
+                            className="w-full bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-2 sm:py-3 rounded-lg font-semibold transition-all text-sm sm:text-base"
+                          >
+                            Withdraw ROI (${formatCurrency(investment.roiAmount)})
+                          </button>
+                        ) : investment.withdrawalStatus === 'PENDING' ? (
+                          <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                            <p className="text-xs sm:text-sm text-yellow-800">
+                              ROI withdrawal request pending admin approval
+                            </p>
+                          </div>
+                        ) : investment.status === 'PENDING' ? (
+                          <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                            <p className="text-xs sm:text-sm text-yellow-800">
+                              Waiting for admin confirmation
+                            </p>
+                          </div>
+                        ) : (investment.roiAmount || 0) > 0 ? (
+                          <div className="text-center p-3 bg-purple-50 rounded-lg">
+                            <p className="text-xs sm:text-sm text-purple-800">
+                              ${formatCurrency(investment.roiAmount)} ROI available after maturity
+                            </p>
+                            {daysRemaining !== null && daysRemaining > 0 && (
+                              <p className="text-xs text-purple-600 mt-1">
+                                {daysRemaining} days until maturity
+                              </p>
                             )}
+                          </div>
+                        ) : (
+                          <div className="text-center p-3 bg-gray-50 rounded-lg">
+                            <p className="text-xs sm:text-sm text-gray-600">No ROI available</p>
                           </div>
                         )}
                       </div>
-
-                      {/* Status Badge */}
-                      <div className="mb-4">
-                        {getStatusBadge(investment)}
-                      </div>
-
-                      {/* Withdraw Button */}
-                      {canWithdraw(investment) ? (
-                        <button
-                          onClick={() => handleWithdrawClick(investment)}
-                          className="w-full bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 rounded-lg font-semibold transition-all"
-                        >
-                          Withdraw ROI (${formatCurrency(investment.roiAmount)})
-                        </button>
-                      ) : investment.status === 'PENDING_WITHDRAWAL' ? (
-                        <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                          <p className="text-sm text-yellow-800">
-                            ROI withdrawal request pending admin approval
-                          </p>
-                        </div>
-                      ) : investment.status === 'PENDING' ? (
-                        <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                          <p className="text-sm text-yellow-800">
-                            Waiting for admin confirmation
-                          </p>
-                        </div>
-                      ) : investment.status === 'COMPLETED' ? (
-                        <div className="text-center p-3 bg-gray-50 rounded-lg">
-                          <p className="text-sm text-gray-600">Fully withdrawn</p>
-                        </div>
-                      ) : (investment.roiAmount || 0) > 0 ? (
-                        <div className="text-center p-3 bg-purple-50 rounded-lg">
-                          <p className="text-sm text-purple-800">
-                            ${formatCurrency(investment.roiAmount)} ROI available after maturity
-                          </p>
-                        </div>
-                      ) : investment.endDate && getDaysRemaining(investment.endDate) !== null ? (
-                        <div className="text-center p-3 bg-blue-50 rounded-lg">
-                          <p className="text-sm text-blue-800">
-                            {getDaysRemaining(investment.endDate)} days until maturity
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="text-center p-3 bg-gray-50 rounded-lg">
-                          <p className="text-sm text-gray-600">Not available for withdrawal</p>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
@@ -470,7 +580,7 @@ const Withdrawal: React.FC = () => {
             investment: {
               title: selectedInvestment.investment.title,
               category: selectedInvestment.investment.category
-            }
+            } as any
           }}
           maxAmount={selectedInvestment.roiAmount || 0}
           onClose={() => {
@@ -485,4 +595,3 @@ const Withdrawal: React.FC = () => {
 };
 
 export default Withdrawal;
-

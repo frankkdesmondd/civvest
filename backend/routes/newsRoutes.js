@@ -1,42 +1,16 @@
+// routes/news.js
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { authenticateToken, isAdmin } from '../middleware/authMiddleware.js';
+import { newsStorage } from '../config/cloudinary.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
-// Get __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Configure multer for news images
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../uploads/news/');
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    }
-    cb(new Error('Only image files are allowed'));
-  }
+const upload = multer({ 
+  storage: newsStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 // Get all published news
@@ -80,44 +54,72 @@ router.get('/:slug', async (req, res) => {
   }
 });
 
-// Create news post (Admin only)
+/// Create news post (Admin only)
 router.post('/', authenticateToken, isAdmin, upload.single('image'), async (req, res) => {
   try {
     const { title, slug, content, excerpt, category, author, published } = req.body;
-
-    const imageUrl = req.file ? `/uploads/news/${req.file.filename}` : '';
+    
+    // Debug logging
+    console.log('Create - File received:', req.file);
+    console.log('Create - Body received:', req.body);
+    
+    // Cloudinary provides the full URL in req.file.path
+    const imageUrl = req.file ? req.file.path : '';
+    console.log('Create - imageUrl:', imageUrl);
 
     const post = await prisma.newsPost.create({
-      data: {
-        title,
-        slug,
-        content,
-        excerpt,
-        imageUrl,
-        category,
-        author,
-        published: published === 'true'
+      data: { 
+        title, 
+        slug, 
+        content, 
+        excerpt, 
+        imageUrl, 
+        category, 
+        author, 
+        published: published === 'true' 
       }
     });
-
+    
+    console.log('Create - Post created:', post);
     res.status(201).json(post);
   } catch (error) {
-    console.error('Create news error:', error);
-    res.status(500).json({ error: 'Failed to create news post' });
+    console.error('Create error details:', error);
+    res.status(500).json({ 
+      error: 'Failed to create news post: ' + error.message,
+      details: error.stack 
+    });
   }
 });
 
 // Update news post (Admin only)
 router.put('/:id', authenticateToken, isAdmin, upload.single('image'), async (req, res) => {
   try {
-    const updateData = { ...req.body };
+    const { title, slug, content, excerpt, category, author, published } = req.body;
     
-    if (req.file) {
-      updateData.imageUrl = `/uploads/news/${req.file.filename}`;
-    }
-
-    if (updateData.published) {
-      updateData.published = updateData.published === 'true';
+    // Build update data
+    const updateData = {
+      title,
+      slug,
+      content,
+      excerpt,
+      category,
+      author,
+      published: published === 'true'
+    };
+    
+    // Debug logging (remove after fixing)
+    console.log('Update - File received:', req.file);
+    console.log('Update - Body received:', req.body);
+    
+    // Use Cloudinary URL if file was uploaded
+    if (req.file && req.file.path) {
+      updateData.imageUrl = req.file.path;
+      console.log('Update - Setting imageUrl to:', updateData.imageUrl);
+    } else if (req.body.imageUrl) {
+      // Keep existing image if no new file uploaded
+      updateData.imageUrl = req.body.imageUrl;
+    } else {
+      updateData.imageUrl = '';
     }
 
     const post = await prisma.newsPost.update({
@@ -127,7 +129,8 @@ router.put('/:id', authenticateToken, isAdmin, upload.single('image'), async (re
 
     res.json(post);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update news post' });
+    console.error('Update error details:', error);
+    res.status(500).json({ error: 'Failed to update news post: ' + error.message });
   }
 });
 

@@ -105,7 +105,7 @@ const NextBody: React.FC = () => {
           <p className="text-base sm:text-[1em] max-w-full">
             Civvest Energy Partners, we are structured to ensure that the investor always
             comes first. By keeping business expenses low without compromising the integrity
-            and quality of the prospect, Guardian Energy Partners gives partners the
+            and quality of the prospect, Civvest Energy Partners gives partners the
             opportunity to achieve a fruitful energy portfolio for many years to come.
           </p>
 
@@ -127,3 +127,4 @@ const NextBody: React.FC = () => {
 };
 
 export default NextBody;
+
