@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import ReCAPTCHA from 'react-google-recaptcha';
 import { HomeUtils } from '../utils/HomeUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 const SignUp: React.FC = () => {
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -20,12 +18,6 @@ const SignUp: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-
-  const handleCaptchaChange = (token: string | null) => {
-    setCaptchaToken(token);
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -33,8 +25,9 @@ const SignUp: React.FC = () => {
   const handleSignUp = async () => {
     setError('');
 
-    if (!captchaToken) {
-      setError("Please verify that you're not a robot.");
+    // Validation
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
+      setError("Please fill in all fields");
       return;
     }
 
@@ -53,7 +46,7 @@ const SignUp: React.FC = () => {
     try {
       const response = await axios.post(
         'https://civvest-backend.onrender.com/api/auth/signup',
-        { ...formData, captchaToken },
+        { ...formData },
         { withCredentials: true }
       );
 
@@ -147,7 +140,7 @@ const SignUp: React.FC = () => {
           </div>
 
           {/* CONFIRM PASSWORD INPUT WITH EYE ICON */}
-          <div className="relative mb-3">
+          <div className="relative mb-6">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
               name="confirmPassword"
@@ -164,14 +157,6 @@ const SignUp: React.FC = () => {
             >
               {showConfirmPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </button>
-          </div>
-
-          <div className="my-4">
-            <ReCAPTCHA
-              sitekey={siteKey}
-              onChange={handleCaptchaChange}
-              theme="dark"
-            />
           </div>
 
           <button
@@ -204,7 +189,3 @@ const SignUp: React.FC = () => {
 };
 
 export default SignUp;
-
-
-
-
