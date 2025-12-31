@@ -135,56 +135,43 @@ const Withdrawal: React.FC = () => {
   };
 
   const canWithdraw = (investment: Investment) => {
-    // Check if investment is already completed or withdrawn
+  // Check if investment is already completed or withdrawn
+  const isCompleted = investment.status === 'COMPLETED';
+  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+  
+  if (isCompleted || isWithdrawn) {
+    return false;
+  }
+  
+  // Check if investment is active
+  if (investment.status !== 'ACTIVE') {
+    return false;
+  }
+  
+  // Check if already has pending withdrawal
+  if (investment.withdrawalStatus === 'PENDING') {
+    return false;
+  }
+  
+  // ONLY check if ROI is available to withdraw - NO maturity checks
+  const hasROI = (investment.roiAmount || 0) > 0;
+  return hasROI;
+};
+
+  const handleWithdrawClick = (investment: Investment) => {
+  // Validate investment can withdraw
+  if (!canWithdraw(investment)) {
     const isCompleted = investment.status === 'COMPLETED';
     const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
     
     if (isCompleted || isWithdrawn) {
-      return false;
-    }
-    
-    // Check if investment is active
-    if (investment.status !== 'ACTIVE' || !investment.endDate || !investment.startDate) {
-      return false;
-    }
-    
-    // Check if already has pending withdrawal
-    if (investment.withdrawalStatus === 'PENDING') {
-      return false;
-    }
-    
-    // Check if ROI is available to withdraw
-    const hasROI = (investment.roiAmount || 0) > 0;
-    if (!hasROI) {
-      return false;
-    }
-    
-    const daysRemaining = getDaysRemaining(investment.endDate);
-    return daysRemaining !== null && daysRemaining <= 0;
-  };
-
-  const handleWithdrawClick = (investment: Investment) => {
-    // Validate investment can withdraw
-    if (!canWithdraw(investment)) {
-      const isCompleted = investment.status === 'COMPLETED';
-      const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
-      
-      if (isCompleted || isWithdrawn) {
-        showToast('Investment is already closed', 'info');
-      } else {
-        const daysRemaining = getDaysRemaining(investment.endDate);
-        if (daysRemaining !== null && daysRemaining > 0) {
-          showToast(`Investment matures in ${daysRemaining} days`, 'info');
-        } else if (investment.withdrawalStatus === 'PENDING') {
-          showToast('Withdrawal request already pending', 'info');
-        }
-      }
-      return;
-    }
-    
-    setSelectedInvestment(investment);
-    setShowModal(true);
-  };
+      showToast('Investment is already closed', 'info');
+    } 
+  }
+  
+  setSelectedInvestment(investment);
+  setShowModal(true);
+};
 
   const handleConfirmWithdrawal = async (withdrawalData: any) => {
     try {
@@ -385,11 +372,10 @@ const Withdrawal: React.FC = () => {
             <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">ROI Withdrawal Information</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Withdrawal Eligibility: ROI can only be withdrawn after the investment has reached its full maturity period, as outlined in your investment agreement.</li>
-                <li>Withdrawal Methods: Investors may choose to receive their ROI through:• Bank Transfer (to a verified account), or
-Cryptocurrency Wallet (supported wallets only).</li>
+                <li>Withdrawal Eligibility: ROI can be withdrawn at any time for active investments.</li>
+                <li>Withdrawal Methods: Investors may choose to receive their ROI through:• Bank Transfer (to a verified account), or Cryptocurrency Wallet (supported wallets only).</li>
                 <li>Processing Time: Once a valid withdrawal request is submitted and verified, processing is typically completed within 24 hours.</li>
-                <li>Early Withdrawal: ROI cannot be withdrawn before maturity under standard terms. Any exceptions are subject to specific contractual agreements or promotional conditions.</li>
+                <li>Available ROI: You can only withdraw the ROI amount that has been credited to your investment.</li>
               </ul>
             </div>
           </div>
