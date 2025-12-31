@@ -74,7 +74,10 @@ router.post('/request', authenticateToken, async (req, res) => {
     const result = await prisma.$transaction(async (tx) => {
       const updatedInvestment = await tx.userInvestment.update({
         where: { id: userInvestmentId },
-        data: { roiAmount: { decrement: amount } }
+        data: { 
+          roiAmount: { decrement: amount },
+          ...(userInvestment.roiAmount - amount <= 0 && { status: 'COMPLETED' })
+         }
       });
 
       const updatedUser = await tx.user.update({
@@ -123,6 +126,7 @@ router.post('/request', authenticateToken, async (req, res) => {
       });
 
       // 2. Find all ADMIN users and create notifications for them
+      // REMOVED metadata field since it doesn't exist in your schema
       const adminUsers = await tx.user.findMany({
         where: { role: 'ADMIN' },
         select: { id: true }
@@ -134,15 +138,8 @@ router.post('/request', authenticateToken, async (req, res) => {
           userId: admin.id,
           title: 'New Withdrawal Request',
           message: `${userInvestment.user.firstName} ${userInvestment.user.lastName} requested $${amount.toFixed(2)} withdrawal from ${userInvestment.investment.title}.`,
-          type: 'NEW_WITHDRAWAL_REQUEST',
-          metadata: JSON.stringify({
-            withdrawalId: withdrawal.id,
-            userId: userId,
-            userEmail: userInvestment.user.email,
-            amount: amount,
-            investmentTitle: userInvestment.investment.title,
-            timestamp: new Date().toISOString()
-          })
+          type: 'NEW_WITHDRAWAL_REQUEST'
+          // REMOVED: metadata field
         }));
         
         await tx.notification.createMany({
@@ -282,7 +279,6 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
     const { withdrawalId } = req.params;
     const { status, adminNotes } = req.body;
 
-    // Use transaction to update both records
     const result = await prisma.$transaction(async (tx) => {
       
       // 1. Update withdrawal status
@@ -295,15 +291,27 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
           approvedAt: status === 'APPROVED' ? new Date() : null
         },
         include: {
-          investment: true
+          investment: true // This includes the UserInvestment
         }
       });
 
-      // 2. If approved, DO NOT mark as COMPLETED (allow multiple withdrawals)
-      // Users can withdraw multiple times until ROI is exhausted
-      if (status === 'APPROVED' && withdrawal.userInvestmentId) {
-        // Just update the withdrawal status, keep investment ACTIVE
-        // So user can withdraw again if they have more ROI
+      // 2. If approved, check if ROI is zero and mark as COMPLETED
+      if (status === 'APPROVED' && withdrawal.userInvestmentId && withdrawal.investment) {
+        // Check current ROI amount
+        const currentInvestment = await tx.userInvestment.findUnique({
+          where: { id: withdrawal.userInvestmentId }
+        });
+        
+        // If ROI amount is zero or negative, mark as COMPLETED
+        if (currentInvestment && currentInvestment.roiAmount <= 0) {
+          await tx.userInvestment.update({
+            where: { id: withdrawal.userInvestmentId },
+            data: { 
+              status: 'COMPLETED',
+              withdrawalStatus: 'PROCESSED' // Add this field if it exists
+            }
+          });
+        }
       }
 
       return withdrawal;
