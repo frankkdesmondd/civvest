@@ -172,10 +172,15 @@ model UserInvestment {
   depositId       String?
   roiAmount       Float            @default(0)
   totalRoiAdded   Float            @default(0)
+  withdrawalStatus WithdrawalStatus?
   roiTransactions ROITransaction[]
   investment      Investment       @relation(fields: [investmentId], references: [id])
   user            User             @relation(fields: [userId], references: [id])
   withdrawals     Withdrawal[]
+
+  @@index([userId])
+  @@index([investmentId])
+  @@index([status])
 }
 
 model ROITransaction {
