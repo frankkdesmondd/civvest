@@ -1,4 +1,4 @@
-// Withdrawal.tsx - COMPLETE UPDATED VERSION with proper investment closure display
+// Withdrawal.tsx - UPDATED VERSION with slate colors for closed investments
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FiClock, FiCheckCircle, FiDollarSign, FiRefreshCw, FiTrendingUp, FiAlertCircle} from 'react-icons/fi';
@@ -165,6 +165,18 @@ const Withdrawal: React.FC = () => {
   setShowModal(true);
 };
 
+// Update the isInvestmentClosed logic in the Withdrawal.tsx component
+const isInvestmentClosed = (investment: Investment) => {
+  // First check explicit status
+  const isCompleted = investment.status === 'COMPLETED';
+  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+  
+  // NEW: Also check if all ROI has been withdrawn
+  const allROIWithdrawn = (investment.roiAmount || 0) <= 0 && (investment.totalRoiAdded || 0) > 0;
+  
+  return isCompleted || isWithdrawn || allROIWithdrawn;
+};
+
   const handleConfirmWithdrawal = async (withdrawalData: any) => {
     try {
       // Validate data
@@ -211,51 +223,55 @@ const Withdrawal: React.FC = () => {
   };
 
   const getStatusBadge = (investment: Investment) => {
-    // Check if investment has been fully withdrawn/closed
-    const isCompleted = investment.status === 'COMPLETED';
-    const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
-    
-    if (isCompleted || isWithdrawn) {
-      return (
-        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold flex items-center gap-1">
-          <FiCheckCircle /> Closed
-        </span>
-      );
-    }
-
-    if (investment.withdrawalStatus === 'PENDING') {
-      return (
-        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
-          <FiClock /> Withdrawal Pending
-        </span>
-      );
-    }
-
-    if (investment.status === 'PENDING') {
-      return (
-        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
-          <FiClock /> Pending Confirmation
-        </span>
-      );
-    }
-
-    // For ACTIVE investments
-    if (investment.status === 'ACTIVE' && investment.startDate) {
-      if (canWithdraw(investment)) {
-        return (
-          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold flex items-center gap-1">
-            <FiCheckCircle /> ROI Ready to Withdraw
-          </span>
-        );
-      }
-    }
-
+  // NEW: Check if all ROI is withdrawn
+  const allROIWithdrawn = (investment.roiAmount || 0) <= 0 && (investment.totalRoiAdded || 0) > 0;
+  
+  // Check if investment has been fully withdrawn/closed
+  const isCompleted = investment.status === 'COMPLETED';
+  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+  
+  // UPDATED: Include allROIWithdrawn in the check
+  if (isCompleted || isWithdrawn || allROIWithdrawn) {
     return (
-      <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">
-        {investment.status}
+      <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold flex items-center gap-1">
+        <FiCheckCircle /> Closed
       </span>
     );
-  };
+  }
+
+  if (investment.withdrawalStatus === 'PENDING') {
+    return (
+      <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
+        <FiClock /> Withdrawal Pending
+      </span>
+    );
+  }
+
+  if (investment.status === 'PENDING') {
+    return (
+      <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
+        <FiClock /> Pending Confirmation
+      </span>
+    );
+  }
+
+  // For ACTIVE investments
+  if (investment.status === 'ACTIVE' && investment.startDate) {
+    if (canWithdraw(investment)) {
+      return (
+        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold flex items-center gap-1">
+          <FiCheckCircle /> ROI Ready to Withdraw
+        </span>
+      );
+    }
+  }
+
+  return (
+    <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">
+      {investment.status}
+    </span>
+  );
+};
 
   const totalAvailableROI = investments
     .filter(inv => {
@@ -395,19 +411,17 @@ const Withdrawal: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {investments.map((investment) => {
-                  const isCompleted = investment.status === 'COMPLETED';
-                  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
-                  const isClosed = isCompleted || isWithdrawn;
+                  const isClosed = isInvestmentClosed(investment);
                   
                   return (
                     <div
                       key={investment.id}
                       className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition"
                     >
-                      {/* Header */}
+                      {/* Header - UPDATED: Changed closed investment color to slate */}
                       <div className={`p-6 text-white ${
                         isClosed 
-                          ? 'bg-linear-to-r from-gray-600 to-gray-700'
+                          ? 'bg-linear-to-r from-slate-600 to-slate-700' // CHANGED from gray-600/gray-700 to slate-600/slate-700
                           : 'bg-linear-to-r from-blue-600 to-purple-600'
                       }`}>
                         <h3 className="font-bold text-base sm:text-lg mb-2">{investment.investment.title}</h3>
@@ -430,12 +444,12 @@ const Withdrawal: React.FC = () => {
                             <div>
                               <p className="text-gray-600 text-xs sm:text-sm">ROI Available</p>
                               <p className={`text-lg sm:text-xl font-bold flex items-center gap-1 ${
-                                isClosed ? 'text-gray-600' : 'text-purple-600'
+                                isClosed ? 'text-slate-600' : 'text-purple-600' // CHANGED from gray-600 to slate-600
                               }`}>
                                 <FiTrendingUp /> ${formatCurrency(investment.roiAmount)}
                               </p>
                               {isClosed && investment.totalRoiAdded && investment.totalRoiAdded > 0 && (
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-slate-500 mt-1"> {/* CHANGED from gray-500 to slate-500 */}
                                   Total earned: ${formatCurrency(investment.totalRoiAdded)}
                                 </p>
                               )}
@@ -470,12 +484,12 @@ const Withdrawal: React.FC = () => {
 
                         {/* Withdraw Button */}
                         {isClosed ? (
-                          <div className="text-center p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                              <FiCheckCircle className="text-green-500" />
+                          <div className="text-center p-3 bg-slate-50 rounded-lg"> {/* CHANGED from gray-50 to slate-50 */}
+                            <div className="flex items-center justify-center gap-2 text-sm text-slate-600"> {/* CHANGED from gray-600 to slate-600 */}
+                              <FiCheckCircle className="text-slate-500" /> {/* CHANGED from green-500 to slate-500 */}
                               <span>Investment closed</span>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-slate-500 mt-1"> {/* CHANGED from gray-500 to slate-500 */}
                               ROI already withdrawn
                             </p>
                           </div>
