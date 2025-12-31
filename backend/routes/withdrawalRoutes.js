@@ -31,6 +31,14 @@ router.post('/request', authenticateToken, async (req, res) => {
       }
     }
 
+    if (investment.roiAmount <= 0) {
+      return res.status(400).json({ 
+        error: 'No ROI available for withdrawal',
+        investmentId: userInvestmentId
+      });
+    }
+
+
     const userInvestment = await prisma.userInvestment.findFirst({
       where: { id: userInvestmentId, userId: userId, status: 'ACTIVE' },
       include: {
@@ -47,25 +55,8 @@ router.post('/request', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Active investment not found' });
     }
 
-    if (!userInvestment.endDate) {
-      return res.status(400).json({ 
-        error: 'Investment maturity date not set',
-        investmentId: userInvestmentId
-      });
-    }
-
     const now = new Date();
     const maturityDate = new Date(userInvestment.endDate);
-    
-    if (now < maturityDate) {
-      const daysRemaining = Math.ceil((maturityDate - now) / (1000 * 60 * 60 * 24));
-      return res.status(400).json({ 
-        error: 'Investment has not matured yet. ROI withdrawal only allowed after maturity.',
-        maturityDate: maturityDate.toISOString(),
-        daysRemaining,
-        currentDate: now.toISOString()
-      });
-    }
 
     const availableROI = userInvestment.roiAmount || 0;
     if (availableROI <= 0) {
@@ -190,7 +181,6 @@ router.get('/roi-available/:investmentId', authenticateToken, async (req, res) =
     const now = new Date();
     const maturityDate = investment.endDate ? new Date(investment.endDate) : null;
     const isMatured = maturityDate && now >= maturityDate;
-    const daysRemaining = maturityDate ? Math.ceil((maturityDate - now) / (1000 * 60 * 60 * 24)) : null;
     const canWithdraw = isMatured && investment.roiAmount > 0;
     
     res.json({
@@ -199,11 +189,7 @@ router.get('/roi-available/:investmentId', authenticateToken, async (req, res) =
       availableROI: investment.roiAmount,
       isMatured,
       canWithdraw,
-      maturityDate: investment.endDate,
-      daysRemaining: daysRemaining && daysRemaining > 0 ? daysRemaining : 0,
-      message: !isMatured 
-        ? `Investment matures in ${daysRemaining} days`
-        : investment.roiAmount <= 0
+      message: investment.roiAmount <= 0
         ? 'No ROI available'
         : 'ROI available for withdrawal'
     });
