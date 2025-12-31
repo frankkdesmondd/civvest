@@ -34,22 +34,21 @@ model User {
   roi                 Float                   @default(0)
   routingCode         String?
   state               String?
-  
-  // Existing relations
+
   deposits            Deposit[]               @relation("UserDeposits")
   applications        InvestmentApplication[] @relation("UserApplications")
   messages            Message[]               @relation("SentMessages")
   notifications       Notification[]
   roiTransactions     ROITransaction[]
-  transfers           Transfer[]              @relation("UserTransfers")
+  transfers           Transfer[]              @relation("UserTransfers")       // Sent transfers
+  receivedTransfers   Transfer[]              @relation("ReceivedTransfers")   // Received transfers
   userInvestments     UserInvestment[]
   wallets             Wallet[]                @relation("UserWallets")
   approvedWithdrawals Withdrawal[]            @relation("WithdrawalApprovals")
   withdrawals         Withdrawal[]
-  
-  // ADD THESE TWO LINES for ReferralWithdrawal relations:
-  referralWithdrawals          ReferralWithdrawal[] @relation("ReferralWithdrawalUser")
-  approvedReferralWithdrawals  ReferralWithdrawal[] @relation("ReferralWithdrawalApprover")
+
+  referralWithdrawals          ReferralWithdrawal[] @relation("UserReferralWithdrawals")
+  approvedReferralWithdrawals  ReferralWithdrawal[] @relation("ApprovedReferralWithdrawals")
 }
 
 model Wallet {
@@ -64,30 +63,31 @@ model Wallet {
 model ReferralWithdrawal {
   id            String   @id @default(cuid())
   userId        String
-  // Add relation name here:
-  user          User     @relation("ReferralWithdrawalUser", fields: [userId], references: [id])
   amount        Float
-  type          String   // 'BANK_TRANSFER' or 'CRYPTO_WALLET'
-  status        String   @default("PENDING") // 'PENDING', 'APPROVED', 'REJECTED', 'PROCESSED'
-  
-  // Bank details
+  type          String
+  status        String   @default("PENDING")
+
   bankName      String?
   accountName   String?
   accountNumber String?
   routingCode   String?
-  
-  // Crypto details
+
   coinHost      String?
   walletAddress String?
-  
+
   adminNotes    String?
   approvedById  String?
-  // This already has a relation name:
-  approvedBy    User?    @relation("ReferralWithdrawalApprover", fields: [approvedById], references: [id])
   approvedAt    DateTime?
-  
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  user          User     @relation("UserReferralWithdrawals", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy    User?    @relation("ApprovedReferralWithdrawals", fields: [approvedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([approvedById])
 }
 
 model Deposit {
@@ -220,7 +220,8 @@ model Message {
 
 model Transfer {
   id            String   @id @default(uuid())
-  userId        String
+  userId        String                      // Sender
+  receiverId    String?                     // RECEIVER (New)
   amount        Float
   receiptUrl    String
   accountNumber String
@@ -228,7 +229,12 @@ model Transfer {
   status        String   @default("PENDING")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
   user          User     @relation("UserTransfers", fields: [userId], references: [id], onDelete: Cascade)
+  receiver      User?    @relation("ReceivedTransfers", fields: [receiverId], references: [id])
+
+  @@index([userId])
+  @@index([receiverId])
 }
 
 model Withdrawal {
@@ -247,8 +253,8 @@ model Withdrawal {
   approvedById     String?
   approvedAt       DateTime?
   adminNotes       String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
   approvedBy       User?            @relation("WithdrawalApprovals", fields: [approvedById], references: [id])
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   investment       UserInvestment   @relation(fields: [userInvestmentId], references: [id], onDelete: Cascade)
