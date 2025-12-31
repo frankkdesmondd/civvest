@@ -274,10 +274,8 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                     onChange={(e) => handleWalletDetailChange('coinHost', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                   >
-                    <option value="USDT">USDT</option>
-                    <option value="BTC">Bitcoin (BTC)</option>
                     <option value="ETH">Ethereum (ETH)</option>
-                    <option value="BNB">BNB</option>
+                    <option value="TRON">TRON</option>
                   </select>
                 </div>
                 <div>
@@ -300,7 +298,7 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                 <FiAlertCircle className="text-yellow-600 mt-0.5 shrink-0" />
                 <div className="text-sm text-yellow-800">
                   <p className="font-semibold">Important</p>
-                  <p>Withdrawal requests require admin approval. Processing time: 24-48 hours.</p>
+                  <p>Withdrawal requests require approval. Processing time: 24-48 hours.</p>
                 </div>
               </div>
             </div>
