@@ -1705,11 +1705,6 @@ const resetEditModal = () => {
 
                           {/* Investment Cards */}
                           {userInvestments.map(investment => {
-                            const daysRemaining = investment.endDate 
-                              ? Math.ceil((new Date(investment.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                              : null;
-                            const isMatured = daysRemaining !== null && daysRemaining <= 0;
-                            
                             return (
                               <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
                                 <div className="flex justify-between items-start mb-4">
@@ -1720,13 +1715,6 @@ const resetEditModal = () => {
                                     <div className="flex flex-wrap gap-2 mt-2">
                                       <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
                                         {investment.investment.category}
-                                      </span>
-                                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                        isMatured 
-                                          ? 'bg-green-100 text-green-800' 
-                                          : 'bg-yellow-100 text-yellow-800'
-                                      }`}>
-                                        {isMatured ? 'Matured' : `${daysRemaining} days remaining`}
                                       </span>
                                     </div>
                                   </div>
@@ -1744,12 +1732,6 @@ const resetEditModal = () => {
                                     <p className="text-xs text-gray-600 mb-1">Current ROI</p>
                                     <p className="font-bold text-purple-600">
                                       ${(investment.roiAmount || 0).toFixed(2)}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-gray-600 mb-1">Duration</p>
-                                    <p className="font-bold text-gray-700">
-                                      {investment.investment.duration}
                                     </p>
                                   </div>
                                 </div>
@@ -1784,15 +1766,6 @@ const resetEditModal = () => {
                                     Update ROI
                                   </button>
                                 </div>
-
-                                {/* Info Note */}
-                                {isMatured && (
-                                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                                    <p className="text-xs text-green-700">
-                                      ✓ Investment has matured. User can withdraw ROI once you set it.
-                                    </p>
-                                  </div>
-                                )}
                               </div>
                             );
                           })}
