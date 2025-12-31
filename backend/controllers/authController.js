@@ -230,8 +230,9 @@ export const SignUp = async (req, res) => {
         data: {
           referralBonus: {
             increment: 50
-          }
-        }
+          },
+          referralCount: { increment: 1 } 
+        }        
       });
 
       // Notify referrer
@@ -366,6 +367,7 @@ export const GetUser = async (req, res) => {
         profilePicture: true,
         roi: true, 
         referralBonus: true,
+        referralCount: true,
       }
     });
 
@@ -410,6 +412,7 @@ export const getMe = async (req, res) => {
         balance: true,
         roi: true,
         referralBonus: true,
+        referralCount: true,
         createdAt: true
       }
     });
