@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { useSEO } from "../hooks/useSEO";
 import InvestHeroSection from '../components/InvestHeroSection';
 import InvestorImage from '../assets/Investment Image.jpeg';
 import MainBonding from '../assets/main bonding.jpg'; // Add this import
 import { FiDollarSign } from "react-icons/fi";
-import { SlCalender } from "react-icons/sl";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import TrackRecord from '../components/TrackRecord';
@@ -213,15 +211,6 @@ const ViewInvestment: React.FC = () => {
                     </div>
                     <div className='w-full h-[0.03em] bg-white'></div>
 
-                    {/* ROI PERIOD */}
-                    <div className='flex gap-[2em] justify-between'>
-                      <div className='flex gap-2 items-center'>
-                        <SlCalender className='text-[1.2em]' />
-                        <p>ROI Maturity Period:</p>
-                      </div>
-                      <p>{item.duration}</p>
-                    </div>
-
                     <button className="mt-4 bg-blue-500 hover:bg-blue-600 py-2 rounded-lg font-semibold transition">
                       View Details
                     </button>
@@ -284,16 +273,6 @@ const ViewInvestment: React.FC = () => {
                       <p>${item.minAmount.toLocaleString()}</p>
                     </div>
                     <div className='w-full h-[0.03em] bg-white'></div>
-
-
-                    {/* ROI PERIOD */}
-                    <div className='flex gap-[2em] justify-between'>
-                      <div className='flex gap-2 items-center'>
-                        <SlCalender className='text-[1.2em]' />
-                        <p>ROI Maturity Period:</p>
-                      </div>
-                      <p>{item.duration}</p>
-                    </div>
 
                     <button className="mt-4 bg-blue-500 hover:bg-blue-600 py-2 rounded-lg font-semibold transition">
                       View Details
