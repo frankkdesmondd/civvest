@@ -1,90 +1,47 @@
-// middleware/authMiddleware.js
+// middleware/auth.js
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
-export const authenticateToken = async (req, res, next) => {
+export const authenticateToken = (req, res, next) => {
   try {
-    // Get token from cookie or Authorization header
     const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
     
-    console.log('[Auth] Token check:', {
-      hasCookie: !!req.cookies.token,
-      hasHeader: !!req.headers.authorization,
-      path: req.path,
-      method: req.method
-    });
-
     if (!token) {
-      console.log('[Auth] No token found');
+      console.log('No token found in cookies or headers');
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('[Auth] Token decoded:', { userId: decoded.userId, role: decoded.role });
-
-    // Get user from database to ensure they still exist
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        firstName: true,
-        lastName: true
-      }
-    });
-
-    if (!user) {
-      console.log('[Auth] User not found for token');
-      return res.status(401).json({ error: 'User not found' });
+    
+    // Debug: Log the decoded token
+    console.log('Decoded JWT:', decoded);
+    
+    // Your JWT contains "userId", not "id"
+    const userId = decoded.userId; // This is what your token has
+    
+    if (!userId) {
+      console.log('JWT token missing userId:', decoded);
+      return res.status(401).json({ error: 'Token missing user information' });
     }
-
-    // Attach user to request object with BOTH id and userId for compatibility
+    
+    // Set req.user with the correct field name
     req.user = {
-      id: user.id,           // Used by most routes
-      userId: user.id,       // Used by some legacy routes
-      email: user.email,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName
+      id: userId, // Map userId to id for consistency
+      userId: userId, // Also keep as userId
+      email: decoded.email,
+      role: decoded.role
     };
-
-    console.log('[Auth] User authenticated:', { userId: user.id, role: user.role });
+    
+    console.log('Authenticated user:', req.user);
     next();
   } catch (error) {
-    console.error('[Auth] Authentication error:', error.message);
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    
-    return res.status(500).json({ error: 'Authentication failed' });
+    console.error('Auth middleware error:', error.message);
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
 
 export const isAdmin = (req, res, next) => {
-  console.log('[Admin Check] Checking admin access:', { 
-    userId: req.user?.id, 
-    role: req.user?.role 
-  });
-  
-  if (!req.user) {
-    console.log('[Admin Check] No user in request');
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-  
   if (req.user.role !== 'ADMIN') {
-    console.log('[Admin Check] User is not admin:', req.user.role);
     return res.status(403).json({ error: 'Admin access required' });
   }
-  
-  console.log('[Admin Check] Admin access granted');
   next();
 };
