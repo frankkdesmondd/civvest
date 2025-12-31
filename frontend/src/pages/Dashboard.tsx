@@ -427,13 +427,22 @@ const Dashboard: React.FC = () => {
       .reduce((sum, inv) => sum + (inv.totalRoiAdded || 0), 0);
   };
 
-
   const isInvestmentClosed = (investment: Investment) => {
-    return investment.status === 'COMPLETED' || investment.withdrawalStatus === 'PROCESSED';
+    // Check explicit status
+    const isCompleted = investment.status === 'COMPLETED';
+    const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+    
+    // NEW: Check if all ROI has been withdrawn
+    const allROIWithdrawn = (investment.roiAmount || 0) <= 0 && (investment.totalRoiAdded || 0) > 0;
+    
+    return isCompleted || isWithdrawn || allROIWithdrawn;
   };
 
   const getDisplayStatus = (investment: Investment) => {
-  if (isInvestmentClosed(investment)) {
+  // NEW: Check if all ROI is withdrawn
+  const allROIWithdrawn = (investment.roiAmount || 0) <= 0 && (investment.totalRoiAdded || 0) > 0;
+  
+  if (allROIWithdrawn || investment.status === 'COMPLETED' || investment.withdrawalStatus === 'PROCESSED') {
     return { text: 'CLOSED', color: 'bg-gray-100 text-gray-800' };
   }
   
@@ -456,38 +465,31 @@ const Dashboard: React.FC = () => {
   return { text: investment.status, color: 'bg-gray-100 text-gray-800' };
 };
 
-  const getDaysLeftText = (investment: Investment) => {
-    // Check if investment is closed first
-    if (isInvestmentClosed(investment)) {
-      return 'N/A';
-    }
-    
-    // Check if investment is pending
-    if (investment.status === 'PENDING') {
-      return 'Awaiting';
-    }
-    
-    return 'N/A';
-  };
+  
 
   const getActionText = (investment: Investment) => {
-    // Check if investment is closed first
-    if (isInvestmentClosed(investment)) {
-      return 'Closed';
-    }
-    
-    // Check if withdrawal is pending
-    if (investment.withdrawalStatus === 'PENDING') {
-      return 'Pending Approval';
-    }
-    
-    // Check if investment is pending
-    if (investment.status === 'PENDING') {
-      return 'Pending';
-    }
-    
-    return 'No ROI yet';
-  };
+  // Check if investment is closed first - UPDATED to use isInvestmentClosed function
+  if (isInvestmentClosed(investment)) {
+    return 'Closed';
+  }
+  
+  // Check if withdrawal is pending
+  if (investment.withdrawalStatus === 'PENDING') {
+    return 'Pending Approval';
+  }
+  
+  // Check if investment is pending
+  if (investment.status === 'PENDING') {
+    return 'Pending';
+  }
+  
+  // Check if ROI is available
+  if ((investment.roiAmount || 0) > 0) {
+    return 'Withdraw ROI';
+  }
+  
+  return 'No ROI yet';
+};
 
   const getROIColor = (investment: Investment) => {
     if (isInvestmentClosed(investment)) {
@@ -1192,7 +1194,6 @@ const Dashboard: React.FC = () => {
                       <tbody className="divide-y divide-gray-100">
                         {displayInvestments.map((investment) => {
                           const displayStatus = getDisplayStatus(investment);
-                          const daysLeftText = getDaysLeftText(investment);
                           const actionText = getActionText(investment);
                           const isClosed = isInvestmentClosed(investment);
                           const roiColor = getROIColor(investment);
@@ -1249,13 +1250,6 @@ const Dashboard: React.FC = () => {
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${displayStatus.color}`}>
                                   {displayStatus.text}
-                                </span>
-                              </td>
-
-                              {/* Days Left Column */}
-                              <td className="px-4 py-4 whitespace-nowrap">
-                                <span className="text-gray-800 text-base">
-                                  {daysLeftText}
                                 </span>
                               </td>
 
