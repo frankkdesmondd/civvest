@@ -29,7 +29,6 @@ const InvestmentDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [investment, setInvestment] = useState<Investment | null>(null);
   const [relatedInvestments, setRelatedInvestments] = useState<Investment[]>([]);
-  const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [investmentAmount, setInvestmentAmount] = useState('');
   const [expectedReturn, setExpectedReturn] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -412,11 +411,6 @@ const InvestmentDetail: React.FC = () => {
                           e.currentTarget.src = related.bondOffering ? MainBonding : InvestmentImage;
                         }}
                       />
-                      <div className="absolute top-4 right-4">
-                        <span className="px-3 py-1 bg-green-600 text-white text-sm font-bold rounded-full">
-                          {related.returnRate}
-                        </span>
-                      </div>
                     </div>
                     <div className="p-4">
                       <span className="text-xs text-blue-600 font-semibold">{related.category}</span>
@@ -427,7 +421,6 @@ const InvestmentDetail: React.FC = () => {
                       <p className="text-sm text-gray-600 line-clamp-2 mb-4">{related.shortDesc}</p>
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-600">Min: ${related.minAmount.toLocaleString()}</span>
-                        <span className="text-gray-600">{related.duration}</span>
                       </div>
                     </div>
                   </div>
@@ -438,183 +431,10 @@ const InvestmentDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Application Form Modal */}
-      {showApplicationForm && (
-        <ApplicationFormModal
-          investment={investment}
-          amount={investmentAmount}
-          onClose={() => setShowApplicationForm(false)}
-        />
-      )}
-
       <Footer />
       <Foot />
     </div>
   );
 };
 
-// Application Form Component (unchanged)
-const ApplicationFormModal: React.FC<{
-  investment: Investment;
-  amount: string;
-  onClose: () => void;
-}> = ({ investment, amount, onClose }) => {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    address: '',
-    phoneNumber: '',
-    amount: amount,
-    investmentPlan: investment.title
-  });
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      await axios.post(
-        'http://localhost:5000/api/investment-applications',
-        {
-          investmentId: investment.id,
-          ...formData
-        },
-        { withCredentials: true }
-      );
-
-      alert('Application submitted successfully! An admin will contact you shortly.');
-      onClose();
-      navigate('/dashboard');
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to submit application');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto pt-[9em]">
-      <div className="bg-white rounded-xl max-w-2xl w-full my-8 p-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Investment Application</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">First Name *</label>
-              <input
-                type="text"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Last Name *</label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Email *</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Phone Number *</label>
-            <input
-              type="tel"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Address *</label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Investment Plan</label>
-            <input
-              type="text"
-              value={formData.investmentPlan}
-              disabled
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Amount to Invest *</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
-              <input
-                type="number"
-                name="amount"
-                value={formData.amount}
-                onChange={handleChange}
-                required
-                min={investment.minAmount}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-4 mt-6">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold disabled:opacity-50"
-            >
-              {loading ? 'Submitting...' : 'Submit Application'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-lg font-semibold"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 export default InvestmentDetail;
-
-
-
