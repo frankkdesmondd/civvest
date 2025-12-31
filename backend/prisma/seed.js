@@ -43,10 +43,10 @@ async function main() {
   const investmentsToUpdate = [
     // Retail Investments
     {
-      title: 'Energy Bond 5K - 1 Month',
-      slug: 'energy-bond-5k-1-month',
+      title: 'Energy Bond 5K',
+      slug: 'energy-bond-5k',
       description: `This short-term investment opportunity allows you to participate in Civvest Energy Partners' ongoing oil production projects with a quick turnaround. With a minimum investment of $5,000, you can secure a  return in just one month. Your capital will be deployed in our established energy portfolio, benefiting from our expertise in the oil and gas sector.`,
-      shortDesc: 'Quick 1-month investment with returns.',
+      shortDesc: 'Quick investment with returns.',
       imageUrl: '/uploads/investments/default-oil-1.jpg',
       minAmount: 5000,
       targetAmount: 500000,
@@ -58,10 +58,10 @@ async function main() {
       status: 'ACTIVE'
     },
     {
-      title: 'Energy Bond 10K - 6 Month',
-      slug: 'energy-bond-10k-6-month',
-      description: `A medium-term investment opportunity designed for investors seeking balanced growth. With a $10,000 minimum investment, you'll earn a return over six months. This tier provides exposure to our diversified energy projects while maintaining flexibility with a moderate time commitment.`,
-      shortDesc: 'Medium-term 6-month plan with returns.',
+      title: 'Energy Bond 10K',
+      slug: 'energy-bond-10k',
+      description: `A medium-term investment opportunity designed for investors seeking balanced growth. With a $10,000 minimum investment, you'll earn a return. This tier provides exposure to our diversified energy projects while maintaining flexibility with a moderate time commitment.`,
+      shortDesc: 'Medium-term plan with returns.',
       imageUrl: '/uploads/investments/default-oil-2.jpg',
       minAmount: 10000,
       targetAmount: 1000000,
@@ -73,10 +73,10 @@ async function main() {
       status: 'ACTIVE'
     },
     {
-      title: 'Energy Bond 20K - 6 Month',
-      slug: 'energy-bond-20k-6-month',
+      title: 'Energy Bond 20K',
+      slug: 'energy-bond-20k',
       description: `Our premium retail investment tier offers enhanced returns for those ready to commit $20,000. Earn returns over six months while benefiting from priority access to our high-performance energy projects. This tier combines attractive returns with a manageable investment timeline.`,
-      shortDesc: 'Premium 6-month investment with returns.',
+      shortDesc: 'Premium investment with returns.',
       imageUrl: '/uploads/investments/default-oil-3.jpg',
       minAmount: 20000,
       targetAmount: 2000000,
@@ -89,10 +89,10 @@ async function main() {
     },
     // Accredited Investments
     {
-      title: 'Elite Energy Bond 50K',
-      slug: 'elite-energy-bond-50k',
+      title: 'Elite Energy Bond',
+      slug: 'elite-energy-bond',
       description: `Exclusive opportunity for accredited investors seeking substantial returns. With a $50,000 minimum investment, secure returns over eight months. This elite tier provides access to our premium energy projects with enhanced profit potential and dedicated account management.`,
-      shortDesc: 'Exclusive 8-month plan with returns.',
+      shortDesc: 'Exclusive plan with returns.',
       imageUrl: '/uploads/investments/default-oil-4.jpg',
       minAmount: 50000,
       targetAmount: 5000000,
@@ -104,10 +104,10 @@ async function main() {
       status: 'ACTIVE'
     },
     {
-      title: 'Premium Energy Bond 100K',
-      slug: 'premium-energy-bond-100k',
-      description: `Our flagship investment offering for accredited investors. With a $100,000 commitment, earn an impressive return over twelve months. This premium tier grants access to our most lucrative energy ventures, comprehensive reporting, and white-glove service throughout your investment journey.`,
-      shortDesc: 'Flagship 12-month investment offering returns.',
+      title: 'Premium Energy Bond',
+      slug: 'premium-energy-bond',
+      description: `Our flagship investment offering for accredited investors. With a $100,000 commitment, earn an impressive returns. This premium tier grants access to our most lucrative energy ventures, comprehensive reporting, and white-glove service throughout your investment journey.`,
+      shortDesc: 'Flagship investment offering returns.',
       imageUrl: '/uploads/investments/default-oil-5.jpg',
       minAmount: 100000,
       targetAmount: 10000000,
@@ -119,10 +119,10 @@ async function main() {
       status: 'ACTIVE'
     },
     {
-      title: 'Platinum Energy Bond 200K',
-      slug: 'platinum-energy-bond-200k',
+      title: 'Platinum Energy Bond',
+      slug: 'platinum-energy-bond',
       description: `The ultimate investment vehicle for sophisticated accredited investors. With a $200,000 minimum, achieve extraordinary returns over twelve months. Platinum tier members receive exclusive access to our highest-yielding projects, personalized investment strategies, and VIP treatment including quarterly in-person briefings.`,
-      shortDesc: 'Ultimate 12-month platinum tier with returns.',
+      shortDesc: 'Ultimate platinum tier with returns.',
       imageUrl: '/uploads/investments/default-oil-6.jpg',
       minAmount: 200000,
       targetAmount: 20000000,
