@@ -31,7 +31,7 @@ router.post('/request', authenticateToken, async (req, res) => {
       }
     }
 
-    // FIRST: Fetch the user investment from database
+    // Fetch the user investment from database
     const userInvestment = await prisma.userInvestment.findFirst({
       where: { 
         id: userInvestmentId, 
@@ -52,7 +52,7 @@ router.post('/request', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Active investment not found' });
     }
 
-    // NOW you can check the ROI amount
+    // Check ROI amount
     const availableROI = userInvestment.roiAmount || 0;
     if (availableROI <= 0) {
       return res.status(400).json({ 
@@ -112,6 +112,7 @@ router.post('/request', authenticateToken, async (req, res) => {
         }
       });
 
+      // 1. Create notification for USER
       await tx.notification.create({
         data: {
           userId: userId,
@@ -120,6 +121,34 @@ router.post('/request', authenticateToken, async (req, res) => {
           type: 'WITHDRAWAL_REQUESTED'
         }
       });
+
+      // 2. Find all ADMIN users and create notifications for them
+      const adminUsers = await tx.user.findMany({
+        where: { role: 'ADMIN' },
+        select: { id: true }
+      });
+      
+      // Create notifications for each admin
+      if (adminUsers.length > 0) {
+        const adminNotifications = adminUsers.map(admin => ({
+          userId: admin.id,
+          title: 'New Withdrawal Request',
+          message: `${userInvestment.user.firstName} ${userInvestment.user.lastName} requested $${amount.toFixed(2)} withdrawal from ${userInvestment.investment.title}.`,
+          type: 'NEW_WITHDRAWAL_REQUEST',
+          metadata: JSON.stringify({
+            withdrawalId: withdrawal.id,
+            userId: userId,
+            userEmail: userInvestment.user.email,
+            amount: amount,
+            investmentTitle: userInvestment.investment.title,
+            timestamp: new Date().toISOString()
+          })
+        }));
+        
+        await tx.notification.createMany({
+          data: adminNotifications
+        });
+      }
 
       return { withdrawal, updatedInvestment, updatedUser };
     });
