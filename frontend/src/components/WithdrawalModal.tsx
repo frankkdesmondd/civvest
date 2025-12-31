@@ -504,10 +504,6 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
                       >
                         <option value="ETH">Ethereum (ETH)</option>
                         <option value="TRON">TRON</option>
-                        <option value="USDT">Tether (USDT)</option>
-                        <option value="BTC">Bitcoin (BTC)</option>
-                        <option value="BNB">Binance Coin (BNB)</option>
-                        <option value="SOL">Solana (SOL)</option>
                       </select>
                     </div>
                     <div>
@@ -589,3 +585,4 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 };
 
 export default WithdrawalModal;
+
