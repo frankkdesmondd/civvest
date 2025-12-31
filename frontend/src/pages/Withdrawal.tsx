@@ -126,14 +126,6 @@ const Withdrawal: React.FC = () => {
     }
   };
 
-  const getDaysRemaining = (endDate: string | null) => {
-    if (!endDate) return null;
-    const now = new Date();
-    const end = new Date(endDate);
-    const diff = end.getTime() - now.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  };
-
   const canWithdraw = (investment: Investment) => {
   // Check if investment is already completed or withdrawn
   const isCompleted = investment.status === 'COMPLETED';
@@ -248,26 +240,11 @@ const Withdrawal: React.FC = () => {
     }
 
     // For ACTIVE investments
-    if (investment.status === 'ACTIVE' && investment.endDate && investment.startDate) {
+    if (investment.status === 'ACTIVE' && investment.startDate) {
       if (canWithdraw(investment)) {
         return (
           <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold flex items-center gap-1">
             <FiCheckCircle /> ROI Ready to Withdraw
-          </span>
-        );
-      }
-
-      const daysRemaining = getDaysRemaining(investment.endDate);
-      if (daysRemaining !== null && daysRemaining > 0) {
-        return (
-          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold flex items-center gap-1">
-            <FiClock /> {daysRemaining} days remaining
-          </span>
-        );
-      } else if (daysRemaining !== null && daysRemaining <= 0) {
-        return (
-          <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-semibold flex items-center gap-1">
-            <FiClock /> Matured
           </span>
         );
       }
@@ -329,7 +306,7 @@ const Withdrawal: React.FC = () => {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Withdraw ROI</h1>
               <p className="text-gray-600 mt-2 text-sm sm:text-base">
-                Withdraw returns from your matured investments
+                Withdraw returns from your investments
               </p>
             </div>
             <button
@@ -421,7 +398,6 @@ const Withdrawal: React.FC = () => {
                   const isCompleted = investment.status === 'COMPLETED';
                   const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
                   const isClosed = isCompleted || isWithdrawn;
-                  const daysRemaining = isClosed ? null : getDaysRemaining(investment.endDate);
                   
                   return (
                     <div
@@ -483,14 +459,6 @@ const Withdrawal: React.FC = () => {
                                   {new Date(investment.startDate).toLocaleDateString()}
                                 </p>
                               </div>
-                              {investment.endDate && (
-                                <div>
-                                  <p className="text-gray-600">End Date</p>
-                                  <p className="font-semibold">
-                                    {new Date(investment.endDate).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              )}
                             </div>
                           )}
                         </div>
@@ -527,19 +495,8 @@ const Withdrawal: React.FC = () => {
                         ) : investment.status === 'PENDING' ? (
                           <div className="text-center p-3 bg-yellow-50 rounded-lg">
                             <p className="text-xs sm:text-sm text-yellow-800">
-                              Waiting for admin confirmation
+                              Waiting for confirmation
                             </p>
-                          </div>
-                        ) : (investment.roiAmount || 0) > 0 ? (
-                          <div className="text-center p-3 bg-purple-50 rounded-lg">
-                            <p className="text-xs sm:text-sm text-purple-800">
-                              ${formatCurrency(investment.roiAmount)} ROI available after maturity
-                            </p>
-                            {daysRemaining !== null && daysRemaining > 0 && (
-                              <p className="text-xs text-purple-600 mt-1">
-                                {daysRemaining} days until maturity
-                              </p>
-                            )}
                           </div>
                         ) : (
                           <div className="text-center p-3 bg-gray-50 rounded-lg">
