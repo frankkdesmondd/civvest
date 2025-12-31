@@ -7,7 +7,7 @@ import Foot from '../components/Foot';
 import InvestmentImage from '../assets/Investment Image.jpeg';
 import MainBonding from '../assets/main bonding.jpg';
 import { HomeUtils } from '../utils/HomeUtils'
-import { FiDollarSign, FiClock, FiArrowLeft, FiCheckCircle, FiCalendar } from 'react-icons/fi';
+import { FiDollarSign, FiArrowLeft, FiCheckCircle, FiCalendar } from 'react-icons/fi';
 
 interface Investment {
   id: string;
@@ -176,24 +176,6 @@ const InvestmentDetail: React.FC = () => {
     return '/view-investment';
   };
 
-  const formatDuration = (days: number) => {
-    if (days >= 365) {
-      const years = Math.floor(days / 365);
-      const remainingDays = days % 365;
-      if (remainingDays === 0) {
-        return `${years} year${years > 1 ? 's' : ''}`;
-      }
-      return `${years} year${years > 1 ? 's' : ''} ${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
-    } else if (days >= 30) {
-      const months = Math.floor(days / 30);
-      const remainingDays = days % 30;
-      if (remainingDays === 0) {
-        return `${months} month${months > 1 ? 's' : ''}`;
-      }
-      return `${months} month${months > 1 ? 's' : ''} ${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
-    }
-    return `${days} day${days > 1 ? 's' : ''}`;
-  };
 
   if (loading) {
     return (
@@ -273,13 +255,6 @@ const InvestmentDetail: React.FC = () => {
                     <p className="text-2xl font-bold text-gray-800">${investment.minAmount.toLocaleString()}</p>
                   </div>
 
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex items-center gap-2 text-gray-600 mb-2">
-                      <FiClock />
-                      <span className="text-sm">Duration</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">{investment.duration}</p>
-                  </div>
                 </div>
 
                 <div className="border-t pt-6">
@@ -363,10 +338,6 @@ const InvestmentDetail: React.FC = () => {
                           <p className="text-xl font-bold text-gray-800">
                             ${parseFloat(investmentAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-gray-600 text-sm">Duration</p>
-                          <p className="text-xl font-bold text-blue-700">{formatDuration(totalDays)}</p>
                         </div>
                       </div>
                     </div>
