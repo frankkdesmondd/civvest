@@ -1071,54 +1071,54 @@ router.put('/users/:id/referral-count', authenticateToken, isAdmin, async (req, 
 
 // Add referral bonus and increment count in one operation (Admin only)
 router.post('/users/:id/add-referral', authenticateToken, isAdmin, async (req, res) => {
-  try {
-    const { bonusAmount } = req.body;
-    const userId = req.params.id;
+  const { userId } = req.params;
+  const { bonusAmount } = req.body;
 
-    if (!bonusAmount || bonusAmount <= 0) {
-      return res.status(400).json({ error: 'Valid bonus amount required' });
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      referralCount: { increment: 1 },
+      referralBonus: { increment: bonusAmount || 50 }
     }
+  });
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Update both referral count and bonus
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        referralCount: {
-          increment: 1
-        },
-        referralBonus: {
-          increment: parseFloat(bonusAmount)
-        }
-      }
-    });
-
-    // Create notification
+  // Check for 10 referral milestone
+  if (updatedUser.referralCount === 10) {
     await prisma.notification.create({
       data: {
-        userId,
-        title: 'New Referral Added',
-        message: `Congratulations! A new referral has been added. You received $${parseFloat(bonusAmount).toFixed(2)} bonus. Total referrals: ${updatedUser.referralCount}`,
-        type: 'ACCOUNT'
+        userId: userId,
+        title: 'Referral Milestone Reached!',
+        message: 'Congratulations! You have reached 10 referrals and can now withdraw your referral bonus.',
+        type: 'REFERRAL_MILESTONE'
       }
     });
-
-    res.json({
-      message: 'Referral added successfully',
-      updatedReferralCount: updatedUser.referralCount,
-      updatedReferralBonus: updatedUser.referralBonus
-    });
-  } catch (error) {
-    console.error('Add referral error:', error);
-    res.status(500).json({ error: 'Failed to add referral' });
+    
+    // Notify admin
+    const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } });
+    for (const admin of admins) {
+      await prisma.notification.create({
+        data: {
+          userId: admin.id,
+          title: 'User Reached 10 Referrals',
+          message: `${updatedUser.firstName} ${updatedUser.lastName} has reached 10 referrals.`,
+          type: 'REFERRAL_ADMIN'
+        }
+      });
+    }
   }
+
+  await prisma.notification.create({
+    data: {
+      userId,
+      title: 'Referral Bonus Added',
+      message: `$${bonusAmount || 50} referral bonus has been added to your account.`,
+      type: 'REFERRAL'
+    }
+  });
+
+  res.json({ success: true, user: updatedUser });
 });
+
+
 
 export default router;

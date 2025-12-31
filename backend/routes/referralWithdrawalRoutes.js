@@ -195,9 +195,13 @@ router.get('/my-referral-withdrawals', authenticateToken, async (req, res) => {
   }
 });
 
-// Admin gets all referral withdrawal requests
+// FIXED: Admin gets all referral withdrawal requests - SAFER VERSION
 router.get('/admin/referral-requests', authenticateToken, isAdmin, async (req, res) => {
   try {
+    console.log('[Admin] Fetching referral withdrawal requests...');
+    console.log('[Admin] User making request:', { id: req.user.id, role: req.user.role });
+    
+    // First, try to get withdrawals WITHOUT approvedBy to avoid relation errors
     const withdrawals = await prisma.referralWithdrawal.findMany({
       include: {
         user: {
@@ -209,21 +213,53 @@ router.get('/admin/referral-requests', authenticateToken, isAdmin, async (req, r
             accountNumber: true,
             referralCount: true
           }
-        },
-        approvedBy: {
-          select: {
-            firstName: true,
-            lastName: true
-          }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    res.json(withdrawals);
+    console.log(`[Admin] Found ${withdrawals.length} referral withdrawals`);
+
+    // Manually add approvedBy info if approvedById exists
+    const withdrawalsWithApprover = await Promise.all(
+      withdrawals.map(async (withdrawal) => {
+        if (withdrawal.approvedById) {
+          try {
+            const approver = await prisma.user.findUnique({
+              where: { id: withdrawal.approvedById },
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            });
+            return {
+              ...withdrawal,
+              approvedBy: approver
+            };
+          } catch (err) {
+            console.error('[Admin] Error fetching approver:', err);
+            return withdrawal;
+          }
+        }
+        return withdrawal;
+      })
+    );
+
+    res.json(withdrawalsWithApprover);
   } catch (error) {
     console.error('[Admin] Fetch referral withdrawals error:', error);
-    res.status(500).json({ error: 'Failed to fetch referral withdrawal requests' });
+    console.error('[Admin] Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+    
+    res.status(500).json({ 
+      error: 'Failed to fetch referral withdrawal requests',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -233,7 +269,7 @@ router.put('/admin/referral/:withdrawalId/approve-reject', authenticateToken, is
     const { withdrawalId } = req.params;
     const { status, adminNotes } = req.body;
 
-    console.log('[Admin] Processing referral withdrawal status update:', { withdrawalId, status });
+    console.log('[Admin] Processing referral withdrawal status update:', { withdrawalId, status, adminId: req.user.id });
 
     if (!['APPROVED', 'REJECTED', 'PROCESSED'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });

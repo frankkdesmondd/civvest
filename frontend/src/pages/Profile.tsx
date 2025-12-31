@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { FiUser, FiMail, FiPhone, FiMapPin, FiCopy, FiCheck, FiEdit2, FiSave, FiCreditCard, FiDollarSign, FiTrash2, FiPlus } from 'react-icons/fi';
-import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import { HomeUtils } from '../utils/HomeUtils';
@@ -132,8 +131,8 @@ const Profile: React.FC = () => {
 
     setAddingWallet(true);
     try {
-      await axios.post(
-        'https://civvest-backend.onrender.com/api/profile/wallets',
+      await axiosInstance.post(
+        '/api/profile/wallets',
         newWallet,
         { withCredentials: true }
       );
@@ -151,8 +150,8 @@ const Profile: React.FC = () => {
     if (!confirm('Are you sure you want to delete this wallet?')) return;
 
     try {
-      await axios.delete(
-        `https://civvest-backend.onrender.com/api/profile/wallets/${walletId}`,
+      await axiosInstance.delete(
+        `/api/profile/wallets/${walletId}`,
         { withCredentials: true }
       );
       showToast('Wallet deleted successfully!', 'success');

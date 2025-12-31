@@ -21,12 +21,36 @@ interface User {
   balance: number;
   roi: number;
   referralBonus: number;
+  referralCount: number;
   createdAt: string;
   _count: { userInvestments: number };
   calculatedData?: {
     totalInvested: number;
     totalRoiAdded: number;
     activeInvestments: number;
+  };
+}
+
+interface ReferralWithdrawal {
+  id: string;
+  userId: string;
+  amount: number;
+  type: 'BANK_TRANSFER' | 'CRYPTO_WALLET';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
+  routingCode?: string;
+  coinHost?: string;
+  walletAddress?: string;
+  createdAt: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    accountNumber: string;
+    referralCount: number;
   };
 }
 
@@ -88,7 +112,7 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (tab: any) => void; c
 
   return (
     <div className={`h-screen bg-[#041a35] text-white flex flex-col transition-all duration-300 fixed left-0 top-0 z-40 ${
-      collapsed ? 'w-16 sm:w-16 md:w-20' : 'w-64 sm:w-64 md:w-72'
+      collapsed ? 'w-16 lg:w-16' : 'w-64 lg:w-72'
     } ${isMobile && collapsed ? '-translate-x-full' : 'translate-x-0'}`}
     style={{ 
       height: '100vh',
@@ -195,6 +219,7 @@ const Sidebar: React.FC<{ activeTab: string; setActiveTab: (tab: any) => void; c
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'investments' | 'news' | 'withdrawals' | 'deposits'>('overview');
   const [collapsed, setCollapsed] = useState(false);
+  const [referralWithdrawals, setReferralWithdrawals] = useState<ReferralWithdrawal[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -211,10 +236,14 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [deposits, setDeposits] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  // const [selectedUserForReferral, setSelectedUserForReferral] = useState<User | null>(null);
+  const [selectedUserForReferralBonus, setSelectedUserForReferralBonus] = useState<User | null>(null);
+  const [referralBonusAmount, setReferralBonusAmount] = useState('50');
+  const [referralBonusAction, setReferralBonusAction] = useState<'SET' | 'ADD' | 'SUBTRACT'>('ADD');
   const { showToast } = useToast();
   const { updateUserById } = useUser();
-const [userInvestments, setUserInvestments] = useState<any[]>([]);
-const [roiAmounts, setRoiAmounts] = useState<{[key: string]: string}>({});
+  const [userInvestments, setUserInvestments] = useState<any[]>([]);
+  const [roiAmounts, setRoiAmounts] = useState<{[key: string]: string}>({});
 
   // Receipt Modal State
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -261,9 +290,10 @@ const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) {
+      // Make tablet (<= 1024px) behave like mobile
+      const tablet = window.innerWidth <= 1024;
+      setIsMobile(tablet);
+      if (tablet) {
         setCollapsed(true);
       }
     };
@@ -528,7 +558,8 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
       fetchInvestments(), 
       fetchRecentActivities(), 
       fetchDeposits(),
-      fetchWithdrawals()
+      fetchWithdrawals(),
+      fetchReferralWithdrawals(),
     ]);
     setLoading(false);
   };
@@ -542,6 +573,63 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
       showToast('Failed to load withdrawal requests', 'error');
     }
   };
+
+  const fetchReferralWithdrawals = async () => {
+    try {
+      const res = await axiosInstance.get<ReferralWithdrawal[]>('/api/referral-withdrawals/admin/referral-requests');
+      setReferralWithdrawals(res.data);
+    } catch (error) {
+      console.error('Failed to fetch referral withdrawals:', error);
+      showToast('Failed to load referral withdrawal requests', 'error');
+    }
+  };
+
+  const handleApproveReferralWithdrawal = async (withdrawalId: string) => {
+  openConfirmModal(
+    'Approve Referral Withdrawal',
+    'Are you sure you want to approve this referral bonus withdrawal request?',
+    async () => {
+      try {
+        await axiosInstance.put(
+          `/api/referral-withdrawals/admin/referral/${withdrawalId}/approve-reject`,
+          { status: 'APPROVED' }
+        );
+        showToast('Referral withdrawal approved!', 'success');
+        fetchReferralWithdrawals();
+        fetchUsers();
+      } catch (error: any) {
+        showToast(error.response?.data?.error || 'Failed to approve referral withdrawal', 'error');
+      }
+    },
+    'info',
+    'Approve',
+    'Cancel'
+  );
+};
+
+const handleRejectReferralWithdrawal = async (withdrawalId: string) => {
+  openConfirmModal(
+    'Reject Referral Withdrawal',
+    'Are you sure you want to reject this referral bonus withdrawal request?',
+    async () => {
+      try {
+        const reason = prompt('Enter rejection reason (optional):');
+        await axiosInstance.put(
+          `/api/referral-withdrawals/admin/referral/${withdrawalId}/approve-reject`,
+          { status: 'REJECTED', adminNotes: reason || 'No reason provided' }
+        );
+        showToast('Referral withdrawal rejected!', 'success');
+        fetchReferralWithdrawals();
+        fetchUsers();
+      } catch (error: any) {
+        showToast(error.response?.data?.error || 'Failed to reject referral withdrawal', 'error');
+      }
+    },
+    'danger',
+    'Reject',
+    'Cancel'
+  );
+};
 
   const handleApproveWithdrawal = async (withdrawalId: string) => {
   openConfirmModal(
@@ -605,49 +693,6 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
     setShowRejectModal(true);
   };
 
-//   const handleUpdateROI = async () => {
-//   if (!selectedUserForROI || !roiAmount) {
-//     showToast('Please enter a valid ROI amount', "error");
-//     return;
-//   }
-
-//   try {
-//     const response = await axiosInstance.put(
-//       `/api/admin/users/${selectedUserForROI.id}/roi`, 
-//       { roi: parseFloat(roiAmount) }
-//     );
-    
-//     showToast('ROI updated successfully', "success");
-    
-//     // Update the user's context if they're currently logged in
-//     updateUserById(selectedUserForROI.id, { 
-//       roi: response.data.updatedRoi || parseFloat(roiAmount) 
-//     });
-    
-//     // Broadcast ROI update event
-//     window.dispatchEvent(new CustomEvent('roiUpdated', {
-//       detail: {
-//         userId: selectedUserForROI.id,
-//         newROI: response.data.updatedRoi || parseFloat(roiAmount),
-//         source: 'admin-dashboard'
-//       }
-//     }));
-    
-//     // Clear modal state
-//     setSelectedUserForROI(null);
-//     setRoiAmount('');
-    
-//     // Refresh users list to show updated ROI
-//     await fetchUsers();
-    
-//     // Also refresh stats if needed
-//     await fetchStats();
-//   } catch (error: any) {
-//     console.error('Update ROI error:', error);
-//     showToast("ROI failed to update", "error");
-//   }
-// };
-
   const generateOilPriceData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'];
     setOilPrices(months.map(month => ({ month, price: Math.floor(Math.random() * 30) + 60 })));
@@ -700,6 +745,11 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
     'Confirm',
     'Cancel'
   );
+};
+
+const handleAddReferralBonus = (user: User) => {
+  setSelectedUserForReferralBonus(user);
+  setReferralBonusAmount('');
 };
 
   const handleRejectDeposit = async (depositId: string) => {
@@ -805,6 +855,7 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
             balance: user.balance || 0,
             roi: totalROI, // Use calculated ROI from investments
             referralBonus: user.referralBonus || 0,
+            referralCount: user.referralCount || 0,
             createdAt: user.createdAt || new Date().toISOString(),
             _count: {
               userInvestments: activeInvestments // Count only active investments
@@ -828,6 +879,7 @@ const handleUpdateInvestmentROI = async (investmentId: string) => {
             balance: user.balance || 0,
             roi: user.roi || 0, // Fallback to existing ROI field
             referralBonus: user.referralBonus || 0,
+            referralCount: user.referralCount || 0,
             createdAt: user.createdAt || new Date().toISOString(),
             _count: {
               userInvestments: user._count?.userInvestments || 0
@@ -1037,6 +1089,31 @@ const handleEditSubmit = async (e: React.FormEvent) => {
   }
 };
 
+// Add referral bonus to user
+const handleAddReferralBonusConfirm = async () => {
+  if (!selectedUserForReferralBonus || !referralBonusAmount) {
+    showToast('Please enter a valid referral bonus amount', 'error');
+    return;
+  }
+
+  try {
+    await axiosInstance.put(
+      `/api/admin/users/${selectedUserForReferralBonus.id}/referral-bonus`,
+      { 
+        referralBonus: parseFloat(referralBonusAmount), 
+        action: referralBonusAction 
+      }
+    );
+    
+    showToast('Referral bonus updated successfully!', 'success');
+    setSelectedUserForReferralBonus(null);
+    setReferralBonusAmount('');
+    fetchUsers();
+  } catch (error: any) {
+    showToast(error.response?.data?.error || 'Failed to update referral bonus', 'error');
+  }
+};
+
 // Reset edit modal
 const resetEditModal = () => {
   setEditingNews(null);
@@ -1240,18 +1317,18 @@ const resetEditModal = () => {
       )}
 
       <div className={`flex-1 min-h-screen transition-all duration-300 overflow-y-auto ${
-          isMobile ? 'ml-0 pt-16' : (collapsed ? 'ml-16 sm:ml-16 md:ml-20' : 'ml-64 sm:ml-64 md:ml-72')
+          isMobile ? 'ml-0 pt-16' : (collapsed ? 'ml-16 lg:ml-16' : 'ml-64 lg:ml-72')
         }`}
         style={{ maxHeight: '100vh' }}>
-        <div className="p-4 md:p-6 lg:p-8">
+        <div className="p-4 lg:p-6 xl:p-8">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
               <div>
-                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
-                <p className="text-gray-600 text-sm md:text-base">Manage your platform</p>
+                <h1 className="text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-800 mb-2">Admin Dashboard</h1>
+                <p className="text-gray-600 text-sm lg:text-base">Manage your platform</p>
               </div>
               {activeTab === 'news' && (
-                <button onClick={() => navigate('/admin/create-news')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-3 rounded-lg font-semibold flex items-center gap-2 w-full sm:w-auto justify-center">
+                <button onClick={() => navigate('/admin/create-news')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 lg:px-6 py-3 rounded-lg font-semibold flex items-center gap-2 w-full sm:w-auto justify-center">
                   <FiPlus /> Create News
                 </button>
               )}
@@ -1260,59 +1337,59 @@ const resetEditModal = () => {
             {/* Overview Section */}
             {activeTab === 'overview' && stats && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-linear-to-br from-blue-500 to-blue-600 p-4 md:p-6 rounded-xl shadow-lg text-white">
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-linear-to-br from-blue-500 to-blue-600 p-4 lg:p-6 rounded-xl shadow-lg text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-blue-100 text-xs md:text-sm mb-1">Total Users</p>
-                        <p className="text-2xl md:text-3xl font-bold">{stats.totalUsers}</p>
+                        <p className="text-blue-100 text-xs lg:text-sm mb-1">Total Users</p>
+                        <p className="text-2xl lg:text-3xl font-bold">{stats.totalUsers}</p>
                       </div>
-                      <div className="bg-blue-400 bg-opacity-30 p-3 md:p-4 rounded-full">
-                        <FiUsers className="text-2xl md:text-3xl" />
+                      <div className="bg-blue-400 bg-opacity-30 p-3 lg:p-4 rounded-full">
+                        <FiUsers className="text-2xl lg:text-3xl" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-linear-to-br from-green-500 to-green-600 p-4 md:p-6 rounded-xl shadow-lg text-white">
+                  <div className="bg-linear-to-br from-green-500 to-green-600 p-4 lg:p-6 rounded-xl shadow-lg text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-green-100 text-xs md:text-sm mb-1">Investments</p>
-                        <p className="text-2xl md:text-3xl font-bold">{stats.totalInvestments}</p>
+                        <p className="text-green-100 text-xs lg:text-sm mb-1">Investments</p>
+                        <p className="text-2xl lg:text-3xl font-bold">{stats.totalInvestments}</p>
                       </div>
-                      <div className="bg-green-400 bg-opacity-30 p-3 md:p-4 rounded-full">
-                        <FiTrendingUp className="text-2xl md:text-3xl" />
+                      <div className="bg-green-400 bg-opacity-30 p-3 lg:p-4 rounded-full">
+                        <FiTrendingUp className="text-2xl lg:text-3xl" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-linear-to-br from-purple-500 to-purple-600 p-4 md:p-6 rounded-xl shadow-lg text-white">
+                  <div className="bg-linear-to-br from-purple-500 to-purple-600 p-4 lg:p-6 rounded-xl shadow-lg text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-purple-100 text-xs md:text-sm mb-1">Transactions</p>
-                        <p className="text-2xl md:text-3xl font-bold">{stats.totalUserInvestments}</p>
+                        <p className="text-purple-100 text-xs lg:text-sm mb-1">Transactions</p>
+                        <p className="text-2xl lg:text-3xl font-bold">{stats.totalUserInvestments}</p>
                       </div>
-                      <div className="bg-purple-400 bg-opacity-30 p-3 md:p-4 rounded-full">
-                        <FiActivity className="text-2xl md:text-3xl" />
+                      <div className="bg-purple-400 bg-opacity-30 p-3 lg:p-4 rounded-full">
+                        <FiActivity className="text-2xl lg:text-3xl" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-linear-to-br from-orange-500 to-orange-600 p-4 md:p-6 rounded-xl shadow-lg text-white">
+                  <div className="bg-linear-to-br from-orange-500 to-orange-600 p-4 lg:p-6 rounded-xl shadow-lg text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-orange-100 text-xs md:text-sm mb-1">Total Volume</p>
-                        <p className="text-2xl md:text-3xl font-bold">${(stats.totalInvestedAmount / 1000).toFixed(1)}K</p>
+                        <p className="text-orange-100 text-xs lg:text-sm mb-1">Total Volume</p>
+                        <p className="text-2xl lg:text-3xl font-bold">${(stats.totalInvestedAmount / 1000).toFixed(1)}K</p>
                       </div>
-                      <div className="bg-orange-400 bg-opacity-30 p-3 md:p-4 rounded-full">
-                        <FiDollarSign className="text-2xl md:text-3xl" />
+                      <div className="bg-orange-400 bg-opacity-30 p-3 lg:p-4 rounded-full">
+                        <FiDollarSign className="text-2xl lg:text-3xl" />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <h2 className="text-lg lg:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                       <FiBarChart2 className="text-blue-600" /> Oil Price Trends 2024
                     </h2>
                     <div className="h-64">
@@ -1329,8 +1406,8 @@ const resetEditModal = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <h2 className="text-lg lg:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                       <FiPieChart className="text-green-600" /> Investment Categories
                     </h2>
                     <div className="h-64">
@@ -1360,18 +1437,18 @@ const resetEditModal = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
-                    <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Recent Investments</h2>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6">
+                    <h2 className="text-lg lg:text-xl font-bold text-gray-800 mb-4">Recent Investments</h2>
                     <div className="space-y-3">
                       {recentActivities?.recentInvestments.slice(0, 5).map((activity: any) => (
                         <div key={activity.id} className="flex justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
-                            <p className="font-semibold text-sm md:text-base">{activity.user.firstName} {activity.user.lastName}</p>
-                            <p className="text-xs md:text-sm text-gray-600">{activity.investment.title}</p>
+                            <p className="font-semibold text-sm lg:text-base">{activity.user.firstName} {activity.user.lastName}</p>
+                            <p className="text-xs lg:text-sm text-gray-600">{activity.investment.title}</p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-green-600 text-sm md:text-base">${activity.amount.toFixed(2)}</p>
+                            <p className="font-bold text-green-600 text-sm lg:text-base">${activity.amount.toFixed(2)}</p>
                             <p className="text-xs text-gray-500">{new Date(activity.createdAt).toLocaleDateString()}</p>
                           </div>
                         </div>
@@ -1379,22 +1456,22 @@ const resetEditModal = () => {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
-                    <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4">New Users</h2>
+                  <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6">
+                    <h2 className="text-lg lg:text-xl font-bold text-gray-800 mb-4">New Users</h2>
                     <div className="space-y-3">
                       {recentActivities?.recentUsers.map((user: any) => (
                         <div key={user.id} className="flex justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
                               {user.firstName[0]}{user.lastName[0]}
                             </div>
                             <div>
-                              <p className="font-semibold text-sm md:text-base">{user.firstName} {user.lastName}</p>
-                              <p className="text-xs md:text-sm text-gray-600 truncate max-w-[150px]">{user.email}</p>
+                              <p className="font-semibold text-sm lg:text-base">{user.firstName} {user.lastName}</p>
+                              <p className="text-xs lg:text-sm text-gray-600 truncate max-w-[150px]">{user.email}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-blue-600 text-sm md:text-base">${user.balance.toFixed(2)}</p>
+                            <p className="font-bold text-blue-600 text-sm lg:text-base">${user.balance.toFixed(2)}</p>
                             <p className="text-xs text-gray-500">{new Date(user.createdAt).toLocaleDateString()}</p>
                           </div>
                         </div>
@@ -1407,9 +1484,9 @@ const resetEditModal = () => {
 
             {/* Users Section */}
             {activeTab === 'users' && (
-              <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
+              <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-800">User Management</h2>
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-800">User Management</h2>
                   <div className="relative w-full sm:w-64">
                     <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input 
@@ -1426,13 +1503,14 @@ const resetEditModal = () => {
                   <table className="w-full min-w-[600px]">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">User</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Account #</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Balance</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">ROI</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Referral Bonus</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Investments</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">User</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Account #</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Balance</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">ROI</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Referral Bonus</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Referrals</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Investments</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1440,33 +1518,47 @@ const resetEditModal = () => {
                         <tr key={user.id} className="border-b hover:bg-gray-50">
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                              <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
                                 {user.firstName[0]}{user.lastName[0]}
                               </div>
                               <div>
-                                <p className="font-semibold text-sm md:text-base">{user.firstName} {user.lastName}</p>
-                                <p className="text-xs md:text-sm text-gray-600 truncate max-w-[150px]">{user.email}</p>
+                                <p className="font-semibold text-sm lg:text-base">{user.firstName} {user.lastName}</p>
+                                <p className="text-xs lg:text-sm text-gray-600 truncate max-w-[150px]">{user.email}</p>
                               </div>
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="px-2 md:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs md:text-sm">
+                            <span className="px-2 lg:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs lg:text-sm">
                               {user.accountNumber}
                             </span>
                           </td>
-                          <td className="py-4 px-4 font-bold text-green-600 text-sm md:text-base">
+                          <td className="py-4 px-4 font-bold text-green-600 text-sm lg:text-base">
                             ${Math.floor(user.balance)}
                           </td>
-                          <td className="py-4 px-4 font-bold text-purple-600 text-sm md:text-base">
+                          <td className="py-4 px-4 font-bold text-purple-600 text-sm lg:text-base">
                             ${(user.roi || 0).toLocaleString('en-US', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2
                             })}
                           </td>
-                          <td className="py-4 px-4 font-bold text-orange-600 text-sm md:text-base">
+                          <td className="py-4 px-4 font-bold text-orange-600 text-sm lg:text-base">
                             ${Math.floor(user.referralBonus || 0)}
                           </td>
-                          <td className="py-4 px-4 text-center text-sm md:text-base">{user._count.userInvestments}</td>
+                          <td className="py-4 px-4 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold mb-1 ${
+                                user.referralCount >= 10 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {user.referralCount || 0}/10
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {user.referralCount >= 10 ? 'Eligible' : 'Not Eligible'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-center text-sm lg:text-base">{user._count.userInvestments}</td>
                           <td className="py-4 px-4">
                             <div className="flex flex-col xs:flex-row gap-2">
                               <button 
@@ -1476,12 +1568,21 @@ const resetEditModal = () => {
                                 <FiEdit className="inline mr-1" /> Balance
                               </button>
                              
-<button 
-  onClick={() => handleOpenROIModal(user)} 
-  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
->
-  <FiEdit className="inline mr-1" /> ROI
-</button>
+                              <button 
+                                onClick={() => handleOpenROIModal(user)} 
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
+                              >
+                                <FiEdit className="inline mr-1" /> ROI
+                              </button>
+                              
+                              {/* CHANGED: This is the updated referral bonus button */}
+                              <button 
+                                onClick={() => handleAddReferralBonus(user)} 
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
+                              >
+                                <FiDollarSign className="inline mr-1" /> Bonus
+                              </button>
+
                               <button 
                                 onClick={() => handleDeleteUser(user.id, `${user.firstName} ${user.lastName}`)} 
                                 className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold"
@@ -1499,14 +1600,14 @@ const resetEditModal = () => {
                 {/* Edit Balance Modal */}
                 {selectedUser && (
                   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl p-6 md:p-8 max-w-md w-full">
-                      <h2 className="text-xl md:text-2xl font-bold mb-4">Edit Balance</h2>
-                      <p className="mb-2 text-sm md:text-base">User: <span className="font-semibold">{selectedUser.firstName} {selectedUser.lastName}</span></p>
-                      <p className="mb-6 text-sm md:text-base">Current: <span className="font-bold text-green-600">${selectedUser.balance.toFixed(2)}</span></p>
+                    <div className="bg-white rounded-xl p-6 lg:p-8 max-w-md w-full">
+                      <h2 className="text-xl lg:text-2xl font-bold mb-4">Edit Balance</h2>
+                      <p className="mb-2 text-sm lg:text-base">User: <span className="font-semibold">{selectedUser.firstName} {selectedUser.lastName}</span></p>
+                      <p className="mb-6 text-sm lg:text-base">Current: <span className="font-bold text-green-600">${selectedUser.balance.toFixed(2)}</span></p>
                       <select 
                         value={balanceAction} 
                         onChange={(e) => setBalanceAction(e.target.value as any)} 
-                        className="w-full px-4 py-3 border rounded-lg mb-4 text-sm md:text-base"
+                        className="w-full px-4 py-3 border rounded-lg mb-4 text-sm lg:text-base"
                       >
                         <option value="ADD">Add</option>
                         <option value="SUBTRACT">Subtract</option>
@@ -1517,18 +1618,18 @@ const resetEditModal = () => {
                         value={balanceAmount} 
                         onChange={(e) => setBalanceAmount(e.target.value)} 
                         placeholder="Amount" 
-                        className="w-full px-4 py-3 border rounded-lg mb-6 text-sm md:text-base" 
+                        className="w-full px-4 py-3 border rounded-lg mb-6 text-sm lg:text-base" 
                       />
                       <div className="flex flex-col sm:flex-row gap-4">
                         <button 
                           onClick={handleUpdateBalance} 
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-sm md:text-base"
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-sm lg:text-base"
                         >
                           Update
                         </button>
                         <button 
                           onClick={() => { setSelectedUser(null); setBalanceAmount(''); }} 
-                          className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded-lg text-sm md:text-base"
+                          className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded-lg text-sm lg:text-base"
                         >
                           Cancel
                         </button>
@@ -1539,205 +1640,241 @@ const resetEditModal = () => {
 
                 {/* ROI Edit Modal */}
                 {selectedUserForROI && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-xl p-6 md:p-8 max-w-4xl w-full max-h-[90vh] overflow-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold text-gray-800">
-            Edit ROI for {selectedUserForROI.firstName} {selectedUserForROI.lastName}
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Account: {selectedUserForROI.accountNumber}
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            setSelectedUserForROI(null);
-            setUserInvestments([]);
-            setRoiAmounts({});
-          }}
-          className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
-        >
-          ×
-        </button>
-      </div>
-      
-      {userInvestments.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg mb-4">
-            No active investments found
-          </p>
-          <p className="text-sm text-gray-400">
-            ROI can only be added to active investments
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Summary Card */}
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-purple-800 mb-2">Investment Summary</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-purple-600">Total Investments:</p>
-                <p className="font-bold text-purple-800">{userInvestments.length}</p>
-              </div>
-              <div>
-                <p className="text-purple-600">Total Invested:</p>
-                <p className="font-bold text-purple-800">
-                  ${userInvestments.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-purple-600">Current Total ROI:</p>
-                <p className="font-bold text-purple-800">
-                  ${userInvestments.reduce((sum, inv) => sum + (inv.roiAmount || 0), 0).toFixed(2)}
-                </p>
-              </div>
-              <div>
-                <p className="text-purple-600">User's Total ROI:</p>
-                <p className="font-bold text-purple-800">
-                  ${(selectedUserForROI.roi || 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
-          </div>
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl p-6 lg:p-8 max-w-4xl w-full max-h-[90vh] overflow-auto">
+                      <div className="flex justify-between items-center mb-6">
+                        <div>
+                          <h2 className="text-xl lg:text-2xl font-bold text-gray-800">
+                            Edit ROI for {selectedUserForROI.firstName} {selectedUserForROI.lastName}
+                          </h2>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Account: {selectedUserForROI.accountNumber}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedUserForROI(null);
+                            setUserInvestments([]);
+                            setRoiAmounts({});
+                          }}
+                          className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      
+                      {userInvestments.length === 0 ? (
+                        <div className="text-center py-12">
+                          <p className="text-gray-500 text-lg mb-4">
+                            No active investments found
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            ROI can only be added to active investments
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Summary Card */}
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                            <h3 className="font-semibold text-purple-800 mb-2">Investment Summary</h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="text-purple-600">Total Investments:</p>
+                                <p className="font-bold text-purple-800">{userInvestments.length}</p>
+                              </div>
+                              <div>
+                                <p className="text-purple-600">Total Invested:</p>
+                                <p className="font-bold text-purple-800">
+                                  ${userInvestments.reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-purple-600">Current Total ROI:</p>
+                                <p className="font-bold text-purple-800">
+                                  ${userInvestments.reduce((sum, inv) => sum + (inv.roiAmount || 0), 0).toFixed(2)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-purple-600">User's Total ROI:</p>
+                                <p className="font-bold text-purple-800">
+                                  ${(selectedUserForROI.roi || 0).toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
 
-          {/* Investment Cards */}
-          {userInvestments.map(investment => {
-            const daysRemaining = investment.endDate 
-              ? Math.ceil((new Date(investment.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-              : null;
-            const isMatured = daysRemaining !== null && daysRemaining <= 0;
-            
-            return (
-              <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-800 text-lg">
-                      {investment.investment.title}
-                    </h4>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
-                        {investment.investment.category}
-                      </span>
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                        isMatured 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {isMatured ? 'Matured' : `${daysRemaining} days remaining`}
-                      </span>
+                          {/* Investment Cards */}
+                          {userInvestments.map(investment => {
+                            return (
+                              <div key={investment.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                                <div className="flex justify-between items-start mb-4">
+                                  <div className="flex-1">
+                                    <h4 className="font-semibold text-gray-800 text-lg">
+                                      {investment.investment.title}
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">
+                                        {investment.investment.category}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Investment Stats Grid */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
+                                  <div>
+                                    <p className="text-xs text-gray-600 mb-1">Principal</p>
+                                    <p className="font-bold text-gray-800">
+                                      ${investment.amount.toFixed(2)}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-600 mb-1">Current ROI</p>
+                                    <p className="font-bold text-purple-600">
+                                      ${(investment.roiAmount || 0).toFixed(2)}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* ROI Input Section */}
+                                <div className="flex gap-4 items-end">
+                                  <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Set ROI Amount (USD)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={roiAmounts[investment.id] || ''}
+                                      onChange={(e) => setRoiAmounts(prev => ({
+                                        ...prev,
+                                        [investment.id]: e.target.value
+                                      }))}
+                                      placeholder="Enter ROI amount"
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      This will be the total available ROI for this investment
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleUpdateInvestmentROI(investment.id)}
+                                    disabled={!roiAmounts[investment.id] || parseFloat(roiAmounts[investment.id]) <= 0}
+                                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                                  >
+                                    Update ROI
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      <div className="mt-6 pt-6 border-t">
+                        <button 
+                          onClick={() => {
+                            setSelectedUserForROI(null);
+                            setUserInvestments([]);
+                            setRoiAmounts({});
+                          }} 
+                          className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg font-semibold transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                {/* Investment Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Principal</p>
-                    <p className="font-bold text-gray-800">
-                      ${investment.amount.toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Current ROI</p>
-                    <p className="font-bold text-purple-600">
-                      ${(investment.roiAmount || 0).toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Duration</p>
-                    <p className="font-bold text-gray-700">
-                      {investment.investment.duration}
-                    </p>
-                  </div>
-                </div>
+                )}
 
-                {/* ROI Input Section */}
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Set ROI Amount (USD)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={roiAmounts[investment.id] || ''}
-                      onChange={(e) => setRoiAmounts(prev => ({
-                        ...prev,
-                        [investment.id]: e.target.value
-                      }))}
-                      placeholder="Enter ROI amount"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      This will be the total available ROI for this investment
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleUpdateInvestmentROI(investment.id)}
-                    disabled={!roiAmounts[investment.id] || parseFloat(roiAmounts[investment.id]) <= 0}
-                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-semibold transition-colors"
-                  >
-                    Update ROI
-                  </button>
-                </div>
-
-                {/* Info Note */}
-                {isMatured && (
-                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-xs text-green-700">
-                      ✓ Investment has matured. User can withdraw ROI once you set it.
-                    </p>
+                {/* Add Referral Bonus Modal */}
+                {selectedUserForReferralBonus && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl p-6 lg:p-8 max-w-md w-full">
+                      <h2 className="text-xl lg:text-2xl font-bold mb-4">Manage Referral Bonus</h2>
+                      <p className="mb-2 text-sm lg:text-base">
+                        User: <span className="font-semibold">{selectedUserForReferralBonus.firstName} {selectedUserForReferralBonus.lastName}</span>
+                      </p>
+                      <p className="mb-4 text-sm">
+                        Current Bonus: <span className="font-bold text-green-600">${selectedUserForReferralBonus.referralBonus || 0}</span>
+                      </p>
+                      <p className="mb-4 text-sm">
+                        Referral Count: <span className={`font-bold ${
+                          (selectedUserForReferralBonus.referralCount || 0) >= 10 
+                            ? 'text-green-600' 
+                            : 'text-yellow-600'
+                        }`}>
+                          {selectedUserForReferralBonus.referralCount || 0}/10
+                        </span>
+                        {(selectedUserForReferralBonus.referralCount || 0) >= 10 && (
+                          <span className="ml-2 text-xs text-green-600">✓ Eligible for withdrawal</span>
+                        )}
+                      </p>
+                      
+                      <select 
+                        value={referralBonusAction} 
+                        onChange={(e) => setReferralBonusAction(e.target.value as any)} 
+                        className="w-full px-4 py-3 border rounded-lg mb-4 text-sm lg:text-base"
+                      >
+                        <option value="ADD">Add</option>
+                        <option value="SUBTRACT">Subtract</option>
+                        <option value="SET">Set</option>
+                      </select>
+                      
+                      <input 
+                        type="number" 
+                        value={referralBonusAmount} 
+                        onChange={(e) => setReferralBonusAmount(e.target.value)} 
+                        placeholder="Bonus Amount" 
+                        className="w-full px-4 py-3 border rounded-lg mb-6 text-sm lg:text-base" 
+                      />
+                      
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <button 
+                          onClick={handleAddReferralBonusConfirm} 
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg text-sm lg:text-base"
+                        >
+                          Update Bonus
+                        </button>
+                        <button 
+                          onClick={() => { 
+                            setSelectedUserForReferralBonus(null); 
+                            setReferralBonusAmount('');
+                          }} 
+                          className="flex-1 bg-gray-300 hover:bg-gray-400 py-3 rounded-lg text-sm lg:text-base"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      
-      <div className="mt-6 pt-6 border-t">
-        <button 
-          onClick={() => {
-            setSelectedUserForROI(null);
-            setUserInvestments([]);
-            setRoiAmounts({});
-          }} 
-          className="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg font-semibold transition-colors"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
               </div>
             )}
 
             {/* Withdrawals Section */}
             {activeTab === 'withdrawals' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-6">Withdrawal Requests</h2>
+                <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6">
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-800 mb-6">Withdrawal Requests</h2>
                   
                   {withdrawals.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
-                      <p className="text-base md:text-lg">No withdrawal requests yet</p>
+                      <p className="text-base lg:text-lg">No withdrawal requests yet</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[600px]">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">User</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Investment</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Amount</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Type</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Date</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Status</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Actions</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">User</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Investment</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Amount</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Type</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Date</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Status</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1745,14 +1882,14 @@ const resetEditModal = () => {
                             <tr key={withdrawal.id} className="border-b hover:bg-gray-50 transition">
                               <td className="py-4 px-4">
                                 <div>
-                                  <p className="font-semibold text-gray-800 text-sm md:text-base">
+                                  <p className="font-semibold text-gray-800 text-sm lg:text-base">
                                     {withdrawal.user.firstName} {withdrawal.user.lastName}
                                   </p>
-                                  <p className="text-xs md:text-sm text-gray-600">{withdrawal.user.email}</p>
+                                  <p className="text-xs lg:text-sm text-gray-600">{withdrawal.user.email}</p>
                                 </div>
                               </td>
                               <td className="py-4 px-4">
-                                <p className="font-semibold text-gray-800 text-sm md:text-base">
+                                <p className="font-semibold text-gray-800 text-sm lg:text-base">
                                   {withdrawal.investment.investment.title}
                                 </p>
                                 <p className="text-xs text-gray-600">
@@ -1760,12 +1897,12 @@ const resetEditModal = () => {
                                 </p>
                               </td>
                               <td className="py-4 px-4">
-                                <p className="font-bold text-green-600 text-sm md:text-lg">
+                                <p className="font-bold text-green-600 text-sm lg:text-lg">
                                   ${withdrawal.amount.toFixed(2)}
                                 </p>
                               </td>
                               <td className="py-4 px-4">
-                                <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
+                                <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
                                   withdrawal.type === 'BANK_TRANSFER' 
                                     ? 'bg-blue-100 text-blue-800' 
                                     : 'bg-purple-100 text-purple-800'
@@ -1775,7 +1912,7 @@ const resetEditModal = () => {
                               </td>
                               <td className="py-4 px-4">
                                 <div className="whitespace-nowrap">
-                                  <p className="text-xs md:text-sm text-gray-600">
+                                  <p className="text-xs lg:text-sm text-gray-600">
                                     {new Date(withdrawal.createdAt).toLocaleDateString()}
                                   </p>
                                   <p className="text-xs text-gray-500">
@@ -1784,7 +1921,7 @@ const resetEditModal = () => {
                                 </div>
                               </td>
                               <td className="py-4 px-4">
-                                <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
+                                <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
                                   withdrawal.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
                                   withdrawal.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                                   withdrawal.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
@@ -1810,7 +1947,7 @@ const resetEditModal = () => {
                                     </button>
                                   </div>
                                 ) : (
-                                  <span className="text-gray-500 text-xs md:text-sm">
+                                  <span className="text-gray-500 text-xs lg:text-sm">
                                     {withdrawal.status === 'APPROVED' ? 'Approved' : 
                                      withdrawal.status === 'REJECTED' ? 'Rejected' : 'Processed'}
                                     {withdrawal.approvedBy && ` by ${withdrawal.approvedBy.firstName} ${withdrawal.approvedBy.lastName}`}
@@ -1825,26 +1962,26 @@ const resetEditModal = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <p className="text-gray-600 text-xs md:text-sm mb-2">Total Withdrawals</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-800">{withdrawals.length}</p>
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-xs lg:text-sm mb-2">Total Withdrawals</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-gray-800">{withdrawals.length}</p>
                   </div>
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <p className="text-gray-600 text-xs md:text-sm mb-2">Pending</p>
-                    <p className="text-2xl md:text-3xl font-bold text-yellow-600">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-xs lg:text-sm mb-2">Pending</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-yellow-600">
                       {withdrawals.filter(w => w.status === 'PENDING').length}
                     </p>
                   </div>
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <p className="text-gray-600 text-xs md:text-sm mb-2">Approved</p>
-                    <p className="text-2xl md:text-3xl font-bold text-green-600">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-xs lg:text-sm mb-2">Approved</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-green-600">
                       {withdrawals.filter(w => w.status === 'APPROVED').length}
                     </p>
                   </div>
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <p className="text-gray-600 text-xs md:text-sm mb-2">Total Amount</p>
-                    <p className="text-2xl md:text-3xl font-bold text-blue-600">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-xs lg:text-sm mb-2">Total Amount</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-blue-600">
                       ${withdrawals
                         .filter(w => w.status === 'APPROVED')
                         .reduce((sum, w) => sum + w.amount, 0)
@@ -1852,19 +1989,127 @@ const resetEditModal = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* Referral Withdrawals Section */}
+                <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6 mt-6">
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-800 mb-6">Referral Bonus Withdrawals</h2>
+                  
+                  {referralWithdrawals.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <p className="text-base lg:text-lg">No referral withdrawal requests yet</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[600px]">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">User</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Referrals</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Amount</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Type</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Date</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Status</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {referralWithdrawals.map((withdrawal) => (
+                            <tr key={withdrawal.id} className="border-b hover:bg-gray-50 transition">
+                              <td className="py-4 px-4">
+                                <div>
+                                  <p className="font-semibold text-gray-800 text-sm lg:text-base">
+                                    {withdrawal.user.firstName} {withdrawal.user.lastName}
+                                  </p>
+                                  <p className="text-xs lg:text-sm text-gray-600">{withdrawal.user.email}</p>
+                                  <p className="text-xs text-gray-500">Acc: {withdrawal.user.accountNumber}</p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  withdrawal.user.referralCount >= 10 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {withdrawal.user.referralCount}/10
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <p className="font-bold text-green-600 text-sm lg:text-lg">
+                                  ${withdrawal.amount.toFixed(2)}
+                                </p>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
+                                  withdrawal.type === 'BANK_TRANSFER' 
+                                    ? 'bg-blue-100 text-blue-800' 
+                                    : 'bg-purple-100 text-purple-800'
+                                }`}>
+                                  {withdrawal.type === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Crypto Wallet'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="whitespace-nowrap">
+                                  <p className="text-xs lg:text-sm text-gray-600">
+                                    {new Date(withdrawal.createdAt).toLocaleDateString()}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(withdrawal.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
+                                  withdrawal.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                  withdrawal.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                  withdrawal.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {withdrawal.status}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                {withdrawal.status === 'PENDING' ? (
+                                  <div className="flex flex-col xs:flex-row gap-2">
+                                    <button
+                                      onClick={() => handleApproveReferralWithdrawal(withdrawal.id)}
+                                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectReferralWithdrawal(withdrawal.id)}
+                                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500 text-xs lg:text-sm">
+                                    {withdrawal.status === 'APPROVED' ? 'Approved' : 
+                                    withdrawal.status === 'REJECTED' ? 'Rejected' : 'Processed'}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
             {/* Investments Section */}
             {activeTab === 'investments' && (
-              <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
-                <h2 className="text-xl md:text-2xl font-bold mb-6">Investment Analytics</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6">
+                <h2 className="text-xl lg:text-2xl font-bold mb-6">Investment Analytics</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   {investments.map((inv) => (
-                    <div key={inv.id} className="border rounded-xl p-4 md:p-6 hover:shadow-lg">
-                      <span className="px-2 md:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{inv.category}</span>
-                      <h3 className="text-base md:text-lg font-bold mt-3">{inv.title}</h3>
-                      <div className="space-y-2 mt-4 text-xs md:text-sm">
+                    <div key={inv.id} className="border rounded-xl p-4 lg:p-6 hover:shadow-lg">
+                      <span className="px-2 lg:px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{inv.category}</span>
+                      <h3 className="text-base lg:text-lg font-bold mt-3">{inv.title}</h3>
+                      <div className="space-y-2 mt-4 text-xs lg:text-sm">
                         <div className="flex justify-between">
                           <span>Investors:</span>
                           <span className="font-semibold">{inv.totalInvestors}</span>
@@ -1889,24 +2134,24 @@ const resetEditModal = () => {
 
             {/* News Section */}
             {activeTab === 'news' && (
-              <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
+              <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[500px]">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Title</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Category</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Status</th>
-                        <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Actions</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Title</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Category</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Status</th>
+                        <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {newsPosts.map((post) => (
                         <tr key={post.id} className="border-b hover:bg-gray-50">
-                          <td className="py-4 px-4 font-semibold text-sm md:text-base">{post.title}</td>
-                          <td className="py-4 px-4 text-sm md:text-base">{post.category}</td>
+                          <td className="py-4 px-4 font-semibold text-sm lg:text-base">{post.title}</td>
+                          <td className="py-4 px-4 text-sm lg:text-base">{post.category}</td>
                           <td className="py-4 px-4">
-                            <span className={`px-2 md:px-3 py-1 rounded-full text-xs ${post.published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                            <span className={`px-2 lg:px-3 py-1 rounded-full text-xs ${post.published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                               {post.published ? 'Published' : 'Draft'}
                             </span>
                           </td>
@@ -1938,26 +2183,26 @@ const resetEditModal = () => {
             {activeTab === 'deposits' && (
               <div className="space-y-6">
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <p className="text-gray-600 text-xs md:text-sm mb-2">Total Deposits</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-800">{deposits.length}</p>
+                <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-xs lg:text-sm mb-2">Total Deposits</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-gray-800">{deposits.length}</p>
                   </div>
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <p className="text-gray-600 text-xs md:text-sm mb-2">Pending</p>
-                    <p className="text-2xl md:text-3xl font-bold text-yellow-600">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-xs lg:text-sm mb-2">Pending</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-yellow-600">
                       {deposits.filter(d => d.status === 'PENDING').length}
                     </p>
                   </div>
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <p className="text-gray-600 text-xs md:text-sm mb-2">Confirmed</p>
-                    <p className="text-2xl md:text-3xl font-bold text-green-600">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-xs lg:text-sm mb-2">Confirmed</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-green-600">
                       {deposits.filter(d => d.status === 'CONFIRMED').length}
                     </p>
                   </div>
-                  <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
-                    <p className="text-gray-600 text-xs md:text-sm mb-2">Total Amount</p>
-                    <p className="text-2xl md:text-3xl font-bold text-blue-600">
+                  <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
+                    <p className="text-gray-600 text-xs lg:text-sm mb-2">Total Amount</p>
+                    <p className="text-2xl lg:text-3xl font-bold text-blue-600">
                       ${deposits
                         .filter(d => d.status === 'CONFIRMED')
                         .reduce((sum, d) => sum + d.amount, 0)
@@ -1967,17 +2212,17 @@ const resetEditModal = () => {
                 </div>
 
                 {/* Deposits Table */}
-                <div className="bg-white rounded-xl shadow-lg p-4 md:p-6">
+                <div className="bg-white rounded-xl shadow-lg p-4 lg:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                    <h2 className="text-xl md:text-2xl font-bold text-gray-800">Deposit Requests</h2>
+                    <h2 className="text-xl lg:text-2xl font-bold text-gray-800">Deposit Requests</h2>
                     <div className="text-sm text-gray-600">
                       Showing {deposits.length} deposit{deposits.length !== 1 ? 's' : ''}
                     </div>
                   </div>
                   
                   {deposits.length === 0 ? (
-                    <div className="text-center py-8 md:py-12 text-gray-500">
-                      <p className="text-base md:text-lg">No deposit requests yet</p>
+                    <div className="text-center py-8 lg:py-12 text-gray-500">
+                      <p className="text-base lg:text-lg">No deposit requests yet</p>
                       <p className="text-sm mt-2">New deposits will appear here</p>
                     </div>
                   ) : (
@@ -1985,14 +2230,14 @@ const resetEditModal = () => {
                       <table className="w-full min-w-[600px]">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">User</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Investment</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Amount</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Network</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Date</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Status</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Receipt</th>
-                            <th className="text-left py-3 px-4 text-xs md:text-sm font-semibold text-gray-600 uppercase">Actions</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">User</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Investment</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Amount</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Network</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Date</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Status</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Receipt</th>
+                            <th className="text-left py-3 px-4 text-xs lg:text-sm font-semibold text-gray-600 uppercase">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2000,24 +2245,24 @@ const resetEditModal = () => {
                             <tr key={deposit.id} className="border-b hover:bg-gray-50 transition">
                               <td className="py-4 px-4">
                                 <div>
-                                  <p className="font-semibold text-gray-800 text-sm md:text-base">
+                                  <p className="font-semibold text-gray-800 text-sm lg:text-base">
                                     {deposit.user.firstName} {deposit.user.lastName}
                                   </p>
-                                  <p className="text-xs md:text-sm text-gray-600">{deposit.user.email}</p>
+                                  <p className="text-xs lg:text-sm text-gray-600">{deposit.user.email}</p>
                                   <p className="text-xs text-gray-500">Acc: {deposit.user.accountNumber}</p>
                                 </div>
                               </td>
                               <td className="py-4 px-4">
-                                <p className="font-semibold text-gray-800 text-sm md:text-base">{deposit.investment.title}</p>
+                                <p className="font-semibold text-gray-800 text-sm lg:text-base">{deposit.investment.title}</p>
                                 <p className="text-xs text-gray-600">{deposit.investment.returnRate} return</p>
                               </td>
                               <td className="py-4 px-4">
-                                <p className="font-bold text-green-600 text-base md:text-lg">
+                                <p className="font-bold text-green-600 text-base lg:text-lg">
                                   ${deposit.amount.toFixed(2)}
                                 </p>
                               </td>
                               <td className="py-4 px-4">
-                                <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
+                                <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
                                   deposit.network === 'ETH' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
                                 }`}>
                                   USDT ({deposit.network})
@@ -2025,7 +2270,7 @@ const resetEditModal = () => {
                               </td>
                               <td className="py-4 px-4">
                                 <div className="whitespace-nowrap">
-                                  <p className="text-xs md:text-sm text-gray-600">
+                                  <p className="text-xs lg:text-sm text-gray-600">
                                     {new Date(deposit.createdAt).toLocaleDateString()}
                                   </p>
                                   <p className="text-xs text-gray-500">
@@ -2034,7 +2279,7 @@ const resetEditModal = () => {
                                 </div>
                               </td>
                               <td className="py-4 px-4">
-                                <span className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
+                                <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
                                   deposit.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
                                   deposit.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                                   'bg-red-100 text-red-800'
@@ -2046,12 +2291,12 @@ const resetEditModal = () => {
                                 {deposit.receiptUrl ? (
                                   <button
                                     onClick={() => openReceiptModal(deposit.receiptUrl)}
-                                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold text-xs md:text-sm"
+                                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold text-xs lg:text-sm"
                                   >
                                     <FiFile className="text-base" /> View
                                   </button>
                                 ) : (
-                                  <span className="text-gray-400 text-xs md:text-sm">No receipt</span>
+                                  <span className="text-gray-400 text-xs lg:text-sm">No receipt</span>
                                 )}
                               </td>
                               <td className="py-4 px-4">
@@ -2071,7 +2316,7 @@ const resetEditModal = () => {
                                     </button>
                                   </div>
                                 ) : (
-                                  <span className="text-gray-500 text-xs md:text-sm whitespace-nowrap">
+                                  <span className="text-gray-500 text-xs lg:text-sm whitespace-nowrap">
                                     {deposit.status === 'CONFIRMED' ? 'Confirmed' : 'Rejected'}
                                   </span>
                                 )}
@@ -2168,7 +2413,7 @@ const resetEditModal = () => {
           </div>
 
           {/* Category & Author */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
               <label className="block text-gray-700 font-semibold mb-2">Category *</label>
               <select
@@ -2202,7 +2447,7 @@ const resetEditModal = () => {
           {/* Featured Image */}
           <div>
             <label className="block text-gray-700 font-semibold mb-2">Featured Image</label>
-            <div className="flex flex-col md:flex-row gap-4 items-start">
+            <div className="flex flex-col lg:flex-row gap-4 items-start">
               {/* Current Image Preview */}
               {editImagePreview && (
                 <div className="w-32 h-32">

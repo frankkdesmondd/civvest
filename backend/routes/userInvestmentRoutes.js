@@ -34,38 +34,10 @@ router.get('/my-investments', authenticateToken, async (req, res) => {
     });
 
     // Calculate additional info for each investment
-    const investmentsWithDetails = investments.map(inv => {
-      // Handle investments that haven't been activated yet
-      if (!inv.startDate || !inv.endDate) {
-        return {
-          ...inv,
-          progress: 0,
-          daysRemaining: null,
-          isMatured: false,
-          canWithdraw: false
-        };
-      }
-
-      const now = new Date();
-      const endDate = new Date(inv.endDate);
-      const startDate = new Date(inv.startDate);
-      const totalDuration = endDate.getTime() - startDate.getTime();
-      const elapsed = now.getTime() - startDate.getTime();
-      const progress = Math.min((elapsed / totalDuration) * 100, 100);
-      const daysRemaining = Math.max(
-        Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
-        0
-      );
-      const isMatured = now >= endDate;
-
-      return {
-        ...inv,
-        progress: Math.round(progress),
-        daysRemaining,
-        isMatured,
-        canWithdraw: isMatured && inv.status === 'ACTIVE'
-      };
-    });
+   const investmentsWithDetails = investments.map(inv => ({
+      ...inv,
+      canWithdraw: inv.status === 'ACTIVE' && (inv.roiAmount || 0) > 0
+    }));
 
     res.json(investmentsWithDetails);
   } catch (error) {
@@ -171,16 +143,6 @@ router.post('/:id/withdraw', authenticateToken, async (req, res) => {
     if (!investment.startDate || !investment.endDate) {
       return res.status(400).json({ 
         error: 'Investment not yet activated. Please wait for admin to confirm your deposit.' 
-      });
-    }
-
-    const now = new Date();
-    const endDate = new Date(investment.endDate);
-
-    if (now < endDate) {
-      return res.status(400).json({ 
-        error: `Investment has not matured yet. Maturity date: ${endDate.toLocaleDateString()}`,
-        daysRemaining: Math.ceil((endDate - now) / (1000 * 60 * 60 * 24))
       });
     }
 

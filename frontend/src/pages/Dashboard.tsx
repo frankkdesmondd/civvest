@@ -17,6 +17,9 @@ import {
   FiChevronRight,
   FiWifiOff,
   FiRefreshCw,
+  FiAlertCircle,
+  FiUsers,
+  FiExternalLink
 } from "react-icons/fi";
 import axiosInstance from "../config/axios";
 import {
@@ -43,12 +46,8 @@ interface Investment {
   roiAmount: number;
   totalRoiAdded: number;
   startDate: string | null;
-  endDate: string | null;
   status: string;
   withdrawalStatus?: string;
-  daysRemaining?: number | null;
-  progress?: number;
-  isMatured?: boolean;
   canWithdraw?: boolean;
   investment: {
     title: string;
@@ -317,36 +316,25 @@ const Dashboard: React.FC = () => {
   };
 
   const handleWithdrawClick = (investment: Investment) => {
-    console.log('Selected investment:', investment);
-    
-    // Check if investment is already closed
-    if (isInvestmentClosed(investment)) {
-      showToast('This investment has already been closed', 'info');
-      return;
-    }
-    
-    // Check if withdrawal is pending
-    if (investment.withdrawalStatus === 'PENDING') {
-      showToast('Withdrawal request already pending', 'info');
-      return;
-    }
-    
-    // Check if investment is matured
-    if (!isMatured(investment)) {
-      const daysRemaining = getDaysRemaining(investment.endDate);
-      showToast(`Investment matures in ${daysRemaining || 0} days`, 'error');
-      return;
-    }
-    
-    // Check if ROI is available
-    if ((investment.roiAmount || 0) <= 0) {
-      showToast('No ROI available to withdraw for this investment', 'error');
-      return;
-    }
-    
-    setSelectedInvestment(investment);
-    setShowModal(true);
-  };
+  if (isInvestmentClosed(investment)) {
+    showToast('This investment has already been closed', 'info');
+    return;
+  }
+  
+  if (investment.withdrawalStatus === 'PENDING') {
+    showToast('Withdrawal request already pending', 'info');
+    return;
+  }
+  
+  // Remove maturity check - only check if ROI exists
+  if ((investment.roiAmount || 0) <= 0) {
+    showToast('No ROI available to withdraw for this investment', 'error');
+    return;
+  }
+  
+  setSelectedInvestment(investment);
+  setShowModal(true);
+};
 
   const handleConfirmWithdrawal = async (withdrawalData: any) => {
     try {
@@ -439,152 +427,69 @@ const Dashboard: React.FC = () => {
       .reduce((sum, inv) => sum + (inv.totalRoiAdded || 0), 0);
   };
 
-  const getDaysRemaining = (endDate: string | null) => {
-    if (!endDate) return null;
-    try {
-      const now = new Date();
-      const end = new Date(endDate);
-      const diff = end.getTime() - now.getTime();
-      const daysRemaining = Math.ceil(diff / (1000 * 60 * 60 * 24));
-      return daysRemaining;
-    } catch (error) {
-      console.error('Error calculating days remaining:', error);
-      return null;
-    }
-  };
-
-  const isMatured = (investment: Investment) => {
-    const daysRemaining = getDaysRemaining(investment.endDate);
-    return daysRemaining !== null && daysRemaining <= 0;
-  };
-
   const isInvestmentClosed = (investment: Investment) => {
-    return investment.status === 'COMPLETED' || investment.withdrawalStatus === 'PROCESSED';
-  };
-
-  const canWithdrawInvestment = (investment: Investment) => {
-    // Can't withdraw if completed or already withdrawn
-    if (isInvestmentClosed(investment)) {
-      return false;
-    }
+    // Check explicit status
+    const isCompleted = investment.status === 'COMPLETED';
+    const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
     
-    // Can't withdraw if withdrawal is pending
-    if (investment.withdrawalStatus === 'PENDING') {
-      return false;
-    }
+    // NEW: Check if all ROI has been withdrawn
+    const allROIWithdrawn = (investment.roiAmount || 0) <= 0 && (investment.totalRoiAdded || 0) > 0;
     
-    if (investment.status !== 'ACTIVE') return false;
-    
-    if ((investment.roiAmount || 0) <= 0) return false;
-    
-    const daysRemaining = getDaysRemaining(investment.endDate);
-    return daysRemaining !== null && daysRemaining <= 0;
+    return isCompleted || isWithdrawn || allROIWithdrawn;
   };
 
   const getDisplayStatus = (investment: Investment) => {
-    // Check if investment is closed first
-    if (isInvestmentClosed(investment)) {
-      return {
-        text: 'CLOSED',
-        color: 'bg-gray-100 text-gray-800'
-      };
+  // NEW: Check if all ROI is withdrawn
+  const allROIWithdrawn = (investment.roiAmount || 0) <= 0 && (investment.totalRoiAdded || 0) > 0;
+  
+  if (allROIWithdrawn || investment.status === 'COMPLETED' || investment.withdrawalStatus === 'PROCESSED') {
+    return { text: 'CLOSED', color: 'bg-gray-100 text-gray-800' };
+  }
+  
+  if (investment.withdrawalStatus === 'PENDING') {
+    return { text: 'WITHDRAWAL PENDING', color: 'bg-yellow-100 text-yellow-800' };
+  }
+  
+  if (investment.status === 'PENDING') {
+    return { text: 'PENDING', color: 'bg-yellow-100 text-yellow-800' };
+  }
+  
+  // Remove maturity checks - just check if ROI is available
+  if (investment.status === 'ACTIVE') {
+    if ((investment.roiAmount || 0) > 0) {
+      return { text: 'READY TO WITHDRAW', color: 'bg-green-100 text-green-800' };
     }
-    
-    // Check if withdrawal is pending
-    if (investment.withdrawalStatus === 'PENDING') {
-      return {
-        text: 'WITHDRAWAL PENDING',
-        color: 'bg-yellow-100 text-yellow-800'
-      };
-    }
-    
-    // Check if investment is pending
-    if (investment.status === 'PENDING') {
-      return {
-        text: 'PENDING',
-        color: 'bg-yellow-100 text-yellow-800'
-      };
-    }
-    
-    // For ACTIVE investments
-    if (investment.status === 'ACTIVE') {
-      if (canWithdrawInvestment(investment)) {
-        return {
-          text: 'READY TO WITHDRAW',
-          color: 'bg-green-100 text-green-800'
-        };
-      }
-      return {
-        text: 'ACTIVE',
-        color: 'bg-blue-100 text-blue-800'
-      };
-    }
-    
-    // Default fallback
-    return {
-      text: investment.status,
-      color: 'bg-gray-100 text-gray-800'
-    };
-  };
+    return { text: 'ACTIVE', color: 'bg-blue-100 text-blue-800' };
+  }
+  
+  return { text: investment.status, color: 'bg-gray-100 text-gray-800' };
+};
 
-  const getDaysLeftText = (investment: Investment) => {
-    // Check if investment is closed first
-    if (isInvestmentClosed(investment)) {
-      return 'N/A';
-    }
-    
-    // Check if investment is pending
-    if (investment.status === 'PENDING') {
-      return 'Awaiting';
-    }
-    
-    // For ACTIVE investments
-    if (investment.status === 'ACTIVE') {
-      const daysRemaining = getDaysRemaining(investment.endDate);
-      if (daysRemaining !== null && daysRemaining > 0) {
-        return `${daysRemaining} days`;
-      } else if (canWithdrawInvestment(investment)) {
-        return 'Matured';
-      } else {
-        return 'Calculating...';
-      }
-    }
-    
-    return 'N/A';
-  };
+  
 
   const getActionText = (investment: Investment) => {
-    // Check if investment is closed first
-    if (isInvestmentClosed(investment)) {
-      return 'Closed';
-    }
-    
-    // Check if withdrawal is pending
-    if (investment.withdrawalStatus === 'PENDING') {
-      return 'Pending Approval';
-    }
-    
-    // Check if investment is pending
-    if (investment.status === 'PENDING') {
-      return 'Pending';
-    }
-    
-    // Check if can withdraw
-    if (canWithdrawInvestment(investment)) {
-      return 'Withdraw ROI';
-    }
-    
-    // Check if ROI is available
-    if ((investment.roiAmount || 0) > 0) {
-      const daysRemaining = getDaysRemaining(investment.endDate);
-      if (daysRemaining !== null && daysRemaining > 0) {
-        return `Available in ${daysRemaining} days`;
-      }
-      return 'Available after maturity';
-    }
-    
-    return 'No ROI yet';
-  };
+  // Check if investment is closed first - UPDATED to use isInvestmentClosed function
+  if (isInvestmentClosed(investment)) {
+    return 'Closed';
+  }
+  
+  // Check if withdrawal is pending
+  if (investment.withdrawalStatus === 'PENDING') {
+    return 'Pending Approval';
+  }
+  
+  // Check if investment is pending
+  if (investment.status === 'PENDING') {
+    return 'Pending';
+  }
+  
+  // Check if ROI is available
+  if ((investment.roiAmount || 0) > 0) {
+    return 'Withdraw ROI';
+  }
+  
+  return 'No ROI yet';
+};
 
   const getROIColor = (investment: Investment) => {
     if (isInvestmentClosed(investment)) {
@@ -1002,6 +907,128 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* ADD REFERRAL BONUS SECTION HERE */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <FiDollarSign className="text-green-600" /> Referral Bonus
+              </h2>
+              <p className="text-gray-600 text-sm mt-1">
+                Earn bonuses by referring friends to Civvest
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+                {displayUser?.referralCount || 0} Referrals
+              </span>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-linear-to-br from-green-50 to-emerald-50 p-4 rounded-lg border border-green-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm">Available Bonus</p>
+                  <p className="text-2xl font-bold text-green-700">
+                    ${formatCurrency(displayUser?.referralBonus || 0)}
+                  </p>
+                </div>
+                <FiDollarSign className="text-green-600 text-2xl" />
+              </div>
+            </div>
+
+            <div className="bg-linear-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm">Total Referrals</p>
+                  <p className="text-2xl font-bold text-blue-700">
+                    {displayUser?.referralCount || 0}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {(displayUser?.referralCount || 0) < 10 
+                      ? `${10 - (displayUser?.referralCount || 0)} more to withdraw` 
+                      : 'Ready to withdraw!'}
+                  </p>
+                </div>
+                <FiUsers className="text-blue-600 text-2xl" />
+              </div>
+            </div>
+
+            <div className="bg-linear-to-br from-purple-50 to-violet-50 p-4 rounded-lg border border-purple-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm">Withdrawal Status</p>
+                  <p className={`text-lg font-bold ${
+                    (displayUser?.referralCount || 0) >= 10 && (displayUser?.referralBonus || 0) > 0 
+                      ? 'text-purple-700' 
+                      : 'text-gray-600'
+                  }`}>
+                    {(displayUser?.referralCount || 0) >= 10 && (displayUser?.referralBonus || 0) > 0 
+                      ? 'Eligible' 
+                      : 'Not Eligible'}
+                  </p>
+                  <p className="text-xs text-purple-600 mt-1">
+                    Min: 10 referrals required
+                  </p>
+                </div>
+                <FiAlertCircle className="text-purple-600 text-2xl" />
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {(displayUser?.referralCount || 0) >= 10 && (displayUser?.referralBonus || 0) > 0 && (
+              <button
+                onClick={() => setShowReferralWithdrawalModal(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 justify-center"
+              >
+                <FiDollarSign /> Withdraw Referral Bonus
+              </button>
+            )}
+            
+            <button
+              onClick={() => {
+                const referralLink = `${window.location.origin}/signup?ref=${displayUser?.referralCode || displayUser?.accountNumber}`;
+                navigator.clipboard.writeText(referralLink);
+                showToast('Referral link copied!', 'success');
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 justify-center"
+            >
+              <FiExternalLink /> Copy Referral Link
+            </button>
+          </div>
+
+          {/* Referral Link Display */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2">Your Referral Link:</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={`${window.location.origin}/signup?ref=${displayUser?.referralCode || displayUser?.accountNumber}`}
+                readOnly
+                className="flex-1 p-2 bg-white border border-gray-300 rounded text-sm"
+              />
+              <button
+                onClick={() => {
+                  const referralLink = `${window.location.origin}/signup?ref=${displayUser?.referralCode || displayUser?.accountNumber}`;
+                  navigator.clipboard.writeText(referralLink);
+                  showToast('Referral link copied!', 'success');
+                }}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded text-sm font-semibold"
+              >
+                Copy
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Share this link with friends. You earn bonuses when they sign up and invest!
+            </p>
+          </div>
+        </div>
+        {/* END OF REFERRAL BONUS SEC*/}
+
           {/* Investments Section */}
           <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow-sm mb-8 sm:mb-10">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
@@ -1038,9 +1065,7 @@ const Dashboard: React.FC = () => {
                 <div className="lg:hidden space-y-4">
                   {displayInvestments.map((investment) => {
                     const displayStatus = getDisplayStatus(investment);
-                    const daysLeftText = getDaysLeftText(investment);
                     const actionText = getActionText(investment);
-                    const canWithdraw = canWithdrawInvestment(investment);
                     const isClosed = isInvestmentClosed(investment);
                     const roiColor = getROIColor(investment);
                     
@@ -1077,12 +1102,7 @@ const Dashboard: React.FC = () => {
                                 {displayStatus.text}
                               </span>
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500 mb-1">Days Left</p>
-                              <span className="text-gray-800 text-sm">
-                                {daysLeftText}
-                              </span>
-                            </div>
+                            
                           </div>
 
                           {/* ROI Info Box - Only show for non-closed investments */}
@@ -1122,7 +1142,7 @@ const Dashboard: React.FC = () => {
                               <div className="text-center p-2 bg-yellow-50 rounded">
                                 <span className="text-yellow-700 text-sm">Pending Admin Approval</span>
                               </div>
-                            ) : canWithdraw ? (
+                            ) : investment.withdrawalStatus ? (
                               <button
                                 onClick={() => handleWithdrawClick(investment)}
                                 className="w-full bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-2 px-4 rounded-md text-sm font-semibold transition-colors"
@@ -1166,9 +1186,6 @@ const Dashboard: React.FC = () => {
                             Status
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Days Left
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Action
                           </th>
                         </tr>
@@ -1177,9 +1194,7 @@ const Dashboard: React.FC = () => {
                       <tbody className="divide-y divide-gray-100">
                         {displayInvestments.map((investment) => {
                           const displayStatus = getDisplayStatus(investment);
-                          const daysLeftText = getDaysLeftText(investment);
                           const actionText = getActionText(investment);
-                          const canWithdraw = canWithdrawInvestment(investment);
                           const isClosed = isInvestmentClosed(investment);
                           const roiColor = getROIColor(investment);
                           
@@ -1238,13 +1253,6 @@ const Dashboard: React.FC = () => {
                                 </span>
                               </td>
 
-                              {/* Days Left Column */}
-                              <td className="px-4 py-4 whitespace-nowrap">
-                                <span className="text-gray-800 text-base">
-                                  {daysLeftText}
-                                </span>
-                              </td>
-
                               {/* Action Column */}
                               <td className="px-4 py-4 whitespace-nowrap">
                                 {isClosed ? (
@@ -1253,7 +1261,7 @@ const Dashboard: React.FC = () => {
                                   <span className="text-yellow-600 text-sm">Pending Approval</span>
                                 ) : investment.status === "PENDING" ? (
                                   <span className="text-gray-500 text-sm">Pending</span>
-                                ) : canWithdraw ? (
+                                ) : investment.status ? (
                                   <button
                                     onClick={() => handleWithdrawClick(investment)}
                                     className="bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap transition-colors"

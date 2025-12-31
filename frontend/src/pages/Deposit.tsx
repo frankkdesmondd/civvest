@@ -200,10 +200,10 @@ const Deposit: React.FC = () => {
                   <p className="text-gray-600">Minimum Amount</p>
                   <p className="font-bold text-lg">${investment.minAmount.toLocaleString()}</p>
                 </div>
-                <div>
+                {/* <div>
                   <p className="text-gray-600">Duration</p>
                   <p className="font-bold text-lg">{investment.duration}</p>
-                </div>
+                </div> */}
               </div>
             </div>
 

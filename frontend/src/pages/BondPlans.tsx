@@ -4,7 +4,6 @@ import { HomeUtils } from "../utils/HomeUtils";
 import { useNavigate } from "react-router-dom";
 import MainBonding from "../assets/main bonding.jpg";
 import { FiDollarSign } from "react-icons/fi";
-import { SlCalender } from "react-icons/sl";
 import axios from "axios";
 import TrackRecord from "../components/TrackRecord";
 import Testimonial from "../components/Testimonial";
@@ -384,11 +383,6 @@ const InvestmentCard: React.FC<{ item: Investment }> = ({ item }) => (
         icon={<FiDollarSign />}
         label="Min Amount"
         value={`$${item.minAmount.toLocaleString()}`}
-      />
-      <InfoRow
-        icon={<SlCalender />}
-        label="ROI Period"
-        value={item.duration}
       />
       <button className="w-full bg-blue-500 hover:bg-blue-600 py-3 rounded-lg font-semibold mt-4 transition-colors">
         View Details

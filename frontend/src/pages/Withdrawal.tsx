@@ -1,4 +1,4 @@
-// Withdrawal.tsx - COMPLETE UPDATED VERSION with proper investment closure display
+// Withdrawal.tsx - UPDATED VERSION with slate colors for closed investments
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FiClock, FiCheckCircle, FiDollarSign, FiRefreshCw, FiTrendingUp, FiAlertCircle} from 'react-icons/fi';
@@ -126,65 +126,56 @@ const Withdrawal: React.FC = () => {
     }
   };
 
-  const getDaysRemaining = (endDate: string | null) => {
-    if (!endDate) return null;
-    const now = new Date();
-    const end = new Date(endDate);
-    const diff = end.getTime() - now.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  };
-
   const canWithdraw = (investment: Investment) => {
-    // Check if investment is already completed or withdrawn
+  // Check if investment is already completed or withdrawn
+  const isCompleted = investment.status === 'COMPLETED';
+  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+  
+  if (isCompleted || isWithdrawn) {
+    return false;
+  }
+  
+  // Check if investment is active
+  if (investment.status !== 'ACTIVE') {
+    return false;
+  }
+  
+  // Check if already has pending withdrawal
+  if (investment.withdrawalStatus === 'PENDING') {
+    return false;
+  }
+  
+  // ONLY check if ROI is available to withdraw - NO maturity checks
+  const hasROI = (investment.roiAmount || 0) > 0;
+  return hasROI;
+};
+
+  const handleWithdrawClick = (investment: Investment) => {
+  // Validate investment can withdraw
+  if (!canWithdraw(investment)) {
     const isCompleted = investment.status === 'COMPLETED';
     const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
     
     if (isCompleted || isWithdrawn) {
-      return false;
-    }
-    
-    // Check if investment is active
-    if (investment.status !== 'ACTIVE' || !investment.endDate || !investment.startDate) {
-      return false;
-    }
-    
-    // Check if already has pending withdrawal
-    if (investment.withdrawalStatus === 'PENDING') {
-      return false;
-    }
-    
-    // Check if ROI is available to withdraw
-    const hasROI = (investment.roiAmount || 0) > 0;
-    if (!hasROI) {
-      return false;
-    }
-    
-    const daysRemaining = getDaysRemaining(investment.endDate);
-    return daysRemaining !== null && daysRemaining <= 0;
-  };
+      showToast('Investment is already closed', 'info');
+    } 
+  }
+  
+  setSelectedInvestment(investment);
+  setShowModal(true);
+};
 
-  const handleWithdrawClick = (investment: Investment) => {
-    // Validate investment can withdraw
-    if (!canWithdraw(investment)) {
-      const isCompleted = investment.status === 'COMPLETED';
-      const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
-      
-      if (isCompleted || isWithdrawn) {
-        showToast('Investment is already closed', 'info');
-      } else {
-        const daysRemaining = getDaysRemaining(investment.endDate);
-        if (daysRemaining !== null && daysRemaining > 0) {
-          showToast(`Investment matures in ${daysRemaining} days`, 'info');
-        } else if (investment.withdrawalStatus === 'PENDING') {
-          showToast('Withdrawal request already pending', 'info');
-        }
-      }
-      return;
-    }
-    
-    setSelectedInvestment(investment);
-    setShowModal(true);
-  };
+// Update the isInvestmentClosed logic in the Withdrawal.tsx component
+const isInvestmentClosed = (investment: Investment) => {
+  // First check explicit status
+  const isCompleted = investment.status === 'COMPLETED';
+  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+  
+  // NEW: Also check if all ROI has been withdrawn
+  const allROIWithdrawn = (investment.roiAmount || 0) <= 0 && (investment.totalRoiAdded || 0) > 0;
+  
+  return isCompleted || isWithdrawn || allROIWithdrawn;
+};
 
   const handleConfirmWithdrawal = async (withdrawalData: any) => {
     try {
@@ -232,66 +223,55 @@ const Withdrawal: React.FC = () => {
   };
 
   const getStatusBadge = (investment: Investment) => {
-    // Check if investment has been fully withdrawn/closed
-    const isCompleted = investment.status === 'COMPLETED';
-    const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
-    
-    if (isCompleted || isWithdrawn) {
-      return (
-        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold flex items-center gap-1">
-          <FiCheckCircle /> Closed
-        </span>
-      );
-    }
-
-    if (investment.withdrawalStatus === 'PENDING') {
-      return (
-        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
-          <FiClock /> Withdrawal Pending
-        </span>
-      );
-    }
-
-    if (investment.status === 'PENDING') {
-      return (
-        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
-          <FiClock /> Pending Confirmation
-        </span>
-      );
-    }
-
-    // For ACTIVE investments
-    if (investment.status === 'ACTIVE' && investment.endDate && investment.startDate) {
-      if (canWithdraw(investment)) {
-        return (
-          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold flex items-center gap-1">
-            <FiCheckCircle /> ROI Ready to Withdraw
-          </span>
-        );
-      }
-
-      const daysRemaining = getDaysRemaining(investment.endDate);
-      if (daysRemaining !== null && daysRemaining > 0) {
-        return (
-          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold flex items-center gap-1">
-            <FiClock /> {daysRemaining} days remaining
-          </span>
-        );
-      } else if (daysRemaining !== null && daysRemaining <= 0) {
-        return (
-          <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-semibold flex items-center gap-1">
-            <FiClock /> Matured
-          </span>
-        );
-      }
-    }
-
+  // NEW: Check if all ROI is withdrawn
+  const allROIWithdrawn = (investment.roiAmount || 0) <= 0 && (investment.totalRoiAdded || 0) > 0;
+  
+  // Check if investment has been fully withdrawn/closed
+  const isCompleted = investment.status === 'COMPLETED';
+  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
+  
+  // UPDATED: Include allROIWithdrawn in the check
+  if (isCompleted || isWithdrawn || allROIWithdrawn) {
     return (
-      <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">
-        {investment.status}
+      <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold flex items-center gap-1">
+        <FiCheckCircle /> Closed
       </span>
     );
-  };
+  }
+
+  if (investment.withdrawalStatus === 'PENDING') {
+    return (
+      <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
+        <FiClock /> Withdrawal Pending
+      </span>
+    );
+  }
+
+  if (investment.status === 'PENDING') {
+    return (
+      <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
+        <FiClock /> Pending Confirmation
+      </span>
+    );
+  }
+
+  // For ACTIVE investments
+  if (investment.status === 'ACTIVE' && investment.startDate) {
+    if (canWithdraw(investment)) {
+      return (
+        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold flex items-center gap-1">
+          <FiCheckCircle /> ROI Ready to Withdraw
+        </span>
+      );
+    }
+  }
+
+  return (
+    <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">
+      {investment.status}
+    </span>
+  );
+};
 
   const totalAvailableROI = investments
     .filter(inv => {
@@ -342,7 +322,7 @@ const Withdrawal: React.FC = () => {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Withdraw ROI</h1>
               <p className="text-gray-600 mt-2 text-sm sm:text-base">
-                Withdraw returns from your matured investments
+                Withdraw returns from your investments
               </p>
             </div>
             <button
@@ -385,11 +365,10 @@ const Withdrawal: React.FC = () => {
             <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">ROI Withdrawal Information</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Withdrawal Eligibility: ROI can only be withdrawn after the investment has reached its full maturity period, as outlined in your investment agreement.</li>
-                <li>Withdrawal Methods: Investors may choose to receive their ROI through:• Bank Transfer (to a verified account), or
-Cryptocurrency Wallet (supported wallets only).</li>
+                <li>Withdrawal Eligibility: ROI can be withdrawn at any time for active investments.</li>
+                <li>Withdrawal Methods: Investors may choose to receive their ROI through:• Bank Transfer (to a verified account), or Cryptocurrency Wallet (supported wallets only).</li>
                 <li>Processing Time: Once a valid withdrawal request is submitted and verified, processing is typically completed within 24 hours.</li>
-                <li>Early Withdrawal: ROI cannot be withdrawn before maturity under standard terms. Any exceptions are subject to specific contractual agreements or promotional conditions.</li>
+                <li>Available ROI: You can only withdraw the ROI amount that has been credited to your investment.</li>
               </ul>
             </div>
           </div>
@@ -432,20 +411,17 @@ Cryptocurrency Wallet (supported wallets only).</li>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {investments.map((investment) => {
-                  const isCompleted = investment.status === 'COMPLETED';
-                  const isWithdrawn = investment.withdrawalStatus === 'PROCESSED';
-                  const isClosed = isCompleted || isWithdrawn;
-                  const daysRemaining = isClosed ? null : getDaysRemaining(investment.endDate);
+                  const isClosed = isInvestmentClosed(investment);
                   
                   return (
                     <div
                       key={investment.id}
                       className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition"
                     >
-                      {/* Header */}
+                      {/* Header - UPDATED: Changed closed investment color to slate */}
                       <div className={`p-6 text-white ${
                         isClosed 
-                          ? 'bg-linear-to-r from-gray-600 to-gray-700'
+                          ? 'bg-linear-to-r from-slate-600 to-slate-700' // CHANGED from gray-600/gray-700 to slate-600/slate-700
                           : 'bg-linear-to-r from-blue-600 to-purple-600'
                       }`}>
                         <h3 className="font-bold text-base sm:text-lg mb-2">{investment.investment.title}</h3>
@@ -468,12 +444,12 @@ Cryptocurrency Wallet (supported wallets only).</li>
                             <div>
                               <p className="text-gray-600 text-xs sm:text-sm">ROI Available</p>
                               <p className={`text-lg sm:text-xl font-bold flex items-center gap-1 ${
-                                isClosed ? 'text-gray-600' : 'text-purple-600'
+                                isClosed ? 'text-slate-600' : 'text-purple-600' // CHANGED from gray-600 to slate-600
                               }`}>
                                 <FiTrendingUp /> ${formatCurrency(investment.roiAmount)}
                               </p>
                               {isClosed && investment.totalRoiAdded && investment.totalRoiAdded > 0 && (
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-slate-500 mt-1"> {/* CHANGED from gray-500 to slate-500 */}
                                   Total earned: ${formatCurrency(investment.totalRoiAdded)}
                                 </p>
                               )}
@@ -497,14 +473,6 @@ Cryptocurrency Wallet (supported wallets only).</li>
                                   {new Date(investment.startDate).toLocaleDateString()}
                                 </p>
                               </div>
-                              {investment.endDate && (
-                                <div>
-                                  <p className="text-gray-600">End Date</p>
-                                  <p className="font-semibold">
-                                    {new Date(investment.endDate).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              )}
                             </div>
                           )}
                         </div>
@@ -516,12 +484,12 @@ Cryptocurrency Wallet (supported wallets only).</li>
 
                         {/* Withdraw Button */}
                         {isClosed ? (
-                          <div className="text-center p-3 bg-gray-50 rounded-lg">
-                            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                              <FiCheckCircle className="text-green-500" />
+                          <div className="text-center p-3 bg-slate-50 rounded-lg"> {/* CHANGED from gray-50 to slate-50 */}
+                            <div className="flex items-center justify-center gap-2 text-sm text-slate-600"> {/* CHANGED from gray-600 to slate-600 */}
+                              <FiCheckCircle className="text-slate-500" /> {/* CHANGED from green-500 to slate-500 */}
                               <span>Investment closed</span>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-slate-500 mt-1"> {/* CHANGED from gray-500 to slate-500 */}
                               ROI already withdrawn
                             </p>
                           </div>
@@ -541,19 +509,8 @@ Cryptocurrency Wallet (supported wallets only).</li>
                         ) : investment.status === 'PENDING' ? (
                           <div className="text-center p-3 bg-yellow-50 rounded-lg">
                             <p className="text-xs sm:text-sm text-yellow-800">
-                              Waiting for admin confirmation
+                              Waiting for confirmation
                             </p>
-                          </div>
-                        ) : (investment.roiAmount || 0) > 0 ? (
-                          <div className="text-center p-3 bg-purple-50 rounded-lg">
-                            <p className="text-xs sm:text-sm text-purple-800">
-                              ${formatCurrency(investment.roiAmount)} ROI available after maturity
-                            </p>
-                            {daysRemaining !== null && daysRemaining > 0 && (
-                              <p className="text-xs text-purple-600 mt-1">
-                                {daysRemaining} days until maturity
-                              </p>
-                            )}
                           </div>
                         ) : (
                           <div className="text-center p-3 bg-gray-50 rounded-lg">

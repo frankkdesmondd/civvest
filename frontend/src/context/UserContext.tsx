@@ -19,6 +19,7 @@ interface User {
   balance: number;
   roi: number;
   referralBonus: number;
+  referralCount: number;
   profilePicture?: string | null;
   country?: string | null;
   state?: string | null;
@@ -39,6 +40,7 @@ interface UserContextType {
   refreshUser: () => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
   updateUserById: (userId: string, updatedData: Partial<User>) => void;
+  incrementReferralCount: (incrementBy?: number) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -64,6 +66,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateUserById = (userId: string, updatedData: Partial<User>) => {
+    // Validate referralCount
+    if (updatedData.referralCount !== undefined && updatedData.referralCount < 0) {
+      console.warn('referralCount cannot be negative');
+      return;
+    }
+
     // Update if it's the current user
     if (user && user.id === userId) {
       const newUser = { ...user, ...updatedData };
@@ -86,7 +94,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }));
       
-      // Also dispatch specific events
+      // Dispatch specific events for important fields
       if (updatedData.balance !== undefined) {
         window.dispatchEvent(new CustomEvent('balanceUpdated', {
           detail: {
@@ -105,6 +113,25 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }));
       }
       
+      if (updatedData.referralCount !== undefined) {
+        window.dispatchEvent(new CustomEvent('referralCountUpdated', {
+          detail: {
+            userId: userId,
+            newReferralCount: updatedData.referralCount,
+            previousReferralCount: user.referralCount
+          }
+        }));
+      }
+      
+      if (updatedData.referralBonus !== undefined) {
+        window.dispatchEvent(new CustomEvent('referralBonusUpdated', {
+          detail: {
+            userId: userId,
+            newReferralBonus: updatedData.referralBonus
+          }
+        }));
+      }
+      
       // Force refresh after a short delay
       setTimeout(() => {
         refreshUser();
@@ -114,6 +141,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUser = (updatedData: Partial<User>) => {
     if (!user) return;
+    
+    // Validate referralCount
+    if (updatedData.referralCount !== undefined && updatedData.referralCount < 0) {
+      console.warn('referralCount cannot be negative');
+      return;
+    }
     
     const newUser = { ...user, ...updatedData };
     setUser(newUser);
@@ -127,6 +160,30 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.dispatchEvent(new CustomEvent('userUpdated', {
       detail: { user: newUser }
     }));
+  };
+
+  const incrementReferralCount = async (incrementBy: number = 1) => {
+    if (!user) return;
+    
+    // Optimistic update
+    const currentCount = user.referralCount || 0;
+    updateUser({ referralCount: currentCount + incrementBy });
+    
+    try {
+      // Call backend API to update referral count
+      await axiosInstance.patch(`/api/users/${user.id}/referral-count`, {
+        increment: incrementBy
+      });
+      
+      // Refresh to get latest data from server
+      await refreshUser();
+      console.log(`Referral count incremented by ${incrementBy}`);
+    } catch (error) {
+      // Rollback on error
+      updateUser({ referralCount: currentCount });
+      console.error('Failed to update referral count:', error);
+      throw error;
+    }
   };
 
   useEffect(() => {
@@ -156,14 +213,33 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    const handleReferralCountUpdate = (e: CustomEvent) => {
+      if (e.detail?.userId === user?.id) {
+        console.log('Referral count updated:', e.detail);
+        // Refresh user data to ensure consistency
+        setTimeout(() => refreshUser(), 50);
+      }
+    };
+
+    const handleReferralBonusUpdate = (e: CustomEvent) => {
+      if (e.detail?.userId === user?.id) {
+        console.log('Referral bonus updated:', e.detail);
+        setTimeout(() => refreshUser(), 50);
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('userUpdated', handleCustomUserUpdate as EventListener);
+    window.addEventListener('referralCountUpdated', handleReferralCountUpdate as EventListener);
+    window.addEventListener('referralBonusUpdated', handleReferralBonusUpdate as EventListener);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('userUpdated', handleCustomUserUpdate as EventListener);
+      window.removeEventListener('referralCountUpdated', handleReferralCountUpdate as EventListener);
+      window.removeEventListener('referralBonusUpdated', handleReferralBonusUpdate as EventListener);
     };
-  }, []);
+  }, [user?.id]); // Added user.id as dependency
 
   return (
     <UserContext.Provider value={{ 
@@ -171,7 +247,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading, 
       refreshUser, 
       updateUser, 
-      updateUserById 
+      updateUserById,
+      incrementReferralCount 
     }}>
       {children}
     </UserContext.Provider>

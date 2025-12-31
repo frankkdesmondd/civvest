@@ -31,8 +31,13 @@ router.post('/request', authenticateToken, async (req, res) => {
       }
     }
 
+    // Fetch the user investment from database
     const userInvestment = await prisma.userInvestment.findFirst({
-      where: { id: userInvestmentId, userId: userId, status: 'ACTIVE' },
+      where: { 
+        id: userInvestmentId, 
+        userId: userId, 
+        status: 'ACTIVE' 
+      },
       include: {
         user: {
           select: { id: true, roi: true, firstName: true, lastName: true, email: true }
@@ -47,26 +52,7 @@ router.post('/request', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Active investment not found' });
     }
 
-    if (!userInvestment.endDate) {
-      return res.status(400).json({ 
-        error: 'Investment maturity date not set',
-        investmentId: userInvestmentId
-      });
-    }
-
-    const now = new Date();
-    const maturityDate = new Date(userInvestment.endDate);
-    
-    if (now < maturityDate) {
-      const daysRemaining = Math.ceil((maturityDate - now) / (1000 * 60 * 60 * 24));
-      return res.status(400).json({ 
-        error: 'Investment has not matured yet. ROI withdrawal only allowed after maturity.',
-        maturityDate: maturityDate.toISOString(),
-        daysRemaining,
-        currentDate: now.toISOString()
-      });
-    }
-
+    // Check ROI amount
     const availableROI = userInvestment.roiAmount || 0;
     if (availableROI <= 0) {
       return res.status(400).json({ 
@@ -84,10 +70,14 @@ router.post('/request', authenticateToken, async (req, res) => {
       });
     }
 
+    // Process withdrawal transaction
     const result = await prisma.$transaction(async (tx) => {
       const updatedInvestment = await tx.userInvestment.update({
         where: { id: userInvestmentId },
-        data: { roiAmount: { decrement: amount } }
+        data: { 
+          roiAmount: { decrement: amount },
+          ...(userInvestment.roiAmount - amount <= 0 && { status: 'COMPLETED' })
+         }
       });
 
       const updatedUser = await tx.user.update({
@@ -125,6 +115,7 @@ router.post('/request', authenticateToken, async (req, res) => {
         }
       });
 
+      // 1. Create notification for USER
       await tx.notification.create({
         data: {
           userId: userId,
@@ -133,6 +124,28 @@ router.post('/request', authenticateToken, async (req, res) => {
           type: 'WITHDRAWAL_REQUESTED'
         }
       });
+
+      // 2. Find all ADMIN users and create notifications for them
+      // REMOVED metadata field since it doesn't exist in your schema
+      const adminUsers = await tx.user.findMany({
+        where: { role: 'ADMIN' },
+        select: { id: true }
+      });
+      
+      // Create notifications for each admin
+      if (adminUsers.length > 0) {
+        const adminNotifications = adminUsers.map(admin => ({
+          userId: admin.id,
+          title: 'New Withdrawal Request',
+          message: `${userInvestment.user.firstName} ${userInvestment.user.lastName} requested $${amount.toFixed(2)} withdrawal from ${userInvestment.investment.title}.`,
+          type: 'NEW_WITHDRAWAL_REQUEST'
+          // REMOVED: metadata field
+        }));
+        
+        await tx.notification.createMany({
+          data: adminNotifications
+        });
+      }
 
       return { withdrawal, updatedInvestment, updatedUser };
     });
@@ -159,7 +172,7 @@ router.post('/request', authenticateToken, async (req, res) => {
   }
 });
 
-// Check if ROI withdrawal is available
+// Check if ROI withdrawal is available (No maturity restrictions)
 router.get('/roi-available/:investmentId', authenticateToken, async (req, res) => {
   try {
     const { investmentId } = req.params;
@@ -174,7 +187,6 @@ router.get('/roi-available/:investmentId', authenticateToken, async (req, res) =
       select: {
         id: true,
         roiAmount: true,
-        endDate: true,
         investment: {
           select: {
             title: true
@@ -187,23 +199,14 @@ router.get('/roi-available/:investmentId', authenticateToken, async (req, res) =
       return res.status(404).json({ error: 'Investment not found' });
     }
 
-    const now = new Date();
-    const maturityDate = investment.endDate ? new Date(investment.endDate) : null;
-    const isMatured = maturityDate && now >= maturityDate;
-    const daysRemaining = maturityDate ? Math.ceil((maturityDate - now) / (1000 * 60 * 60 * 24)) : null;
-    const canWithdraw = isMatured && investment.roiAmount > 0;
+    const canWithdraw = investment.roiAmount > 0;
     
     res.json({
       investmentId: investment.id,
       investmentTitle: investment.investment.title,
       availableROI: investment.roiAmount,
-      isMatured,
       canWithdraw,
-      maturityDate: investment.endDate,
-      daysRemaining: daysRemaining && daysRemaining > 0 ? daysRemaining : 0,
-      message: !isMatured 
-        ? `Investment matures in ${daysRemaining} days`
-        : investment.roiAmount <= 0
+      message: investment.roiAmount <= 0
         ? 'No ROI available'
         : 'ROI available for withdrawal'
     });
@@ -218,12 +221,10 @@ router.get('/my-roi-withdrawals', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     
-     const withdrawals = await prisma.withdrawal.findMany({
+    const withdrawals = await prisma.withdrawal.findMany({
       where: {
         userId,
-        investment: {
-          roiAmount: { gt: 0 }
-        }
+        userInvestmentId: { not: null }
       },
       include: {
         investment: {
@@ -278,7 +279,6 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
     const { withdrawalId } = req.params;
     const { status, adminNotes } = req.body;
 
-    // Use transaction to update both records
     const result = await prisma.$transaction(async (tx) => {
       
       // 1. Update withdrawal status
@@ -291,16 +291,27 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
           approvedAt: status === 'APPROVED' ? new Date() : null
         },
         include: {
-          investment: true // Get userInvestmentId
+          investment: true // This includes the UserInvestment
         }
       });
 
-      // 2. If approved, update investment status to COMPLETED
-      if (status === 'APPROVED' && withdrawal.userInvestmentId) {
-        await tx.userInvestment.update({
-          where: { id: withdrawal.userInvestmentId },
-          data: { status: 'COMPLETED' }
+      // 2. If approved, check if ROI is zero and mark as COMPLETED
+      if (status === 'APPROVED' && withdrawal.userInvestmentId && withdrawal.investment) {
+        // Check current ROI amount
+        const currentInvestment = await tx.userInvestment.findUnique({
+          where: { id: withdrawal.userInvestmentId }
         });
+        
+        // If ROI amount is zero or negative, mark as COMPLETED
+        if (currentInvestment && currentInvestment.roiAmount <= 0) {
+          await tx.userInvestment.update({
+            where: { id: withdrawal.userInvestmentId },
+            data: { 
+              status: 'COMPLETED',
+              withdrawalStatus: 'PROCESSED' // Add this field if it exists
+            }
+          });
+        }
       }
 
       return withdrawal;
@@ -341,9 +352,3 @@ router.get('/my-withdrawals', authenticateToken, async (req, res) => {
 });
 
 export default router;
-
-
-
-
-
-
