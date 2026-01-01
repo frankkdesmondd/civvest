@@ -15,7 +15,7 @@ const SignIn: React.FC = () => {
   const handleLogin = async () => {
     setError('');
 
-    console.log('Login attempt:', { email, password: '***' });
+    console.log('🔐 Login attempt:', { email, password: '***' });
 
     // Basic validation
     if (!email || !password) {
@@ -26,24 +26,78 @@ const SignIn: React.FC = () => {
     setLoading(true);
 
     try {
-      console.log('Sending request to:', 'https://civvest-backend.onrender.com/api/auth/signin');
-      const response = await axios.post('https://civvest-backend.onrender.com/api/auth/signin', {
-        email,
-        password
-      }, { withCredentials: true });
+      console.log('📡 Sending request to:', 'https://civvest-backend.onrender.com/api/auth/signin');
+      
+      const response = await axios.post(
+        'https://civvest-backend.onrender.com/api/auth/signin',
+        { email, password },
+        { 
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      console.log('Login response:', response.data);
+      console.log('✅ Login successful:', response.data);
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/');
+      // CRITICAL: Store token and user data BEFORE navigating
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        console.log('✅ Token stored in localStorage');
+      } else {
+        console.error('❌ No token received from server');
+        throw new Error('No authentication token received');
+      }
+
+      if (response.data.user) {
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        console.log('✅ User data stored in localStorage');
+      }
+
+      // Dispatch storage event to notify other components
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'user',
+        newValue: JSON.stringify(response.data.user)
+      }));
+
+      // Small delay to ensure localStorage is written
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Navigate based on user role
+      if (response.data.user.role === 'ADMIN') {
+        console.log('🔀 Redirecting to admin dashboard');
+        navigate('/admin-dashboard');
+      } else {
+        console.log('🔀 Redirecting to user dashboard');
+        navigate('/dashboard');
+      }
       
     } catch (err: any) {
-      console.error('Login error:', err);
-      console.error('Error response:', err.response?.data);
-      setError(err.response?.data?.error || 'Failed to sign in');
+      console.error('❌ Login error:', err);
+      console.error('❌ Error response:', err.response?.data);
+      
+      let errorMessage = 'Failed to sign in';
+      
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Invalid email or password';
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLogin();
     }
   };
 
@@ -75,7 +129,9 @@ const SignIn: React.FC = () => {
             placeholder="Email Address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mb-4 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
+            onKeyPress={handleKeyPress}
+            disabled={loading}
+            className="mb-4 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
 
           {/* PASSWORD INPUT WITH EYE ICON */}
@@ -85,12 +141,15 @@ const SignIn: React.FC = () => {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 pr-12 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyPress={handleKeyPress}
+              disabled={loading}
+              className="w-full px-4 py-3 pr-12 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
+              disabled={loading}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200 disabled:opacity-50"
             >
               {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </button>
@@ -99,17 +158,17 @@ const SignIn: React.FC = () => {
           <button
             onClick={handleLogin}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 py-3 rounded-md font-semibold mb-6 disabled:opacity-50"
+            className="bg-blue-600 hover:bg-blue-700 py-3 rounded-md font-semibold mb-6 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? 'SIGNING IN...' : 'LOG IN'}
           </button>
 
           <Link to="/forgot-password">
-            <p className="text-sm mb-2">Forgot Password?</p>
+            <p className="text-sm mb-2 hover:text-blue-400 transition-colors">Forgot Password?</p>
           </Link>
           <p className="text-sm text-gray-300">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-blue-400 font-semibold">
+            <Link to="/signup" className="text-blue-400 font-semibold hover:text-blue-300 transition-colors">
               Sign Up
             </Link>
           </p>
