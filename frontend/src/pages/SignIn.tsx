@@ -67,10 +67,10 @@ const SignIn: React.FC = () => {
       // Navigate based on user role
       if (response.data.user.role === 'ADMIN') {
         console.log('🔀 Redirecting to admin dashboard');
-        navigate('/admin-dashboard');
+        navigate('/');
       } else {
         console.log('🔀 Redirecting to user dashboard');
-        navigate('/dashboard');
+        navigate('/');
       }
       
     } catch (err: any) {
@@ -188,3 +188,4 @@ const SignIn: React.FC = () => {
 };
 
 export default SignIn;
+
