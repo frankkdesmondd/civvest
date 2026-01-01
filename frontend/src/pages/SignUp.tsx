@@ -92,7 +92,7 @@ const SignUp: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       console.log('🔀 Redirecting to dashboard');
-      navigate('/dashboard');
+      navigate('/');
       
     } catch (err: any) {
       console.error('❌ Signup error:', err);
@@ -275,3 +275,4 @@ const SignUp: React.FC = () => {
 };
 
 export default SignUp;
+
