@@ -8,10 +8,20 @@ const prisma = new PrismaClient();
 // User requests ROI withdrawal
 router.post('/request', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    // FIX: Change req.user.id to req.user.userId
+    const userId = req.user.userId;
     const { userInvestmentId, amount, type, bankDetails, walletDetails } = req.body;
 
     console.log('[Withdrawal] Request:', { userId, userInvestmentId, amount, type });
+
+    // Add validation for userId
+    if (!userId) {
+      console.error('[Withdrawal] No user ID in request');
+      return res.status(401).json({ 
+        error: 'User not authenticated',
+        details: 'User ID not found in token'
+      });
+    }
 
     if (!userInvestmentId || !amount || amount <= 0) {
       return res.status(400).json({ error: 'Valid investment ID and amount required' });
@@ -126,7 +136,6 @@ router.post('/request', authenticateToken, async (req, res) => {
       });
 
       // 2. Find all ADMIN users and create notifications for them
-      // REMOVED metadata field since it doesn't exist in your schema
       const adminUsers = await tx.user.findMany({
         where: { role: 'ADMIN' },
         select: { id: true }
@@ -139,7 +148,6 @@ router.post('/request', authenticateToken, async (req, res) => {
           title: 'New Withdrawal Request',
           message: `${userInvestment.user.firstName} ${userInvestment.user.lastName} requested $${amount.toFixed(2)} withdrawal from ${userInvestment.investment.title}.`,
           type: 'NEW_WITHDRAWAL_REQUEST'
-          // REMOVED: metadata field
         }));
         
         await tx.notification.createMany({
@@ -176,7 +184,12 @@ router.post('/request', authenticateToken, async (req, res) => {
 router.get('/roi-available/:investmentId', authenticateToken, async (req, res) => {
   try {
     const { investmentId } = req.params;
-    const userId = req.user.id;
+    // FIX: Change req.user.id to req.user.userId
+    const userId = req.user.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
 
     const investment = await prisma.userInvestment.findFirst({
       where: {
@@ -219,7 +232,12 @@ router.get('/roi-available/:investmentId', authenticateToken, async (req, res) =
 // Get user's ROI withdrawal history
 router.get('/my-roi-withdrawals', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    // FIX: Change req.user.id to req.user.userId
+    const userId = req.user.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
     
     const withdrawals = await prisma.withdrawal.findMany({
       where: {
@@ -292,7 +310,8 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
         data: {
           status,
           adminNotes,
-          approvedById: req.user.id,
+          // FIX: Change req.user.id to req.user.userId
+          approvedById: req.user.userId,
           approvedAt: status === 'APPROVED' ? new Date() : null
         },
         include: {
@@ -326,12 +345,10 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
           
           // If ROI amount is zero or negative, mark as COMPLETED
           if (currentInvestment && currentInvestment.roiAmount <= 0) {
-            // FIXED: Removed withdrawalStatus field
             await tx.userInvestment.update({
               where: { id: withdrawal.userInvestmentId },
               data: { 
                 status: 'COMPLETED'
-                // Removed: withdrawalStatus: 'PROCESSED'
               }
             });
           }
@@ -390,7 +407,12 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
 // Get user's withdrawal history (all types)
 router.get('/my-withdrawals', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    // FIX: Change req.user.id to req.user.userId
+    const userId = req.user.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
     
     const withdrawals = await prisma.withdrawal.findMany({
       where: { userId },
@@ -414,6 +436,3 @@ router.get('/my-withdrawals', authenticateToken, async (req, res) => {
 });
 
 export default router;
-
-
-
