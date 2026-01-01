@@ -298,49 +298,84 @@ export const SignIn = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log('🔐 Sign-in attempt for:', email);
+
+    // Validate input
+    if (!email || !password) {
+      console.log('❌ Missing email or password');
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
     // Find user
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
+      console.log('❌ User not found:', email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Verify password
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
+      console.log('❌ Invalid password for:', email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT
+    console.log('✅ Password verified for:', email);
+
+    // Generate JWT with all necessary data
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { 
+        userId: user.id, 
+        email: user.email, 
+        role: user.role 
+      },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // Set HTTP-only cookie
+    console.log('✅ JWT token generated');
+
+    // Set HTTP-only cookie (for same-origin requests)
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // false for localhost
-      sameSite: 'lax', // Use 'lax' for local development
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-      // DO NOT set domain property for localhost/127.0.0.1
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/'
     });
 
+    console.log('✅ Cookie set successfully');
+
+    // Prepare user response (exclude password)
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      accountNumber: user.accountNumber,
+      balance: user.balance,
+      roi: user.roi,
+      referralBonus: user.referralBonus,
+      referralCount: user.referralCount
+    };
+
+    console.log('✅ Signin successful for:', email);
+
+    // Send response with both token and user data
     res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        accountNumber: user.accountNumber,
-        balance: user.balance
-      },
-      token
+      success: true,
+      message: 'Sign in successful',
+      user: userResponse,
+      token // Include token in response for localStorage
     });
+
   } catch (error) {
-    console.error('Signin error:', error);
-    res.status(500).json({ error: 'Failed to sign in' });
+    console.error('❌ Signin error:', error);
+    res.status(500).json({ 
+      error: 'Failed to sign in',
+      message: 'An unexpected error occurred. Please try again.'
+    });
   }
 };
 
@@ -383,27 +418,52 @@ export const GetUser = async (req, res) => {
 
 // SIGN OUT
 export const SignOut = async (req, res) => {
-  // Clear the cookie with the same options used when setting it
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/'
-  });
-  
-  res.json({ message: 'Signed out successfully' });
+  try {
+    console.log('👋 Sign-out request received');
+
+    // Clear the cookie with the same options used when setting it
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      path: '/'
+    });
+
+    console.log('✅ Sign-out successful');
+    
+    res.json({ 
+      success: true,
+      message: 'Signed out successfully' 
+    });
+
+  } catch (error) {
+    console.error('❌ Sign-out error:', error);
+    res.status(500).json({ 
+      error: 'Failed to sign out',
+      message: 'An error occurred during sign out'
+    });
+  }
 };
 
 // GET ME
 export const getMe = async (req, res) => {
   try {
+    console.log('👤 GetMe called for user:', req.user?.userId);
+
     // Check if user is authenticated via middleware
     if (!req.user || !req.user.userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
+      console.log('❌ No authenticated user in request');
+      return res.status(401).json({ 
+        error: 'Not authenticated',
+        message: 'Please sign in to continue'
+      });
     }
     
     const userId = req.user.userId;
     
+    console.log('🔍 Fetching user data for:', userId);
+
+    // Fetch user from database
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -424,27 +484,44 @@ export const getMe = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      console.log('❌ User not found in database:', userId);
+      return res.status(404).json({ 
+        error: 'User not found',
+        message: 'Your account could not be found'
+      });
     }
+
+    console.log('✅ User data fetched successfully:', user.email);
 
     res.json({ 
       success: true,
       user 
     });
+
   } catch (error) {
-    console.error('Get me error:', error);
+    console.error('❌ Get me error:', error);
     
     if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Invalid token' });
+      return res.status(401).json({ 
+        error: 'Invalid token',
+        message: 'Your session is invalid. Please sign in again.'
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        error: 'Token expired',
+        message: 'Your session has expired. Please sign in again.'
+      });
     }
     
     res.status(500).json({ 
       success: false,
-      error: 'Failed to fetch user data' 
+      error: 'Failed to fetch user data',
+      message: 'An unexpected error occurred'
     });
   }
 };
-
 export const GetStats = async(req, res) =>{
   try {
     const userId = req.user.id;
@@ -493,4 +570,5 @@ export const GetStats = async(req, res) =>{
     res.status(500).json({ error: 'Failed to fetch referral stats' });
   }
 }
+
 
