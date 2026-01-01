@@ -397,6 +397,11 @@ export const SignOut = async (req, res) => {
 // GET ME
 export const getMe = async (req, res) => {
   try {
+    // Check if user is authenticated via middleware
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
     const userId = req.user.userId;
     
     const user = await prisma.user.findUnique({
@@ -412,6 +417,7 @@ export const getMe = async (req, res) => {
         balance: true,
         roi: true,
         referralBonus: true,
+        referralCode: true,
         referralCount: true,
         createdAt: true
       }
@@ -421,10 +427,21 @@ export const getMe = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user });
+    res.json({ 
+      success: true,
+      user 
+    });
   } catch (error) {
     console.error('Get me error:', error);
-    res.status(500).json({ error: 'Failed to fetch user data' });
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch user data' 
+    });
   }
 };
 
@@ -476,3 +493,4 @@ export const GetStats = async(req, res) =>{
     res.status(500).json({ error: 'Failed to fetch referral stats' });
   }
 }
+
