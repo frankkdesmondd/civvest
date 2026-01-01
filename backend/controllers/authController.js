@@ -522,6 +522,7 @@ export const getMe = async (req, res) => {
     });
   }
 };
+
 export const GetStats = async(req, res) =>{
   try {
     const userId = req.user.id;
@@ -570,5 +571,6 @@ export const GetStats = async(req, res) =>{
     res.status(500).json({ error: 'Failed to fetch referral stats' });
   }
 }
+
 
 
