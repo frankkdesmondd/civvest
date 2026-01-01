@@ -4,18 +4,21 @@ import {
   resetPassword, 
   SignUp, 
   SignIn, 
-  GetUser, 
   SignOut,
-  getMe 
+  getMe  // Use getMe instead of GetUser
 } from "../controllers/authController.js"
+import { authenticateToken } from "../middleware/authMiddleware.js" // Add this import
 
 const router = express.Router()
 
+// Public routes
 router.post("/forgot-password", forgotPassword)
 router.post("/reset-password", resetPassword)
 router.post('/signup', SignUp)
 router.post('/signin', SignIn)
-router.get('/me', GetUser)
 router.post('/signout', SignOut)
+
+// Protected route - requires authentication
+router.get('/me', authenticateToken, getMe) // Add authenticateToken middleware
 
 export default router
