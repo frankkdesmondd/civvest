@@ -5,7 +5,8 @@ import {
   SignUp, 
   SignIn, 
   SignOut,
-  getMe  // Use getMe instead of GetUser
+  getMe,
+  GetStats
 } from "../controllers/authController.js"
 import { authenticateToken } from "../middleware/authMiddleware.js" // Add this import
 
@@ -20,5 +21,7 @@ router.post('/signout', SignOut)
 
 // Protected route - requires authentication
 router.get('/me', authenticateToken, getMe) // Add authenticateToken middleware
+router.get('/stats', authenticateToken, GetStats)
 
 export default router
+
