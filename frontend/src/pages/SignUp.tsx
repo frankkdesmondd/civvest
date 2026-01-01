@@ -10,7 +10,8 @@ const SignUp: React.FC = () => {
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    referralCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -24,6 +25,8 @@ const SignUp: React.FC = () => {
 
   const handleSignUp = async () => {
     setError('');
+
+    console.log('📝 Signup attempt for:', formData.email);
 
     // Validation
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
@@ -44,19 +47,78 @@ const SignUp: React.FC = () => {
     setLoading(true);
 
     try {
+      console.log('📡 Sending signup request...');
+      
       const response = await axios.post(
         'https://civvest-backend.onrender.com/api/auth/signup',
-        { ...formData },
-        { withCredentials: true }
+        {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          referralCode: formData.referralCode || undefined
+        },
+        { 
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/');
+      console.log('✅ Signup successful:', response.data);
+
+      // CRITICAL: Store token and user data BEFORE navigating
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        console.log('✅ Token stored in localStorage');
+      } else {
+        console.error('❌ No token received from server');
+        throw new Error('No authentication token received');
+      }
+
+      if (response.data.user) {
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        console.log('✅ User data stored in localStorage');
+      }
+
+      // Dispatch storage event to notify other components
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'user',
+        newValue: JSON.stringify(response.data.user)
+      }));
+
+      // Small delay to ensure localStorage is written
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('🔀 Redirecting to dashboard');
+      navigate('/dashboard');
+      
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create account');
+      console.error('❌ Signup error:', err);
+      console.error('❌ Error response:', err.response?.data);
+      
+      let errorMessage = 'Failed to create account';
+      
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.status === 400) {
+        errorMessage = err.response.data?.error || 'Invalid information provided';
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSignUp();
     }
   };
 
@@ -98,7 +160,9 @@ const SignUp: React.FC = () => {
               placeholder="First Name"
               value={formData.firstName}
               onChange={handleChange}
-              className="flex-1 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyPress={handleKeyPress}
+              disabled={loading}
+              className="flex-1 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
             <input
               type="text"
@@ -106,7 +170,9 @@ const SignUp: React.FC = () => {
               placeholder="Last Name"
               value={formData.lastName}
               onChange={handleChange}
-              className="flex-1 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyPress={handleKeyPress}
+              disabled={loading}
+              className="flex-1 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
           </div>
 
@@ -116,7 +182,9 @@ const SignUp: React.FC = () => {
             placeholder="Email Address"
             value={formData.email}
             onChange={handleChange}
-            className="mb-4 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
+            onKeyPress={handleKeyPress}
+            disabled={loading}
+            className="mb-4 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
 
           {/* PASSWORD INPUT WITH EYE ICON */}
@@ -127,12 +195,15 @@ const SignUp: React.FC = () => {
               placeholder="Password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full px-4 py-3 pr-12 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyPress={handleKeyPress}
+              disabled={loading}
+              className="w-full px-4 py-3 pr-12 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200 focus:outline-none"
+              disabled={loading}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200 focus:outline-none disabled:opacity-50"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
@@ -140,36 +211,51 @@ const SignUp: React.FC = () => {
           </div>
 
           {/* CONFIRM PASSWORD INPUT WITH EYE ICON */}
-          <div className="relative mb-6">
+          <div className="relative mb-4">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
               name="confirmPassword"
               placeholder="Confirm Password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="w-full px-4 py-3 pr-12 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyPress={handleKeyPress}
+              disabled={loading}
+              className="w-full px-4 py-3 pr-12 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword((prev) => !prev)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200 focus:outline-none"
+              disabled={loading}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200 focus:outline-none disabled:opacity-50"
               aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
             >
               {showConfirmPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </button>
           </div>
 
+          {/* REFERRAL CODE (OPTIONAL) */}
+          <input
+            type="text"
+            name="referralCode"
+            placeholder="Referral Code (Optional)"
+            value={formData.referralCode}
+            onChange={handleChange}
+            onKeyPress={handleKeyPress}
+            disabled={loading}
+            className="mb-6 px-4 py-3 rounded-md bg-[#0a2c52] text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          />
+
           <button
             onClick={handleSignUp}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 py-3 rounded-md font-semibold mb-4 disabled:opacity-50"
+            className="bg-blue-600 hover:bg-blue-700 py-3 rounded-md font-semibold mb-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? 'CREATING ACCOUNT...' : 'SIGN UP'}
           </button>
 
           <p className="text-sm text-gray-300">
             Already have an account?{' '}
-            <Link to="/signin" className="text-blue-400 font-semibold">
+            <Link to="/signin" className="text-blue-400 font-semibold hover:text-blue-300 transition-colors">
               Sign In
             </Link>
           </p>
