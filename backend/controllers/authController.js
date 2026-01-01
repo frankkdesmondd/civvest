@@ -267,8 +267,9 @@ export const SignUp = async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/'
     });
 
     // Send welcome email (non-blocking - don't let email failures break signup)
@@ -412,7 +413,13 @@ export const GetUser = async (req, res) => {
 
     res.json({ user });
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    console.error('GetUser error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    } else if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -445,15 +452,23 @@ export const SignOut = async (req, res) => {
   }
 };
 
-// GET ME
+// GET ME - FIXED VERSION
 export const getMe = async (req, res) => {
   try {
-    console.log('👤 GetMe called for user:', req.user?.userId);
-
+    console.log('👤 GetMe called');
+    
+    // Log authentication details
+    console.log('🔍 Auth details:', {
+      hasUser: !!req.user,
+      userId: req.user?.userId,
+      email: req.user?.email
+    });
+    
     // Check if user is authenticated via middleware
     if (!req.user || !req.user.userId) {
       console.log('❌ No authenticated user in request');
       return res.status(401).json({ 
+        success: false,
         error: 'Not authenticated',
         message: 'Please sign in to continue'
       });
@@ -461,7 +476,7 @@ export const getMe = async (req, res) => {
     
     const userId = req.user.userId;
     
-    console.log('🔍 Fetching user data for:', userId);
+    console.log('🔍 Fetching user data for user ID:', userId);
 
     // Fetch user from database
     const user = await prisma.user.findUnique({
@@ -479,13 +494,22 @@ export const getMe = async (req, res) => {
         referralBonus: true,
         referralCode: true,
         referralCount: true,
-        createdAt: true
+        createdAt: true,
+        country: true,
+        state: true,
+        address: true,
+        phone: true,
+        bankName: true,
+        accountName: true,
+        bankAccountNumber: true,
+        routingCode: true
       }
     });
 
     if (!user) {
-      console.log('❌ User not found in database:', userId);
+      console.log('❌ User not found in database for ID:', userId);
       return res.status(404).json({ 
+        success: false,
         error: 'User not found',
         message: 'Your account could not be found'
       });
@@ -503,6 +527,7 @@ export const getMe = async (req, res) => {
     
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ 
+        success: false,
         error: 'Invalid token',
         message: 'Your session is invalid. Please sign in again.'
       });
@@ -510,11 +535,13 @@ export const getMe = async (req, res) => {
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ 
+        success: false,
         error: 'Token expired',
         message: 'Your session has expired. Please sign in again.'
       });
     }
     
+    console.error('Database/Server error in getMe:', error);
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch user data',
@@ -525,7 +552,15 @@ export const getMe = async (req, res) => {
 
 export const GetStats = async(req, res) =>{
   try {
-    const userId = req.user.id;
+    // Ensure user is authenticated
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Not authenticated'
+      });
+    }
+    
+    const userId = req.user.userId;
     
     // Get user's total referral count
     const user = await prisma.user.findUnique({
@@ -539,7 +574,10 @@ export const GetStats = async(req, res) =>{
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'User not found' 
+      });
     }
 
     // Get recent referrals (users referred by this user)
@@ -559,6 +597,7 @@ export const GetStats = async(req, res) =>{
     });
 
     res.json({
+      success: true,
       totalReferrals: user.referralCount || 0,
       totalBonus: user.referralBonus || 0,
       recentReferrals,
@@ -568,9 +607,9 @@ export const GetStats = async(req, res) =>{
     });
   } catch (error) {
     console.error('Get referral stats error:', error);
-    res.status(500).json({ error: 'Failed to fetch referral stats' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch referral stats' 
+    });
   }
 }
-
-
-
