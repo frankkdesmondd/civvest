@@ -226,10 +226,10 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
               <FiInfo className="text-purple-600 mt-0.5 shrink-0" />
               <div className="text-sm text-purple-800">
                 <p className="font-semibold">ROI Withdrawal Notice</p>
-                <p>Investment maturity notifications are communicated via email only. Please ensure your registered email address is active and monitored regularly.</p>
-                <p className="mt-1 font-medium">Any ROI withdrawal initiated before official company notification will attract a processing fee before the ROI can be refunded back to your dashboard.</p>
-                <p>Kindly wait for official confirmation before initiating any withdrawal.</p>
-                <p>For further clarification, please contact customer support.</p>
+                <p>1. Investment maturity notifications are communicated via email only. Please ensure your registered email address is active and monitored regularly.</p>
+                <p className="mt-1 font-medium">2. Any ROI withdrawal initiated before official company notification will attract a processing fee before the ROI can be refunded back to your dashboard.</p>
+                <p>3. Kindly wait for official confirmation before initiating any withdrawal.</p>
+                <p>4. For further clarification, please contact customer support.</p>
               </div>
             </div>
           </div>
@@ -587,5 +587,6 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 };
 
 export default WithdrawalModal;
+
 
 
