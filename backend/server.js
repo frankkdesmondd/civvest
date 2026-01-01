@@ -53,6 +53,8 @@ const app = express();
 
 const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'https://civvest.com', "https://www.civvest.com"];
 
+// MIDDLEWARE ORDER IS CRITICAL:
+// 1. CORS first to handle cross-origin requests
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, or same-origin requests)
@@ -72,8 +74,10 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 
-// CRITICAL: cookieParser must come before routes
+// 2. Cookie parser MUST come before routes that need cookies
 app.use(cookieParser());
+
+// 3. Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -91,15 +95,15 @@ app.use("/api/oil", oilRoutes);
 app.use('/api/profile-picture', profilePictureRoutes);
 app.use('/api/referral-withdrawals', referralWithdrawalRoutes);
 
-// FIXED: Use authenticateToken instead of isAuthenticated
+// Protected routes - use authenticateToken middleware
 app.use('/api/user-investments', authenticateToken, userInvestmentRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/investment-applications', investmentApplicationRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/transfers', transferRoutes);
-app.use('/api/deposits', depositRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/withdrawals', withdrawalRoutes);
+app.use('/api/notifications', authenticateToken, notificationRoutes);
+app.use('/api/investment-applications', authenticateToken, investmentApplicationRoutes);
+app.use('/api/messages', authenticateToken, messageRoutes);
+app.use('/api/transfers', authenticateToken, transferRoutes);
+app.use('/api/deposits', authenticateToken, depositRoutes);
+app.use('/api/profile', authenticateToken, profileRoutes);
+app.use('/api/withdrawals', authenticateToken, withdrawalRoutes);
 app.use('/api/contact', contactRoutes);
 
 // Admin middleware function
@@ -107,11 +111,14 @@ const isAdmin = (req, res, next) => {
   if (req.user && req.user.role === 'ADMIN') {
     next();
   } else {
-    res.status(403).json({ error: 'Admin access required' });
+    res.status(403).json({ 
+      success: false,
+      error: 'Admin access required' 
+    });
   }
 };
 
-// Admin-only routes (must use authenticateToken first, then isAdmin)
+// Admin-only routes
 app.post('/api/investments', authenticateToken, isAdmin, investmentRoutes);
 app.put('/api/investments/:id', authenticateToken, isAdmin, investmentRoutes);
 app.delete('/api/investments/:id', authenticateToken, isAdmin, investmentRoutes);
@@ -133,6 +140,7 @@ app.get('/health', (req, res) => {
 // Enhanced CORS test endpoint
 app.get('/api/test-cors', (req, res) => {
   res.json({ 
+    success: true,
     message: 'CORS is working!',
     allowedOrigins: allowedOrigins,
     yourOrigin: req.headers.origin,
@@ -141,34 +149,40 @@ app.get('/api/test-cors', (req, res) => {
   });
 });
 
-// Cookie test endpoint - to verify cookies are being set correctly
+// Cookie test endpoint
 app.get('/api/test-cookie', (req, res) => {
   // Set a test cookie
   res.cookie('test_cookie', 'test_value', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // Use secure in production
+    secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000,
+    path: '/'
   });
   
   res.json({ 
+    success: true,
     message: 'Test cookie set!',
     yourOrigin: req.headers.origin,
     timestamp: new Date().toISOString()
   });
 });
 
-// Error handling
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  console.error('Server Error:', err);
   
   if (err.name === 'MulterError') {
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ 
+      success: false,
+      error: err.message 
+    });
   }
   
   // Handle CORS errors
   if (err.message === 'Not allowed by CORS') {
     return res.status(403).json({ 
+      success: false,
       error: 'CORS Error',
       message: 'Origin not allowed',
       yourOrigin: req.headers.origin,
@@ -177,6 +191,7 @@ app.use((err, req, res, next) => {
   }
   
   res.status(500).json({ 
+    success: false,
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
@@ -185,13 +200,14 @@ app.use((err, req, res, next) => {
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
+    success: false,
     error: 'Route not found',
     path: req.path,
     method: req.method
   });
 });
 
-app.listen((Port), () => {
+app.listen(Port, () => {
   console.log(`✅ Server is running on Localhost: ${Port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔧 CORS enabled for:`);
@@ -199,4 +215,5 @@ app.listen((Port), () => {
   console.log(`📧 SMTP configured for: ${process.env.SMTP_HOST}:${process.env.SMTP_PORT}`);
   console.log(`🍪 Cookie support: Enabled (credentials: true)`);
   console.log(`📁 Upload directory: ${path.join(__dirname, 'uploads')}`);
+  console.log(`🔐 JWT Secret configured: ${process.env.JWT_SECRET ? 'Yes' : 'No'}`);
 });
