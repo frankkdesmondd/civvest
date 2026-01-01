@@ -1,4 +1,3 @@
-// context/UserContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosInstance from '../config/axios';
 
@@ -37,10 +36,11 @@ interface User {
 interface UserContextType {
   user: User | null;
   loading: boolean;
+  error: string | null;
   refreshUser: () => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
   updateUserById: (userId: string, updatedData: Partial<User>) => void;
-  incrementReferralCount: (incrementBy?: number) => Promise<void>;
+  clearError: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -48,37 +48,82 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refreshUser = async () => {
     try {
+      setLoading(true);
+      setError(null);
+      
+      console.log('🔄 Refreshing user data...');
+      
+      // First check if we have a token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('⚠️ No token found, user is not authenticated');
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
       const response = await axiosInstance.get('/api/auth/me');
-      if (response.data.user) {
+      
+      if (response.data.success && response.data.user) {
         const newUser = response.data.user;
         setUser(newUser);
         localStorage.setItem('user', JSON.stringify(newUser));
-        console.log('User refreshed:', newUser);
+        console.log('✅ User refreshed:', newUser.email);
+      } else {
+        console.error('❌ API returned unsuccessful response:', response.data);
+        setError(response.data.message || 'Failed to fetch user data');
+        
+        // Check if it's an authentication error
+        if (response.data.error?.includes('token') || response.data.error?.includes('authenticated')) {
+          // Clear invalid token
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+        }
       }
-    } catch (error) {
-      console.error('Failed to refresh user:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to refresh user:', error);
+      
+      // Handle different error types
+      if (error.response?.status === 401) {
+        console.log('🚫 401 Unauthorized - clearing authentication');
+        setError('Session expired. Please sign in again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+      } else if (error.response?.status === 500) {
+        console.error('🔥 Server error - but keeping user logged in with cached data');
+        setError('Server error. Using cached data.');
+        
+        // Try to use cached data
+        const cachedUser = localStorage.getItem('user');
+        if (cachedUser) {
+          try {
+            const parsedUser = JSON.parse(cachedUser);
+            setUser(parsedUser);
+            console.log('🔄 Using cached user data due to server error');
+          } catch (parseError) {
+            console.error('Failed to parse cached user:', parseError);
+          }
+        }
+      } else {
+        setError(error.message || 'Failed to refresh user data');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const updateUserById = (userId: string, updatedData: Partial<User>) => {
-    // Validate referralCount
-    if (updatedData.referralCount !== undefined && updatedData.referralCount < 0) {
-      console.warn('referralCount cannot be negative');
-      return;
-    }
-
-    // Update if it's the current user
     if (user && user.id === userId) {
       const newUser = { ...user, ...updatedData };
       setUser(newUser);
       localStorage.setItem('user', JSON.stringify(newUser));
       
-      // Broadcast events more aggressively
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'user',
         newValue: JSON.stringify(newUser),
@@ -93,60 +138,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           updatedData: updatedData
         }
       }));
-      
-      // Dispatch specific events for important fields
-      if (updatedData.balance !== undefined) {
-        window.dispatchEvent(new CustomEvent('balanceUpdated', {
-          detail: {
-            userId: userId,
-            newBalance: updatedData.balance
-          }
-        }));
-      }
-      
-      if (updatedData.roi !== undefined) {
-        window.dispatchEvent(new CustomEvent('roiUpdated', {
-          detail: {
-            userId: userId,
-            newROI: updatedData.roi
-          }
-        }));
-      }
-      
-      if (updatedData.referralCount !== undefined) {
-        window.dispatchEvent(new CustomEvent('referralCountUpdated', {
-          detail: {
-            userId: userId,
-            newReferralCount: updatedData.referralCount,
-            previousReferralCount: user.referralCount
-          }
-        }));
-      }
-      
-      if (updatedData.referralBonus !== undefined) {
-        window.dispatchEvent(new CustomEvent('referralBonusUpdated', {
-          detail: {
-            userId: userId,
-            newReferralBonus: updatedData.referralBonus
-          }
-        }));
-      }
-      
-      // Force refresh after a short delay
-      setTimeout(() => {
-        refreshUser();
-      }, 100);
     }
   };
 
   const updateUser = (updatedData: Partial<User>) => {
     if (!user) return;
-    
-    // Validate referralCount
-    if (updatedData.referralCount !== undefined && updatedData.referralCount < 0) {
-      console.warn('referralCount cannot be negative');
-      return;
-    }
     
     const newUser = { ...user, ...updatedData };
     setUser(newUser);
@@ -162,40 +158,40 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
-  const incrementReferralCount = async (incrementBy: number = 1) => {
-    if (!user) return;
-    
-    // Optimistic update
-    const currentCount = user.referralCount || 0;
-    updateUser({ referralCount: currentCount + incrementBy });
-    
-    try {
-      // Call backend API to update referral count
-      await axiosInstance.patch(`/api/users/${user.id}/referral-count`, {
-        increment: incrementBy
-      });
-      
-      // Refresh to get latest data from server
-      await refreshUser();
-      console.log(`Referral count incremented by ${incrementBy}`);
-    } catch (error) {
-      // Rollback on error
-      updateUser({ referralCount: currentCount });
-      console.error('Failed to update referral count:', error);
-      throw error;
-    }
+  const clearError = () => {
+    setError(null);
   };
 
   useEffect(() => {
-    refreshUser();
+    const initializeUser = async () => {
+      // First, check for cached user data
+      const cachedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      
+      if (cachedUser && token) {
+        try {
+          const parsedUser = JSON.parse(cachedUser);
+          setUser(parsedUser);
+          console.log('🔄 Using cached user data while fetching fresh data');
+        } catch (error) {
+          console.error('Failed to parse cached user:', error);
+        }
+      }
+      
+      // Then try to refresh from server
+      await refreshUser();
+    };
     
+    initializeUser();
+    
+    // Listen for storage events (e.g., logout from another tab)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'user') {
         if (e.newValue) {
           try {
             const parsedUser = JSON.parse(e.newValue);
             setUser(parsedUser);
-            console.log('User updated from storage:', parsedUser);
+            console.log('User updated from storage:', parsedUser.email);
           } catch (error) {
             console.error('Failed to parse user from storage:', error);
           }
@@ -203,52 +199,40 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(null);
         }
       }
+      
+      if (e.key === 'token' && !e.newValue) {
+        // Token was cleared (logout)
+        setUser(null);
+        console.log('Token cleared, user logged out');
+      }
     };
 
     const handleCustomUserUpdate = (e: CustomEvent) => {
       if (e.detail?.user) {
         setUser(e.detail.user);
         localStorage.setItem('user', JSON.stringify(e.detail.user));
-        console.log('User updated from custom event:', e.detail.user);
-      }
-    };
-
-    const handleReferralCountUpdate = (e: CustomEvent) => {
-      if (e.detail?.userId === user?.id) {
-        console.log('Referral count updated:', e.detail);
-        // Refresh user data to ensure consistency
-        setTimeout(() => refreshUser(), 50);
-      }
-    };
-
-    const handleReferralBonusUpdate = (e: CustomEvent) => {
-      if (e.detail?.userId === user?.id) {
-        console.log('Referral bonus updated:', e.detail);
-        setTimeout(() => refreshUser(), 50);
+        console.log('User updated from custom event:', e.detail.user.email);
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('userUpdated', handleCustomUserUpdate as EventListener);
-    window.addEventListener('referralCountUpdated', handleReferralCountUpdate as EventListener);
-    window.addEventListener('referralBonusUpdated', handleReferralBonusUpdate as EventListener);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('userUpdated', handleCustomUserUpdate as EventListener);
-      window.removeEventListener('referralCountUpdated', handleReferralCountUpdate as EventListener);
-      window.removeEventListener('referralBonusUpdated', handleReferralBonusUpdate as EventListener);
     };
-  }, [user?.id]); // Added user.id as dependency
+  }, []);
 
   return (
     <UserContext.Provider value={{ 
       user, 
       loading, 
+      error,
       refreshUser, 
       updateUser, 
       updateUserById,
-      incrementReferralCount 
+      clearError
     }}>
       {children}
     </UserContext.Provider>
