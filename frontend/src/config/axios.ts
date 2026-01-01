@@ -59,7 +59,7 @@ axiosInstance.interceptors.response.use(
       message: error.message
     });
     
-    // Handle 401 Unauthorized errors
+    // Handle 401 Unauthorized errors ONLY
     if (error.response?.status === 401) {
       console.log('🚫 Unauthorized - clearing authentication');
       
@@ -112,9 +112,12 @@ axiosInstance.interceptors.response.use(
       console.log('🚫 Forbidden - insufficient permissions');
     }
     
-    // Handle 500 Server errors
+    // Handle 500 Server errors - DON'T LOG OUT USER
     if (error.response?.status === 500) {
-      console.error('🔥 Server error - contact support if this persists');
+      console.error('🔥 Server error - The server encountered an error');
+      console.error('🔥 This is a backend issue, not an authentication problem');
+      console.error('🔥 Keeping user logged in with cached data');
+      // DON'T clear tokens or redirect - let UserContext handle it with cached data
     }
     
     return Promise.reject(error);
