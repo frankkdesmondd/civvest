@@ -279,6 +279,11 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
     const { withdrawalId } = req.params;
     const { status, adminNotes } = req.body;
 
+    // Validate the status
+    if (!['APPROVED', 'REJECTED', 'PROCESSED'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       
       // 1. Update withdrawal status
@@ -291,40 +296,96 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
           approvedAt: status === 'APPROVED' ? new Date() : null
         },
         include: {
-          investment: true // This includes the UserInvestment
+          investment: true, // This includes the UserInvestment
+          user: {
+            select: {
+              id: true,
+              balance: true,
+              roi: true
+            }
+          }
         }
       });
 
-      // 2. If approved, check if ROI is zero and mark as COMPLETED
-      if (status === 'APPROVED' && withdrawal.userInvestmentId && withdrawal.investment) {
-        // Check current ROI amount
-        const currentInvestment = await tx.userInvestment.findUnique({
-          where: { id: withdrawal.userInvestmentId }
+      // 2. If approved, process the balance/ROI update and check if investment should be marked as COMPLETED
+      if (status === 'APPROVED') {
+        // Update user balance (assuming this is a regular withdrawal, not ROI withdrawal)
+        // You might need to adjust this based on your withdrawal type
+        const updatedUser = await tx.user.update({
+          where: { id: withdrawal.userId },
+          data: { 
+            balance: { decrement: withdrawal.amount }
+          }
         });
-        
-        // If ROI amount is zero or negative, mark as COMPLETED
-        if (currentInvestment && currentInvestment.roiAmount <= 0) {
-          await tx.userInvestment.update({
-            where: { id: withdrawal.userInvestmentId },
-            data: { 
-              status: 'COMPLETED',
-              withdrawalStatus: 'PROCESSED' // Add this field if it exists
-            }
+
+        // 3. If this is an ROI withdrawal (has userInvestmentId), check ROI and mark as COMPLETED if needed
+        if (withdrawal.userInvestmentId && withdrawal.investment) {
+          const currentInvestment = await tx.userInvestment.findUnique({
+            where: { id: withdrawal.userInvestmentId }
           });
+          
+          // If ROI amount is zero or negative, mark as COMPLETED and set withdrawalStatus to PROCESSED
+          if (currentInvestment && currentInvestment.roiAmount <= 0) {
+            // FIXED: Use enum value PROCESSED (without quotes) for withdrawalStatus
+            await tx.userInvestment.update({
+              where: { id: withdrawal.userInvestmentId },
+              data: { 
+                status: 'COMPLETED',
+                withdrawalStatus: 'PROCESSED' // This is correct - it matches your WithdrawalStatus enum
+              }
+            });
+          }
         }
+
+        // Return updated user info for frontend
+        return {
+          withdrawal,
+          userId: withdrawal.user.id,
+          newBalance: updatedUser.balance
+        };
       }
 
-      return withdrawal;
+      return { withdrawal };
     });
 
-    res.json(result);
+    // Send appropriate response based on status
+    if (status === 'APPROVED') {
+      res.json({
+        success: true,
+        message: 'Withdrawal approved successfully',
+        withdrawal: result.withdrawal,
+        userId: result.userId,
+        newBalance: result.newBalance
+      });
+    } else if (status === 'REJECTED') {
+      res.json({
+        success: true,
+        message: 'Withdrawal rejected',
+        withdrawal: result.withdrawal
+      });
+    } else if (status === 'PROCESSED') {
+      res.json({
+        success: true,
+        message: 'Withdrawal marked as processed',
+        withdrawal: result.withdrawal
+      });
+    } else {
+      res.json({
+        success: true,
+        message: 'Withdrawal status updated',
+        withdrawal: result.withdrawal
+      });
+    }
     
   } catch (error) {
     console.error('Update withdrawal status error:', error);
-    res.status(500).json({ error: 'Failed to update withdrawal status' });
+    res.status(500).json({ 
+      error: 'Failed to update withdrawal status',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
-
 // Get user's withdrawal history (all types)
 router.get('/my-withdrawals', authenticateToken, async (req, res) => {
   try {
@@ -352,3 +413,4 @@ router.get('/my-withdrawals', authenticateToken, async (req, res) => {
 });
 
 export default router;
+
