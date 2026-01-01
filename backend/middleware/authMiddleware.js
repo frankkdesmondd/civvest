@@ -1,44 +1,77 @@
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 export const authenticateToken = (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Access token required' });
+    console.log(`🔐 Auth check @ ${req.method} ${req.path}`);
+
+    let token = null;
+
+    // 1️⃣ Authorization header first
+    if (req.headers.authorization?.startsWith("Bearer ")) {
+      token = req.headers.authorization.split(" ")[1];
+      console.log("➡️ Token from Authorization header");
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) {
-        return res.status(403).json({ error: 'Invalid or expired token' });
-      }
-      
-      // Make sure user object has id property
-      if (!user.id) {
-        return res.status(403).json({ error: 'Invalid token payload' });
-      }
-      
-      req.user = user;
-      next();
-    });
+    // 2️⃣ Cookie fallback
+    if (!token && req.cookies?.token) {
+      token = req.cookies.token;
+      console.log("➡️ Token from Cookie");
+    }
+
+    if (!token) {
+      console.log("❌ No token found");
+      return res.status(401).json({
+        success: false,
+        message: "Authentication token required",
+      });
+    }
+
+    // 3️⃣ Verify Token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    console.log(`✅ Authenticated: ${decoded.email} | Role: ${decoded.role}`);
+
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+    };
+
+    next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    return res.status(500).json({ error: 'Authentication failed' });
+    console.error("❌ Auth Error:", error.name, error.message);
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Session expired. Please sign in again.",
+      });
+    }
+
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token. Please sign in again.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal authentication error",
+    });
   }
 };
 
+// Admin role guard
 export const isAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== 'ADMIN') {
-    console.log('❌ Admin access denied for user:', req.user?.email);
-    return res.status(403).json({ 
+  if (!req.user || req.user.role !== "ADMIN") {
+    console.log("🚫 Admin access denied");
+    return res.status(403).json({
       success: false,
-      error: 'Admin access required',
-      message: 'You do not have permission to access this resource'
+      message: "Admin access required",
     });
   }
-  
-  console.log('✅ Admin access granted for:', req.user.email);
+
+  console.log("🛡 Admin access granted");
   next();
 };
-
