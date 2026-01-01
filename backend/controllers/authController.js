@@ -358,7 +358,7 @@ export const SignIn = async (req, res) => {
       balance: user.balance,
       roi: user.roi,
       referralBonus: user.referralBonus,
-      referralCount: user.referralCount
+      referrals: user.referrals
     };
 
     console.log('✅ Signin successful for:', email);
@@ -403,7 +403,7 @@ export const GetUser = async (req, res) => {
         profilePicture: true,
         roi: true, 
         referralBonus: true,
-        referralCount: true,
+        referrals: true,
       }
     });
 
@@ -493,7 +493,7 @@ export const getMe = async (req, res) => {
         roi: true,
         referralBonus: true,
         referralCode: true,
-        referralCount: true,
+        referrals: true,
         createdAt: true,
         country: true,
         state: true,
@@ -567,7 +567,7 @@ export const GetStats = async(req, res) =>{
       where: { id: userId },
       select: {
         id: true,
-        referralCount: true,
+        referrals: true, // ← CHANGED: referralCount → referrals
         referralBonus: true,
         referralCode: true
       }
@@ -598,12 +598,12 @@ export const GetStats = async(req, res) =>{
 
     res.json({
       success: true,
-      totalReferrals: user.referralCount || 0,
+      totalReferrals: user.referrals || 0,
       totalBonus: user.referralBonus || 0,
       recentReferrals,
       referralCode: user.referralCode,
-      canWithdraw: user.referralCount >= 10 && user.referralBonus > 0,
-      referralsNeeded: Math.max(0, 10 - user.referralCount)
+      canWithdraw: user.referrals >= 10 && user.referralBonus > 0,
+      referralsNeeded: Math.max(0, 10 - user.referrals)
     });
   } catch (error) {
     console.error('Get referral stats error:', error);
@@ -612,4 +612,5 @@ export const GetStats = async(req, res) =>{
       error: 'Failed to fetch referral stats' 
     });
   }
-}
+};
+
