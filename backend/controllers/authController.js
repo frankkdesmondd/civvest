@@ -536,7 +536,6 @@ export const getMe = async (req, res) => {
         roi: true,
         referralBonus: true,
         referralCode: true,
-        referrals: true,
         createdAt: true,
         country: true,
         state: true,
@@ -653,5 +652,6 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
+
 
 
