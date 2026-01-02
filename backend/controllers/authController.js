@@ -166,7 +166,7 @@ export const resetPassword = async (req, res) => {
     }
 };
 
-// SIGN UP - FIXED
+// SIGN UP
 export const SignUp = async (req, res) => {
   try {
     const { email, password, firstName, lastName, referralCode } = req.body;
@@ -195,7 +195,7 @@ export const SignUp = async (req, res) => {
       });
     }
 
-    // Create user - ✅ INCLUDES profilePicture
+    // Create user
     const user = await prisma.user.create({
       data: {
         email,
@@ -206,7 +206,6 @@ export const SignUp = async (req, res) => {
         accountNumber,
         balance: 0,
         roi: 0,
-        referralBonus: referrer ? 50 : 0,
         referralCode: newUserReferralCode,
         referredBy: referralCode || null
       },
@@ -220,7 +219,7 @@ export const SignUp = async (req, res) => {
         balance: true,
         roi: true,
         referralBonus: true,
-        profilePicture: true, // ✅ ADDED
+        profilePicture: true,
         referralCode: true,
         country: true,
         state: true,
@@ -243,7 +242,6 @@ export const SignUp = async (req, res) => {
           referralCount: { increment: 1 }
         }
       });
-      }
 
       // Notify referrer
       await prisma.notification.create({
@@ -653,11 +651,3 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
-
-
-
-
-
-
-
-
