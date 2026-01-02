@@ -9,7 +9,7 @@ const TermsServices: React.FC = () => {
     title: "Terms and Services",
     description: "Take a look at Civvest terms and services while using our platform",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-    image: "https://www.civvest.com/civvest logo.jpg", 
+    image: "https://www.civvest.com/civvest main.jpeg", 
     url: "https://www.civvest.com/terms-and-services",
     type: "website"
   });
@@ -50,7 +50,7 @@ const TermsServices: React.FC = () => {
           "@type": "Organization",
           "name": "Civvest Energy Partners",
           "url": "https://www.civvest.com",
-          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "logo": "https://www.civvest.com/civvest main.jpeg",
           "description": "Leading renewable energy investment platform providing sustainable energy solutions",
           "address": {
             "@type": "PostalAddress",
@@ -132,5 +132,6 @@ const TermsServices: React.FC = () => {
 }
 
 export default TermsServices
+
 
 
