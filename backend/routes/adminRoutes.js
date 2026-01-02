@@ -43,6 +43,7 @@ router.get('/users', authenticateToken, isAdmin, async (req, res) => {
         balance: true,
         roi: true,              // Make sure this is here
         referralBonus: true,
+        referralCount: true,
         createdAt: true,
         _count: {
           select: { userInvestments: true }
@@ -69,6 +70,8 @@ router.get('/users/:id', authenticateToken, isAdmin, async (req, res) => {
         lastName: true,
         accountNumber: true,
         balance: true,
+        referralCount: true,
+        referralBonus: true,
         createdAt: true,
         userInvestments: {
           include: {
@@ -1122,3 +1125,4 @@ router.post('/users/:id/add-referral', authenticateToken, isAdmin, async (req, r
 
 
 export default router;
+
