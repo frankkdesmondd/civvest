@@ -15,7 +15,7 @@ const Company: React.FC = () => {
     title: "Our Company",
     description: "Learn about Civvest Energy Partners - a leading renewable energy investment company based in Dallas, Texas. Discover our executive team, operations, and investment philosophy.",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-    image: OurCompany, // Make sure this is an absolute URL in production
+    image: "https://www.civvest.com/civvest main.jpeg", // Make sure this is an absolute URL in production
     url: "https://www.civvest.com/company",
     type: "website"
   });
@@ -68,7 +68,7 @@ const Company: React.FC = () => {
           "@type": "Organization",
           "name": "Civvest Energy Partners",
           "url": "https://www.civvest.com",
-          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "logo": "https://www.civvest.com/civvest main.jpeg",
           "description": "Leading renewable energy investment platform providing sustainable energy solutions",
           "address": {
             "@type": "PostalAddress",
@@ -324,4 +324,5 @@ const Company: React.FC = () => {
 }
 
 export default Company
+
 
