@@ -1,4 +1,4 @@
-// components/WithdrawalModal.tsx
+// components/WithdrawalModal.tsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { FiX, FiAlertCircle, FiInfo, FiCheck, FiCreditCard, FiAirplay } from 'react-icons/fi';
 import { useUser } from '../context/UserContext';
@@ -29,17 +29,17 @@ interface UserProfile {
   wallets?: WalletDetails[];
 }
 
+// ✅ FIXED: Removed userProfile from props
 interface WithdrawalModalProps {
   investment: WithdrawalInvestment;
-  userProfile: UserProfile | null;
   onClose: () => void;
   onConfirm: (withdrawalData: any) => void;
   maxAmount?: number;
 }
 
+// ✅ FIXED: Removed userProfile from destructuring
 const WithdrawalModal: React.FC<WithdrawalModalProps> = ({ 
   investment, 
-  userProfile,
   onClose, 
   onConfirm
 }) => {
@@ -48,6 +48,8 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
   const [amount, setAmount] = useState<string>(maxAmount.toString());
   const [type, setType] = useState<'BANK_TRANSFER' | 'CRYPTO_WALLET'>('BANK_TRANSFER');
   const [loading, setLoading] = useState(false);
+  
+  // ✅ FIXED: This is now the ONLY userProfile declaration
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   
@@ -589,7 +591,3 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 };
 
 export default WithdrawalModal;
-
-
-
-
