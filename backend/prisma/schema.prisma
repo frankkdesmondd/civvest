@@ -35,6 +35,10 @@ model User {
   routingCode         String?
   state               String?
 
+  // Add these two lines for referral tracking:
+  referredByUser      User?                   @relation("UserReferrals", fields: [referredBy], references: [referralCode])
+  referrals           User[]                  @relation("UserReferrals")
+
   deposits            Deposit[]               @relation("UserDeposits")
   applications        InvestmentApplication[] @relation("UserApplications")
   messages            Message[]               @relation("SentMessages")
@@ -46,9 +50,13 @@ model User {
   wallets             Wallet[]                @relation("UserWallets")
   approvedWithdrawals Withdrawal[]            @relation("WithdrawalApprovals")
   withdrawals         Withdrawal[]
-
   referralWithdrawals          ReferralWithdrawal[] @relation("UserReferralWithdrawals")
   approvedReferralWithdrawals  ReferralWithdrawal[] @relation("ApprovedReferralWithdrawals")
+
+  // Add these indexes for better performance:
+  @@index([referralCode])
+  @@index([referredBy])
+  @@index([referralCount])
 }
 
 model Wallet {
