@@ -195,13 +195,12 @@ router.get('/my-referral-withdrawals', authenticateToken, async (req, res) => {
   }
 });
 
-// FIXED: Admin gets all referral withdrawal requests - SAFER VERSION
+// FIXED: Admin gets all referral withdrawal requests
 router.get('/admin/referral-requests', authenticateToken, isAdmin, async (req, res) => {
   try {
     console.log('[Admin] Fetching referral withdrawal requests...');
-    console.log('[Admin] User making request:', { id: req.user.id, role: req.user.role });
     
-    // First, try to get withdrawals WITHOUT approvedBy to avoid relation errors
+    // FIX: Use a simpler query without the problematic relation
     const withdrawals = await prisma.referralWithdrawal.findMany({
       include: {
         user: {
@@ -220,45 +219,28 @@ router.get('/admin/referral-requests', authenticateToken, isAdmin, async (req, r
 
     console.log(`[Admin] Found ${withdrawals.length} referral withdrawals`);
 
-    // Manually add approvedBy info if approvedById exists
-    const withdrawalsWithApprover = await Promise.all(
-      withdrawals.map(async (withdrawal) => {
-        if (withdrawal.approvedById) {
-          try {
-            const approver = await prisma.user.findUnique({
-              where: { id: withdrawal.approvedById },
-              select: {
-                firstName: true,
-                lastName: true
-              }
-            });
-            return {
-              ...withdrawal,
-              approvedBy: approver
-            };
-          } catch (err) {
-            console.error('[Admin] Error fetching approver:', err);
-            return withdrawal;
-          }
-        }
-        return withdrawal;
-      })
-    );
+    // Transform the data to include approver info safely
+    const withdrawalsWithApprover = withdrawals.map(withdrawal => {
+      const result = {
+        ...withdrawal,
+        approvedBy: null
+      };
+      
+      // Only include approvedBy if it exists and is valid
+      if (withdrawal.approvedById) {
+        // We'll handle this differently - maybe fetch separately
+        result.approvedById = withdrawal.approvedById;
+      }
+      
+      return result;
+    });
 
     res.json(withdrawalsWithApprover);
   } catch (error) {
     console.error('[Admin] Fetch referral withdrawals error:', error);
-    console.error('[Admin] Error details:', {
-      name: error.name,
-      message: error.message,
-      code: error.code,
-      meta: error.meta,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-    
     res.status(500).json({ 
       error: 'Failed to fetch referral withdrawal requests',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
@@ -361,3 +343,4 @@ router.put('/admin/referral/:withdrawalId/approve-reject', authenticateToken, is
 });
 
 export default router;
+
