@@ -82,6 +82,11 @@ const Dashboard: React.FC = () => {
   // Cache user data from localStorage to prevent UI disruption
   const [cachedUser, setCachedUser] = useState<any>(null);
   const [cachedInvestments, setCachedInvestments] = useState<Investment[]>([]);
+  const [referralEligibility, setReferralEligibility] = useState({
+    canWithdraw: false,
+    referralsNeeded: 0,
+    availableBonus: 0
+  });
 
   useEffect(() => {
     // Load cached data first
@@ -206,6 +211,21 @@ const Dashboard: React.FC = () => {
       window.removeEventListener('withdrawalApproved', handleWithdrawalApproved as EventListener);
     };
   }, [navigate, user?.id]);
+
+  useEffect(() => {
+    const checkEligibility = async () => {
+      try {
+        const response = await axiosInstance.get('/api/referral-withdrawals/check-eligibility');
+        setReferralEligibility(response.data);
+      } catch (error) {
+        console.error('Failed to check referral eligibility:', error);
+      }
+    };
+    
+    if (user) {
+      checkEligibility();
+    }
+  }, [user]);
 
   const fetchAllData = async () => {
     console.log('Fetching all dashboard data...');
@@ -961,16 +981,16 @@ const Dashboard: React.FC = () => {
                 <div>
                   <p className="text-gray-600 text-sm">Withdrawal Status</p>
                   <p className={`text-lg font-bold ${
-                    (displayUser?.referralCount || 0) >= 10 && (displayUser?.referralBonus || 0) > 0 
+                    referralEligibility.canWithdraw 
                       ? 'text-purple-700' 
                       : 'text-gray-600'
                   }`}>
-                    {(displayUser?.referralCount || 0) >= 10 && (displayUser?.referralBonus || 0) > 0 
-                      ? 'Eligible' 
-                      : 'Not Eligible'}
+                    {referralEligibility.canWithdraw ? 'Eligible' : 'Not Eligible'}
                   </p>
                   <p className="text-xs text-purple-600 mt-1">
-                    Min: 10 referrals required
+                    {referralEligibility.canWithdraw 
+                      ? 'Ready to withdraw!' 
+                      : `Need ${referralEligibility.referralsNeeded} more referrals`}
                   </p>
                 </div>
                 <FiAlertCircle className="text-purple-600 text-2xl" />
