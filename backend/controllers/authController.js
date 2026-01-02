@@ -166,7 +166,7 @@ export const resetPassword = async (req, res) => {
     }
 };
 
-// SIGN UP
+// SIGN UP - FIXED
 export const SignUp = async (req, res) => {
   try {
     const { email, password, firstName, lastName, referralCode } = req.body;
@@ -195,7 +195,7 @@ export const SignUp = async (req, res) => {
       });
     }
 
-    // Create user
+    // Create user - ✅ INCLUDES profilePicture
     const user = await prisma.user.create({
       data: {
         email,
@@ -206,7 +206,7 @@ export const SignUp = async (req, res) => {
         accountNumber,
         balance: 0,
         roi: 0,
-        referralBonus: referrer ? 50 : 0, // $50 if referred
+        referralBonus: referrer ? 50 : 0,
         referralCode: newUserReferralCode,
         referredBy: referralCode || null
       },
@@ -219,7 +219,19 @@ export const SignUp = async (req, res) => {
         accountNumber: true,
         balance: true,
         roi: true,
-        referralBonus: true
+        referralBonus: true,
+        referrals: true,
+        profilePicture: true, // ✅ ADDED
+        referralCode: true,
+        country: true,
+        state: true,
+        address: true,
+        phone: true,
+        bankName: true,
+        accountName: true,
+        bankAccountNumber: true,
+        routingCode: true,
+        createdAt: true
       }
     });
 
@@ -272,15 +284,14 @@ export const SignUp = async (req, res) => {
       path: '/'
     });
 
-    // Send welcome email (non-blocking - don't let email failures break signup)
+    // Send welcome email (non-blocking)
     try {
       await sendWelcomeEmail(user.email, `${user.firstName} ${user.lastName}`);
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError);
-      // Don't fail the signup if email fails
     }
 
-    // Send ONE response
+    // Send response
     res.status(201).json({ 
       user, 
       token,
@@ -294,7 +305,7 @@ export const SignUp = async (req, res) => {
   }
 };
 
-// SIGN IN
+// SIGN IN - FIXED
 export const SignIn = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -307,8 +318,35 @@ export const SignIn = async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Find user - ✅ INCLUDES profilePicture
+    const user = await prisma.user.findUnique({ 
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        accountNumber: true,
+        balance: true,
+        roi: true,
+        referralBonus: true,
+        referrals: true,
+        profilePicture: true, // ✅ ADDED
+        referralCode: true,
+        country: true,
+        state: true,
+        address: true,
+        phone: true,
+        bankName: true,
+        accountName: true,
+        bankAccountNumber: true,
+        routingCode: true,
+        createdAt: true
+      }
+    });
+    
     if (!user) {
       console.log('❌ User not found:', email);
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -323,7 +361,7 @@ export const SignIn = async (req, res) => {
 
     console.log('✅ Password verified for:', email);
 
-    // Generate JWT with all necessary data
+    // Generate JWT
     const token = jwt.sign(
       { 
         userId: user.id, 
@@ -336,7 +374,7 @@ export const SignIn = async (req, res) => {
 
     console.log('✅ JWT token generated');
 
-    // Set HTTP-only cookie (for same-origin requests)
+    // Set HTTP-only cookie
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -347,7 +385,7 @@ export const SignIn = async (req, res) => {
 
     console.log('✅ Cookie set successfully');
 
-    // Prepare user response (exclude password)
+    // Prepare user response - ✅ INCLUDES profilePicture
     const userResponse = {
       id: user.id,
       email: user.email,
@@ -358,17 +396,29 @@ export const SignIn = async (req, res) => {
       balance: user.balance,
       roi: user.roi,
       referralBonus: user.referralBonus,
-      referrals: user.referrals
+      referrals: user.referrals,
+      profilePicture: user.profilePicture, // ✅ ADDED
+      referralCode: user.referralCode,
+      country: user.country,
+      state: user.state,
+      address: user.address,
+      phone: user.phone,
+      bankName: user.bankName,
+      accountName: user.accountName,
+      bankAccountNumber: user.bankAccountNumber,
+      routingCode: user.routingCode,
+      createdAt: user.createdAt
     };
 
     console.log('✅ Signin successful for:', email);
+    console.log('📸 Profile picture in response:', user.profilePicture ? 'Yes' : 'No');
 
-    // Send response with both token and user data
+    // Send response
     res.json({
       success: true,
       message: 'Sign in successful',
       user: userResponse,
-      token // Include token in response for localStorage
+      token
     });
 
   } catch (error) {
@@ -400,7 +450,7 @@ export const GetUser = async (req, res) => {
         role: true,
         accountNumber: true,
         balance: true,
-        profilePicture: true,
+        profilePicture: true, // Already has this ✅
         roi: true, 
         referralBonus: true,
         referrals: true,
@@ -428,7 +478,6 @@ export const SignOut = async (req, res) => {
   try {
     console.log('👋 Sign-out request received');
 
-    // Clear the cookie with the same options used when setting it
     res.clearCookie('token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -452,19 +501,17 @@ export const SignOut = async (req, res) => {
   }
 };
 
-// GET ME - FIXED VERSION
+// GET ME - Already includes profilePicture ✅
 export const getMe = async (req, res) => {
   try {
     console.log('👤 GetMe called');
     
-    // Log authentication details
     console.log('🔍 Auth details:', {
       hasUser: !!req.user,
       userId: req.user?.userId,
       email: req.user?.email
     });
     
-    // Check if user is authenticated via middleware
     if (!req.user || !req.user.userId) {
       console.log('❌ No authenticated user in request');
       return res.status(401).json({ 
@@ -478,7 +525,6 @@ export const getMe = async (req, res) => {
     
     console.log('🔍 Fetching user data for user ID:', userId);
 
-    // Fetch user from database
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -487,7 +533,7 @@ export const getMe = async (req, res) => {
         firstName: true,
         lastName: true,
         role: true,
-        profilePicture: true,
+        profilePicture: true, // Already has this ✅
         accountNumber: true,
         balance: true,
         roi: true,
@@ -516,6 +562,7 @@ export const getMe = async (req, res) => {
     }
 
     console.log('✅ User data fetched successfully:', user.email);
+    console.log('📸 Profile picture:', user.profilePicture ? 'Yes' : 'No');
 
     res.json({ 
       success: true,
@@ -552,7 +599,6 @@ export const getMe = async (req, res) => {
 
 export const GetStats = async(req, res) =>{
   try {
-    // Ensure user is authenticated
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ 
         success: false,
@@ -562,12 +608,11 @@ export const GetStats = async(req, res) =>{
     
     const userId = req.user.userId;
     
-    // Get user's total referral count
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
-        referrals: true, // ← CHANGED: referralCount → referrals
+        referrals: true,
         referralBonus: true,
         referralCode: true
       }
@@ -580,7 +625,6 @@ export const GetStats = async(req, res) =>{
       });
     }
 
-    // Get recent referrals (users referred by this user)
     const recentReferrals = await prisma.user.findMany({
       where: {
         referredBy: user.referralCode
@@ -613,4 +657,3 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
-
