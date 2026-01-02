@@ -365,10 +365,10 @@ const isInvestmentClosed = (investment: Investment) => {
             <div className="text-sm text-blue-800">
               <p className="font-semibold mb-1">ROI Withdrawal Information</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Withdrawal Eligibility: ROI can be withdrawn at any time for active investments.</li>
-                <li>Withdrawal Methods: Investors may choose to receive their ROI through:• Bank Transfer (to a verified account), or Cryptocurrency Wallet (supported wallets only).</li>
-                <li>Processing Time: Once a valid withdrawal request is submitted and verified, processing is typically completed within 24 hours.</li>
-                <li>Available ROI: You can only withdraw the ROI amount that has been credited to your investment.</li>
+                <li>Withdrawal Eligibility: ROI withdrawals are available once the due time is reached. You will be notified via email when your ROI becomes eligible for withdrawal.</li>
+                <li>Withdrawal Methods: Investors may choose to receive their ROI through either a bank transfer (to a verified bank account) or a cryptocurrency wallet (supported wallets only).</li>
+                <li>Processing Time: After a valid withdrawal request is submitted and successfully verified, processing is typically completed within 24 hours.</li>
+                <li>Available ROI: Only the ROI amount that has been officially credited to your investment balance is eligible for withdrawal.</li>
               </ul>
             </div>
           </div>
@@ -552,3 +552,4 @@ const isInvestmentClosed = (investment: Investment) => {
 };
 
 export default Withdrawal;
+
