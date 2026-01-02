@@ -234,7 +234,6 @@ export const SignUp = async (req, res) => {
       }
     });
 
-  
     // If referred, add bonus to referrer
     if (referrer) {
       await prisma.$transaction([
@@ -255,7 +254,6 @@ export const SignUp = async (req, res) => {
           }
         })
       ]);
-    }
 
       // Notify referrer
       await prisma.notification.create({
@@ -663,6 +661,7 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
+
 
 
 
