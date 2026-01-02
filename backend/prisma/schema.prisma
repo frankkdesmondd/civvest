@@ -29,7 +29,7 @@ model User {
   profilePicture      String?
   referralBonus       Float                   @default(0)
   referralCount       Int                     @default(0)
-  referralCode        String?
+  referralCode        String?                 @unique
   referredBy          String?
   roi                 Float                   @default(0)
   routingCode         String?
