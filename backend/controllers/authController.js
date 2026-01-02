@@ -236,24 +236,14 @@ export const SignUp = async (req, res) => {
 
     // If referred, add bonus to referrer
     if (referrer) {
-      await prisma.$transaction([
-        prisma.user.update({
-          where: { id: referrer.id },
-          data: {
-            referralBonus: {
-              increment: 50
-            }
-          }
-        }),
-        prisma.user.update({
-          where: { id: referrer.id },
-          data: {
-            referralCount: {
-              increment: 1
-            }
-          }
-        })
-      ]);
+      await prisma.user.update({
+        where: { id: referrer.id },
+        data: {
+          referralBonus: { increment: 50 },
+          referralCount: { increment: 1 }
+        }
+      });
+      }
 
       // Notify referrer
       await prisma.notification.create({
@@ -661,6 +651,7 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
+
 
 
 
