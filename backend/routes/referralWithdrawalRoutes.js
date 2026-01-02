@@ -6,10 +6,22 @@ import { authenticateToken, isAdmin } from '../middleware/authMiddleware.js';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Helper function to get user ID with validation
+const getUserId = (req) => {
+  const userId = req.user?.userId || req.user?.id;
+  
+  if (!userId) {
+    console.error('No user ID found in req.user:', req.user);
+    throw new Error('User ID not found in authentication data');
+  }
+  
+  return userId;
+};
+
 // User requests referral bonus withdrawal
 router.post('/request-referral', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getUserId(req);
     const { amount, type, bankDetails, walletDetails } = req.body;
 
     console.log('[Referral Withdrawal] Request:', { userId, amount, type });
@@ -133,9 +145,18 @@ router.post('/request-referral', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('[Referral Withdrawal] Error:', error);
+    
+    // Handle specific error cases
+    if (error.message.includes('User ID not found')) {
+      return res.status(401).json({
+        error: 'Authentication error',
+        message: 'Please log in again'
+      });
+    }
+    
     res.status(500).json({
       error: 'Failed to process referral withdrawal request',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
@@ -143,7 +164,7 @@ router.post('/request-referral', authenticateToken, async (req, res) => {
 // Check if referral withdrawal is available
 router.get('/check-eligibility', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getUserId(req);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -174,14 +195,26 @@ router.get('/check-eligibility', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('[Referral Withdrawal] Check eligibility error:', error);
-    res.status(500).json({ error: 'Failed to check referral withdrawal eligibility' });
+    
+    // Handle specific error cases
+    if (error.message.includes('User ID not found')) {
+      return res.status(401).json({ 
+        error: 'Authentication error',
+        message: 'Please log in again'
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to check referral withdrawal eligibility',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 });
 
 // Get user's referral withdrawal history
 router.get('/my-referral-withdrawals', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getUserId(req);
 
     const withdrawals = await prisma.referralWithdrawal.findMany({
       where: { userId },
@@ -191,11 +224,23 @@ router.get('/my-referral-withdrawals', authenticateToken, async (req, res) => {
     res.json(withdrawals);
   } catch (error) {
     console.error('[Referral Withdrawal] Get history error:', error);
-    res.status(500).json({ error: 'Failed to fetch referral withdrawal history' });
+    
+    // Handle specific error cases
+    if (error.message.includes('User ID not found')) {
+      return res.status(401).json({ 
+        error: 'Authentication error',
+        message: 'Please log in again'
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to fetch referral withdrawal history',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
   }
 });
 
-// FIXED: Admin gets all referral withdrawal requests
+// Admin gets all referral withdrawal requests
 router.get('/admin/referral-requests', authenticateToken, isAdmin, async (req, res) => {
   try {
     console.log('[Admin] Fetching referral withdrawal requests...');
@@ -251,7 +296,7 @@ router.put('/admin/referral/:withdrawalId/approve-reject', authenticateToken, is
     const { withdrawalId } = req.params;
     const { status, adminNotes } = req.body;
 
-    console.log('[Admin] Processing referral withdrawal status update:', { withdrawalId, status, adminId: req.user.id });
+    console.log('[Admin] Processing referral withdrawal status update:', { withdrawalId, status, adminId: req.user.userId });
 
     if (!['APPROVED', 'REJECTED', 'PROCESSED'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
@@ -288,7 +333,7 @@ router.put('/admin/referral/:withdrawalId/approve-reject', authenticateToken, is
         data: {
           status,
           adminNotes,
-          approvedById: req.user.id,
+          approvedById: req.user.userId,
           approvedAt: status === 'APPROVED' ? new Date() : null
         }
       });
@@ -343,4 +388,3 @@ router.put('/admin/referral/:withdrawalId/approve-reject', authenticateToken, is
 });
 
 export default router;
-
