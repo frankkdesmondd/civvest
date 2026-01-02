@@ -636,12 +636,12 @@ export const GetStats = async(req, res) =>{
 
     res.json({
       success: true,
-      totalReferrals: user.referrals || 0,
+      totalReferrals: user.referralCount || 0,  // ✅ Fixed
       totalBonus: user.referralBonus || 0,
       recentReferrals,
       referralCode: user.referralCode,
-      canWithdraw: user.referrals >= 10 && user.referralBonus > 0,
-      referralsNeeded: Math.max(0, 10 - user.referrals)
+      canWithdraw: user.referralCount >= 10 && user.referralBonus > 0,  // ✅ Fixed
+      referralsNeeded: Math.max(0, 10 - (user.referralCount || 0))  // ✅ Fixed
     });
   } catch (error) {
     console.error('Get referral stats error:', error);
