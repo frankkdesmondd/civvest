@@ -16,7 +16,7 @@ const ContactUs: React.FC = () => {
     title: "Contact Us",
     description: "Encountering any issues or have any question? Feel free to contact us",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-    image: "https://www.civvest.com/civvest logo.jpg", 
+    image: "https://www.civvest.com/civvest main.jpeg", 
     url: "https://www.civvest.com/contact-us",
     type: "website"
   });
@@ -156,7 +156,7 @@ const ContactUs: React.FC = () => {
           "@type": "Organization",
           "name": "Civvest Energy Partners",
           "url": "https://www.civvest.com",
-          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "logo": "https://www.civvest.com/civvest main.jpeg",
           "description": "Leading renewable energy investment platform providing sustainable energy solutions",
           "address": {
             "@type": "PostalAddress",
@@ -332,3 +332,4 @@ const ContactUs: React.FC = () => {
 };
 
 export default ContactUs;
+
