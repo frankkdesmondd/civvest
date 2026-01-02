@@ -15,7 +15,7 @@ const FAQ: React.FC = () => {
     title: "FAQ",
     description: "Latest questions asked about this company and quick answers to fix them.",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-    image: "https://www.civvest.com/civvest logo.jpg", 
+    image: "https://www.civvest.com/civvest main.jpeg", 
     url: "https://www.civvest.com/faq",
     type: "website"
   });
@@ -123,7 +123,7 @@ const FAQ: React.FC = () => {
           "@type": "Organization",
           "name": "Civvest Energy Partners",
           "url": "https://www.civvest.com",
-          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "logo": "https://www.civvest.com/civvest main.jpeg",
           "description": "Leading renewable energy investment platform providing sustainable energy solutions",
           "address": {
             "@type": "PostalAddress",
@@ -203,3 +203,4 @@ const FAQ: React.FC = () => {
 }
 
 export default FAQ
+
