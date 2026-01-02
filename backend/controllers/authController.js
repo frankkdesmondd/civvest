@@ -220,7 +220,6 @@ export const SignUp = async (req, res) => {
         balance: true,
         roi: true,
         referralBonus: true,
-        referrals: true,
         profilePicture: true, // ✅ ADDED
         referralCode: true,
         country: true,
@@ -657,3 +656,4 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
+
