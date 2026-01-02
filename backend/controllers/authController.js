@@ -609,7 +609,8 @@ export const GetStats = async(req, res) =>{
       select: {
         id: true,
         referralBonus: true,
-        referralCode: true
+        referralCode: true,
+        referralCount: true,
       }
     });
 
@@ -652,6 +653,7 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
+
 
 
 
