@@ -332,6 +332,7 @@ export const SignIn = async (req, res) => {
         referralBonus: true,
         profilePicture: true, // ✅ ADDED
         referralCode: true,
+        referralCount: true,
         country: true,
         state: true,
         address: true,
@@ -363,7 +364,7 @@ export const SignIn = async (req, res) => {
       { 
         userId: user.id, 
         email: user.email, 
-        role: user.role 
+        role: user.role,
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -651,6 +652,7 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
+
 
 
 
