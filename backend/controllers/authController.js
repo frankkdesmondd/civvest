@@ -331,7 +331,6 @@ export const SignIn = async (req, res) => {
         balance: true,
         roi: true,
         referralBonus: true,
-        referrals: true,
         profilePicture: true, // ✅ ADDED
         referralCode: true,
         country: true,
@@ -395,7 +394,6 @@ export const SignIn = async (req, res) => {
       balance: user.balance,
       roi: user.roi,
       referralBonus: user.referralBonus,
-      referrals: user.referrals,
       profilePicture: user.profilePicture, // ✅ ADDED
       referralCode: user.referralCode,
       country: user.country,
@@ -611,7 +609,6 @@ export const GetStats = async(req, res) =>{
       where: { id: userId },
       select: {
         id: true,
-        referrals: true,
         referralBonus: true,
         referralCode: true
       }
@@ -656,4 +653,5 @@ export const GetStats = async(req, res) =>{
     });
   }
 };
+
 
