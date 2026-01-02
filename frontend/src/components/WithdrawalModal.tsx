@@ -31,6 +31,7 @@ interface UserProfile {
 
 interface WithdrawalModalProps {
   investment: WithdrawalInvestment;
+  userProfile: UserProfile | null;
   onClose: () => void;
   onConfirm: (withdrawalData: any) => void;
   maxAmount?: number;
@@ -38,8 +39,9 @@ interface WithdrawalModalProps {
 
 const WithdrawalModal: React.FC<WithdrawalModalProps> = ({ 
   investment, 
+  userProfile,
   onClose, 
-  onConfirm 
+  onConfirm
 }) => {
   const { user } = useUser();
   const maxAmount = investment.roiAmount || 0;
@@ -587,6 +589,7 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({
 };
 
 export default WithdrawalModal;
+
 
 
 
