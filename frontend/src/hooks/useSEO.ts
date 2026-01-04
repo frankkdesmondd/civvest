@@ -17,7 +17,7 @@ export function useSEO({
   title,
   description = 'Invest in renewable energy projects with Civvest. Join us in building a sustainable future through oil energy investments.',
   keywords = 'energy investment, renewable energy, oil energy, sustainable investing, green energy, Civvest, energy partners',
-  image = '/og-image.jpg',
+  image = 'https://www.civvest.com/civvest-main.jpg', // ✅ FIXED: No spaces
   url = typeof window !== 'undefined' ? window.location.href : 'https://www.civvest.com',
   type = 'website',
   author = 'Civvest Energy Partners',
@@ -36,10 +36,13 @@ export function useSEO({
     updateMetaTag('author', author);
     updateMetaTag('robots', 'index, follow');
     
-    // Open Graph meta tags
+    // Open Graph meta tags (for social media sharing)
     updateMetaTag('og:title', fullTitle, 'property');
     updateMetaTag('og:description', description, 'property');
     updateMetaTag('og:image', image, 'property');
+    updateMetaTag('og:image:width', '1200', 'property'); // ✅ ADDED
+    updateMetaTag('og:image:height', '630', 'property'); // ✅ ADDED
+    updateMetaTag('og:image:alt', 'Civvest Energy Partners Logo', 'property'); // ✅ ADDED
     updateMetaTag('og:url', url, 'property');
     updateMetaTag('og:type', type, 'property');
     updateMetaTag('og:site_name', 'Civvest Energy Partners', 'property');
@@ -49,6 +52,7 @@ export function useSEO({
     updateMetaTag('twitter:title', fullTitle);
     updateMetaTag('twitter:description', description);
     updateMetaTag('twitter:image', image);
+    updateMetaTag('twitter:image:alt', 'Civvest Energy Partners Logo'); // ✅ ADDED
     
     // Article-specific meta tags
     if (type === 'article') {
@@ -76,9 +80,7 @@ export function useSEO({
       modifiedTime
     });
     
-    // Cleanup function
     return () => {
-      // Remove structured data script
       const existingScript = document.getElementById('structured-data-script');
       if (existingScript) {
         existingScript.remove();
@@ -112,7 +114,6 @@ function updateCanonicalUrl(url: string) {
 }
 
 function addStructuredData(data: any) {
-  // Remove existing structured data script
   const existingScript = document.getElementById('structured-data-script');
   if (existingScript) {
     existingScript.remove();
@@ -137,7 +138,7 @@ function addStructuredData(data: any) {
       "name": "Civvest Energy Partners",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://www.civvest.com/civvest logo.jpg"
+        "url": "https://www.civvest.com/civvest-main.jpg" // ✅ FIXED
       }
     },
     "datePublished": data.publishedTime,
