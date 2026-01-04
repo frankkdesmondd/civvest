@@ -1,7 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/authMiddleware.js';
-import { sendROIWithdrawalRequestEmail } from '../utils/emailService.js'; // ADD THIS IMPORT
+import { sendROIWithdrawalRequestEmail } from '../services/emailService.js'; // ADD THIS IMPORT
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -516,3 +516,4 @@ router.get('/my-withdrawals', authenticateToken, async (req, res) => {
 });
 
 export default router;
+
