@@ -253,6 +253,7 @@ const AdminDashboard: React.FC = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedWithdrawalForRejection, setSelectedWithdrawalForRejection] = useState<string | null>(null);
+  const [selectedWithdrawalDetails, setSelectedWithdrawalDetails] = useState<Withdrawal | null>(null);
 
   // ConfirmModal States
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -1879,82 +1880,187 @@ const resetEditModal = () => {
                         </thead>
                         <tbody>
                           {withdrawals.map((withdrawal) => (
-                            <tr key={withdrawal.id} className="border-b hover:bg-gray-50 transition">
-                              <td className="py-4 px-4">
-                                <div>
-                                  <p className="font-semibold text-gray-800 text-sm lg:text-base">
-                                    {withdrawal.user.firstName} {withdrawal.user.lastName}
-                                  </p>
-                                  <p className="text-xs lg:text-sm text-gray-600">{withdrawal.user.email}</p>
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <p className="font-semibold text-gray-800 text-sm lg:text-base">
-                                  {withdrawal.investment.investment.title}
-                                </p>
-                                <p className="text-xs text-gray-600">
-                                  {withdrawal.investment.investment.category}
-                                </p>
-                              </td>
-                              <td className="py-4 px-4">
-                                <p className="font-bold text-green-600 text-sm lg:text-lg">
-                                  ${withdrawal.amount.toFixed(2)}
-                                </p>
-                              </td>
-                              <td className="py-4 px-4">
-                                <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
-                                  withdrawal.type === 'BANK_TRANSFER' 
-                                    ? 'bg-blue-100 text-blue-800' 
-                                    : 'bg-purple-100 text-purple-800'
-                                }`}>
-                                  {withdrawal.type === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Crypto Wallet'}
-                                </span>
-                              </td>
-                              <td className="py-4 px-4">
-                                <div className="whitespace-nowrap">
-                                  <p className="text-xs lg:text-sm text-gray-600">
-                                    {new Date(withdrawal.createdAt).toLocaleDateString()}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {new Date(withdrawal.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </p>
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
-                                  withdrawal.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                                  withdrawal.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                  withdrawal.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {withdrawal.status}
-                                </span>
-                              </td>
-                              <td className="py-4 px-4">
-                                {withdrawal.status === 'PENDING' ? (
-                                  <div className="flex flex-col xs:flex-row gap-2">
-                                    <button
-                                      onClick={() => handleApproveWithdrawal(withdrawal.id)}
-                                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
-                                    >
-                                      Approve
-                                    </button>
-                                    <button
-                                      onClick={() => openRejectModal(withdrawal.id)}
-                                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
-                                    >
-                                      Reject
-                                    </button>
+                            <React.Fragment key={withdrawal.id}>
+                              <tr className="border-b hover:bg-gray-50 transition">
+                                <td className="py-4 px-4">
+                                  <div>
+                                    <p className="font-semibold text-gray-800 text-sm lg:text-base">
+                                      {withdrawal.user.firstName} {withdrawal.user.lastName}
+                                    </p>
+                                    <p className="text-xs lg:text-sm text-gray-600">{withdrawal.user.email}</p>
                                   </div>
-                                ) : (
-                                  <span className="text-gray-500 text-xs lg:text-sm">
-                                    {withdrawal.status === 'APPROVED' ? 'Approved' : 
-                                     withdrawal.status === 'REJECTED' ? 'Rejected' : 'Processed'}
-                                    {withdrawal.approvedBy && ` by ${withdrawal.approvedBy.firstName} ${withdrawal.approvedBy.lastName}`}
+                                </td>
+                                <td className="py-4 px-4">
+                                  <p className="font-semibold text-gray-800 text-sm lg:text-base">
+                                    {withdrawal.investment.investment.title}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    {withdrawal.investment.investment.category}
+                                  </p>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <p className="font-bold text-green-600 text-sm lg:text-lg">
+                                    ${withdrawal.amount.toFixed(2)}
+                                  </p>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
+                                    withdrawal.type === 'BANK_TRANSFER' 
+                                      ? 'bg-blue-100 text-blue-800' 
+                                      : 'bg-purple-100 text-purple-800'
+                                  }`}>
+                                    {withdrawal.type === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Crypto Wallet'}
                                   </span>
-                                )}
-                              </td>
-                            </tr>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="whitespace-nowrap">
+                                    <p className="text-xs lg:text-sm text-gray-600">
+                                      {new Date(withdrawal.createdAt).toLocaleDateString()}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {new Date(withdrawal.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-2 lg:px-3 py-1 rounded-full text-xs font-semibold ${
+                                    withdrawal.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                    withdrawal.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                    withdrawal.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {withdrawal.status}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="flex flex-col gap-2">
+                                    {/* View Details Button */}
+                                    <button
+                                      onClick={() => setSelectedWithdrawalDetails(
+                                        selectedWithdrawalDetails?.id === withdrawal.id ? null : withdrawal
+                                      )}
+                                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                                    >
+                                      {selectedWithdrawalDetails?.id === withdrawal.id ? 'Hide Details' : 'View Details'}
+                                    </button>
+                                    
+                                    {/* Approve/Reject Buttons */}
+                                    {withdrawal.status === 'PENDING' && (
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => handleApproveWithdrawal(withdrawal.id)}
+                                          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                                        >
+                                          Approve
+                                        </button>
+                                        <button
+                                          onClick={() => openRejectModal(withdrawal.id)}
+                                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                                        >
+                                          Reject
+                                        </button>
+                                      </div>
+                                    )}
+                                    
+                                    {withdrawal.status !== 'PENDING' && (
+                                      <span className="text-gray-500 text-xs text-center">
+                                        {withdrawal.status === 'APPROVED' ? 'Approved' : 
+                                        withdrawal.status === 'REJECTED' ? 'Rejected' : 'Processed'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                              
+                              {/* Expandable Details Row */}
+                              {selectedWithdrawalDetails?.id === withdrawal.id && (
+                                <tr>
+                                  <td colSpan={7} className="bg-gray-50 p-6 border-b">
+                                    <div className="max-w-3xl">
+                                      <h3 className="text-lg font-bold text-gray-800 mb-4">Payment Details</h3>
+                                      
+                                      {withdrawal.type === 'BANK_TRANSFER' ? (
+                                        <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                          <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                            <span className="text-xl">💳</span> Bank Transfer Details
+                                          </h4>
+                                          <div className="space-y-3 text-sm">
+                                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                              <span className="text-gray-600 font-medium">Bank Name:</span>
+                                              <span className="font-semibold text-gray-800">{withdrawal.bankName}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                              <span className="text-gray-600 font-medium">Account Name:</span>
+                                              <span className="font-semibold text-gray-800">{withdrawal.accountName}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                              <span className="text-gray-600 font-medium">Account Number:</span>
+                                              <span className="font-semibold text-gray-800">{withdrawal.accountNumber}</span>
+                                            </div>
+                                            {withdrawal.routingCode && (
+                                              <div className="flex justify-between items-center py-2">
+                                                <span className="text-gray-600 font-medium">Routing Code:</span>
+                                                <span className="font-semibold text-gray-800">{withdrawal.routingCode}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="bg-white p-4 rounded-lg border border-gray-200">
+                                          <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                            <span className="text-xl">🔗</span> Crypto Wallet Details
+                                          </h4>
+                                          <div className="space-y-3 text-sm">
+                                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                              <span className="text-gray-600 font-medium">Network:</span>
+                                              <span className="font-semibold text-gray-800">{withdrawal.coinHost}</span>
+                                            </div>
+                                            <div className="py-2">
+                                              <span className="text-gray-600 font-medium block mb-2">Wallet Address:</span>
+                                              <div className="bg-gray-50 p-3 rounded border border-gray-200 break-all font-mono text-xs">
+                                                {withdrawal.walletAddress}
+                                              </div>
+                                              <button 
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(withdrawal.walletAddress || '');
+                                                  showToast('Wallet address copied!', 'success');
+                                                }}
+                                                className="mt-2 text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1"
+                                              >
+                                                📋 Copy Address
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      
+                                      {/* Additional Info */}
+                                      {withdrawal.adminNotes && (
+                                        <div className="mt-4 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                          <h4 className="font-semibold text-gray-800 mb-2">Admin Notes:</h4>
+                                          <p className="text-sm text-gray-700">{withdrawal.adminNotes}</p>
+                                        </div>
+                                      )}
+                                      
+                                      {withdrawal.approvedBy && (
+                                        <div className="mt-4 text-sm text-gray-600">
+                                          <p>
+                                            Processed by: <span className="font-semibold">
+                                              {withdrawal.approvedBy.firstName} {withdrawal.approvedBy.lastName}
+                                            </span>
+                                          </p>
+                                          {withdrawal.approvedAt && (
+                                            <p>
+                                              on {new Date(withdrawal.approvedAt).toLocaleString()}
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           ))}
                         </tbody>
                       </table>
@@ -1962,6 +2068,7 @@ const resetEditModal = () => {
                   )}
                 </div>
 
+                {/* Summary Cards - Keep your existing summary cards */}
                 <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white p-4 lg:p-6 rounded-xl shadow-lg">
                     <p className="text-gray-600 text-xs lg:text-sm mb-2">Total Withdrawals</p>
