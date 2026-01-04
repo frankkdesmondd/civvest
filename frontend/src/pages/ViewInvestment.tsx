@@ -32,7 +32,7 @@ const ViewInvestment: React.FC = () => {
       title: "View Investments",
       description: "See our major offerings. Be part of this grand plan in the next phase of oil Investment.",
       keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-      image: "https://www.civvest.com/civvest logo.jpg",
+      image: "https://www.civvest.com/civvest-main.jpg",
       url: "https://www.civvest.com/view-investment",
       type: "website"
     });
@@ -118,7 +118,7 @@ const ViewInvestment: React.FC = () => {
           "@type": "Organization",
           "name": "Civvest Energy Partners",
           "url": "https://www.civvest.com",
-          "logo": "https://www.civvest.com/civvest logo.jpg",
+          "logo": "https://www.civvest.com/civvest-main.jpg",
           "description": "Leading renewable energy investment platform providing sustainable energy solutions",
           "address": {
             "@type": "PostalAddress",
@@ -314,3 +314,4 @@ const ViewInvestment: React.FC = () => {
 };
 
 export default ViewInvestment;
+
