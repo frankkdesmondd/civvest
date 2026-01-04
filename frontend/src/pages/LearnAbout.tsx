@@ -22,7 +22,7 @@ const LearnAbout: React.FC = () => {
     title: "Learn About",
     description: "Learn more about this platform, and steps to invest",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-    image: "https://www.civvest.com/civvest main.jpeg", 
+    image: "https://www.civvest.com/civvest-main.jpg", 
     url: "https://www.civvest.com/learn-about",
     type: "website"
   });
@@ -164,7 +164,7 @@ const LearnAbout: React.FC = () => {
           "@type": "Organization",
           "name": "Civvest Energy Partners",
           "url": "https://www.civvest.com",
-          "logo": "https://www.civvest.com/civvest main.jpeg",
+          "logo": "https://www.civvest.com/civvest-main.jpg",
           "description": "Leading renewable energy investment platform providing sustainable energy solutions",
           "address": {
             "@type": "PostalAddress",
@@ -556,4 +556,5 @@ const LearnAbout: React.FC = () => {
 };
 
 export default LearnAbout;
+
 
