@@ -13,7 +13,7 @@ const Home: React.FC = () => {
     title: "Welcome",
     description: "Civvest Energy Partners. Invest in oil and get maximum returns from a minimum price to the price f your choice",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-    image: "https://www.civvest.com/civvest main.jpeg", 
+    image: "https://www.civvest.com/civvest-main.jpg", 
     url: "https://www.civvest.com",
     type: "website"
   });
@@ -30,12 +30,6 @@ const Home: React.FC = () => {
           "position": 1,
           "name": "Home",
           "item": "https://www.civvest.com"
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Company Bio",
-          "item": "https://www.civvest.com/"
         }
       ]
     });
@@ -54,7 +48,7 @@ const Home: React.FC = () => {
           "@type": "Organization",
           "name": "Civvest Energy Partners",
           "url": "https://www.civvest.com",
-          "logo": "https://www.civvest.com/civvest main.jpeg",
+          "logo": "https://www.civvest.com/civvest-main.jpg",
           "description": "Leading renewable energy investment platform providing sustainable energy solutions",
           "address": {
             "@type": "PostalAddress",
@@ -84,4 +78,5 @@ const Home: React.FC = () => {
 };
 
 export default Home;
+
 
