@@ -40,10 +40,10 @@ const News: React.FC = () => {
   }, []);
 
   useSEO({
-    title: "Bond Plans",
+    title: "News",
     description: "See our major offerings. Be part of this grand plan in the next phase of oil Investment.",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-    image: "https://www.civvest.com/civvest main.jpeg",
+    image: "https://www.civvest.com/civvest-main.jpg",
     url: "https://www.civvest.com/news",
     type: "website"
   });
@@ -64,7 +64,7 @@ const News: React.FC = () => {
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "Bond Plans",
+          "name": "News",
           "item": "https://www.civvest.com/news"
         }
       ]
@@ -257,4 +257,5 @@ const News: React.FC = () => {
 };
 
 export default News;
+
 
