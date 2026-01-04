@@ -11,7 +11,7 @@ const CompanyBio: React.FC = () => {
     title: "Company Bio",
     description: "Learn about Civvest Energy Partners - a leading renewable energy investment company based in Dallas, Texas. Discover our executive team, operations, and investment philosophy.",
     keywords: "Civvest company, energy company, executive team, oil and gas investment, renewable energy company, Texas energy",
-    image: "https://www.civvest.com/civvest main.jpeg", 
+    image: "https://www.civvest.com/civvest-main.jpg", 
     url: "https://www.civvest.com/company-bio",
     type: "website"
   });
@@ -71,7 +71,7 @@ const CompanyBio: React.FC = () => {
           "@type": "Organization",
           "name": "Civvest Energy Partners",
           "url": "https://www.civvest.com",
-          "logo": "https://www.civvest.com/civvest main.jpeg",
+          "logo": "https://www.civvest.com/civvest-main.jpg",
           "description": "Leading renewable energy investment platform providing sustainable energy solutions",
           "address": {
             "@type": "PostalAddress",
@@ -152,4 +152,5 @@ const CompanyBio: React.FC = () => {
 }
 
 export default CompanyBio
+
 
