@@ -1,6 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/authMiddleware.js';
+import { sendROIWithdrawalRequestEmail } from '../utils/emailService.js'; // ADD THIS IMPORT
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -8,7 +9,6 @@ const prisma = new PrismaClient();
 // User requests ROI withdrawal
 router.post('/request', authenticateToken, async (req, res) => {
   try {
-    // FIX: Change req.user.id to req.user.userId
     const userId = req.user.userId;
     const { userInvestmentId, amount, type, bankDetails, walletDetails } = req.body;
 
@@ -50,10 +50,21 @@ router.post('/request', authenticateToken, async (req, res) => {
       },
       include: {
         user: {
-          select: { id: true, roi: true, firstName: true, lastName: true, email: true }
+          select: { 
+            id: true, 
+            roi: true, 
+            firstName: true, 
+            lastName: true, 
+            email: true 
+          }
         },
         investment: {
-          select: { title: true, category: true, returnRate: true, duration: true }
+          select: { 
+            title: true, 
+            category: true, 
+            returnRate: true, 
+            duration: true 
+          }
         }
       }
     });
@@ -86,8 +97,9 @@ router.post('/request', authenticateToken, async (req, res) => {
         where: { id: userInvestmentId },
         data: { 
           roiAmount: { decrement: amount },
+          withdrawalStatus: 'PENDING',
           ...(userInvestment.roiAmount - amount <= 0 && { status: 'COMPLETED' })
-         }
+        }
       });
 
       const updatedUser = await tx.user.update({
@@ -116,12 +128,12 @@ router.post('/request', authenticateToken, async (req, res) => {
           amount: amount,
           type: type,
           status: 'PENDING',
-          bankName: bankDetails?.bankName,
-          accountName: bankDetails?.accountName,
-          accountNumber: bankDetails?.accountNumber,
-          routingCode: bankDetails?.routingCode,
-          coinHost: walletDetails?.coinHost,
-          walletAddress: walletDetails?.walletAddress
+          bankName: bankDetails?.bankName || null,
+          accountName: bankDetails?.accountName || null,
+          accountNumber: bankDetails?.accountNumber || null,
+          routingCode: bankDetails?.routingCode || null,
+          coinHost: walletDetails?.coinHost || null,
+          walletAddress: walletDetails?.walletAddress || null
         }
       });
 
@@ -158,6 +170,35 @@ router.post('/request', authenticateToken, async (req, res) => {
       return { withdrawal, updatedInvestment, updatedUser };
     });
 
+    // ✅ SEND EMAIL IMMEDIATELY AFTER SUCCESSFUL WITHDRAWAL CREATION
+    try {
+      await sendROIWithdrawalRequestEmail(userInvestment.user.email, {
+        userName: `${userInvestment.user.firstName} ${userInvestment.user.lastName}`,
+        amount: amount,
+        investmentTitle: userInvestment.investment.title,
+        withdrawalMethod: type,
+        transactionId: result.withdrawal.id,
+        requestDate: result.withdrawal.createdAt,
+      });
+      console.log('✅ ROI withdrawal request email sent to:', userInvestment.user.email);
+    } catch (emailError) {
+      // Log the error but don't fail the withdrawal request
+      console.error('⚠️ Failed to send withdrawal email (non-critical):', emailError.message);
+      // You might want to create an admin notification about the email failure
+      try {
+        await prisma.notification.create({
+          data: {
+            userId: userId,
+            title: 'Email Notification Failed',
+            message: 'Your withdrawal request was successful, but we could not send the confirmation email. Please check your dashboard for updates.',
+            type: 'SYSTEM_ALERT'
+          }
+        });
+      } catch (notifError) {
+        console.error('Failed to create email failure notification:', notifError);
+      }
+    }
+
     console.log('[Withdrawal] Success:', {
       withdrawalId: result.withdrawal.id,
       remainingROI: result.updatedInvestment.roiAmount
@@ -184,7 +225,6 @@ router.post('/request', authenticateToken, async (req, res) => {
 router.get('/roi-available/:investmentId', authenticateToken, async (req, res) => {
   try {
     const { investmentId } = req.params;
-    // FIX: Change req.user.id to req.user.userId
     const userId = req.user.userId;
 
     if (!userId) {
@@ -232,7 +272,6 @@ router.get('/roi-available/:investmentId', authenticateToken, async (req, res) =
 // Get user's ROI withdrawal history
 router.get('/my-roi-withdrawals', authenticateToken, async (req, res) => {
   try {
-    // FIX: Change req.user.id to req.user.userId
     const userId = req.user.userId;
     
     if (!userId) {
@@ -271,12 +310,20 @@ router.get('/admin/all', authenticateToken, async (req, res) => {
     const withdrawals = await prisma.withdrawal.findMany({
       include: {
         user: {
-          select: { firstName: true, lastName: true, email: true }
+          select: { 
+            firstName: true, 
+            lastName: true, 
+            email: true,
+            accountNumber: true 
+          }
         },
         investment: {
           include: {
             investment: {
-              select: { title: true, category: true }
+              select: { 
+                title: true, 
+                category: true 
+              }
             }
           }
         }
@@ -310,56 +357,92 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
         data: {
           status,
           adminNotes,
-          // FIX: Change req.user.id to req.user.userId
           approvedById: req.user.userId,
           approvedAt: status === 'APPROVED' ? new Date() : null
         },
         include: {
-          investment: true, // This includes the UserInvestment
+          investment: true,
           user: {
             select: {
               id: true,
               balance: true,
-              roi: true
+              roi: true,
+              firstName: true,
+              lastName: true,
+              email: true
             }
           }
         }
       });
 
-      // 2. If approved, process the balance/ROI update and check if investment should be marked as COMPLETED
-      if (status === 'APPROVED') {
-        // Update user balance (assuming this is a regular withdrawal, not ROI withdrawal)
-        // You might need to adjust this based on your withdrawal type
-        const updatedUser = await tx.user.update({
-          where: { id: withdrawal.userId },
+      // 2. If PROCESSED, mark the investment as COMPLETED and update withdrawalStatus
+      if (status === 'PROCESSED' && withdrawal.userInvestmentId) {
+        await tx.userInvestment.update({
+          where: { id: withdrawal.userInvestmentId },
           data: { 
-            balance: { decrement: withdrawal.amount }
+            status: 'COMPLETED',
+            withdrawalStatus: 'PROCESSED'
           }
         });
 
-        // 3. If this is an ROI withdrawal (has userInvestmentId), check ROI and mark as COMPLETED if needed
-        if (withdrawal.userInvestmentId && withdrawal.investment) {
-          const currentInvestment = await tx.userInvestment.findUnique({
-            where: { id: withdrawal.userInvestmentId }
-          });
-          
-          // If ROI amount is zero or negative, mark as COMPLETED
-          if (currentInvestment && currentInvestment.roiAmount <= 0) {
-            await tx.userInvestment.update({
-              where: { id: withdrawal.userInvestmentId },
-              data: { 
-                status: 'COMPLETED'
-              }
-            });
+        // Create notification for user
+        await tx.notification.create({
+          data: {
+            userId: withdrawal.userId,
+            title: 'Withdrawal Processed',
+            message: `Your withdrawal of $${withdrawal.amount.toFixed(2)} has been processed successfully. Investment closed.`,
+            type: 'WITHDRAWAL_PROCESSED'
           }
+        });
+      }
+
+      // 3. If REJECTED, refund the ROI back to the investment
+      if (status === 'REJECTED' && withdrawal.userInvestmentId) {
+        const investment = await tx.userInvestment.findUnique({
+          where: { id: withdrawal.userInvestmentId }
+        });
+
+        if (investment) {
+          await tx.userInvestment.update({
+            where: { id: withdrawal.userInvestmentId },
+            data: {
+              roiAmount: { increment: withdrawal.amount },
+              withdrawalStatus: null
+            }
+          });
+
+          await tx.user.update({
+            where: { id: withdrawal.userId },
+            data: {
+              roi: { increment: withdrawal.amount }
+            }
+          });
+
+          // Create ROI transaction for the refund
+          await tx.ROITransaction.create({
+            data: {
+              userId: withdrawal.userId,
+              userInvestmentId: withdrawal.userInvestmentId,
+              amount: withdrawal.amount,
+              type: 'REFUND',
+              previousRoiAmount: investment.roiAmount,
+              newRoiAmount: investment.roiAmount + withdrawal.amount,
+              previousUserRoi: withdrawal.user.roi,
+              newUserRoi: withdrawal.user.roi + withdrawal.amount,
+              notes: `Withdrawal rejected by admin. ROI refunded. Reason: ${adminNotes || 'Not specified'}`
+            }
+          });
         }
 
-        // Return updated user info for frontend
-        return {
-          withdrawal,
-          userId: withdrawal.user.id,
-          newBalance: updatedUser.balance
-        };
+        // Create notification for user
+        await tx.notification.create({
+          data: {
+            userId: withdrawal.userId,
+            title: 'Withdrawal Rejected',
+            message: `Your withdrawal request of $${withdrawal.amount.toFixed(2)} was rejected. ROI has been refunded to your investment. ${adminNotes ? `Reason: ${adminNotes}` : ''}`,
+            type: 'WITHDRAWAL_REJECTED'
+          }
+        });
       }
 
       return { withdrawal };
@@ -370,20 +453,18 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
       res.json({
         success: true,
         message: 'Withdrawal approved successfully',
-        withdrawal: result.withdrawal,
-        userId: result.userId,
-        newBalance: result.newBalance
+        withdrawal: result.withdrawal
       });
     } else if (status === 'REJECTED') {
       res.json({
         success: true,
-        message: 'Withdrawal rejected',
+        message: 'Withdrawal rejected and ROI refunded',
         withdrawal: result.withdrawal
       });
     } else if (status === 'PROCESSED') {
       res.json({
         success: true,
-        message: 'Withdrawal marked as processed',
+        message: 'Withdrawal processed and investment closed',
         withdrawal: result.withdrawal
       });
     } else {
@@ -407,7 +488,6 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
 // Get user's withdrawal history (all types)
 router.get('/my-withdrawals', authenticateToken, async (req, res) => {
   try {
-    // FIX: Change req.user.id to req.user.userId
     const userId = req.user.userId;
     
     if (!userId) {
