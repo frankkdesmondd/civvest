@@ -800,3 +800,276 @@ const sendConfirmationEmail = async ({ name, email }) => {
   }
 };
 
+// ============================================
+// ROI WITHDRAWAL REQUEST EMAIL - ADD THIS TO YOUR emailService.js
+// ============================================
+// Place this function at the end of your emailService.js file, before the export statement
+
+export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
+    const {
+        userName,
+        amount,
+        investmentTitle,
+        withdrawalMethod, // 'BANK_TRANSFER' or 'CRYPTO_WALLET'
+        transactionId,
+        requestDate
+    } = withdrawalData;
+
+    const htmlTemplate = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+                .header { background: #041a35; padding: 40px 20px; text-align: center; }
+                .header img { max-width: 180px; height: auto; margin-bottom: 10px; }
+                .header h1 { color: white; margin: 10px 0 0 0; font-size: 28px; }
+                .success-banner { 
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+                    padding: 30px; 
+                    text-align: center; 
+                    color: white; 
+                }
+                .success-banner h2 { margin: 0 0 10px 0; font-size: 24px; }
+                .content { padding: 40px 30px; }
+                .amount-box { 
+                    background: #f8f9fa; 
+                    padding: 25px; 
+                    border-radius: 12px; 
+                    text-align: center; 
+                    margin: 25px 0; 
+                    border: 2px solid #28a745; 
+                }
+                .amount { 
+                    font-size: 36px; 
+                    font-weight: bold; 
+                    color: #28a745; 
+                    margin: 10px 0; 
+                }
+                .info-box { 
+                    background: #e7f3ff; 
+                    padding: 20px; 
+                    border-radius: 8px; 
+                    border-left: 4px solid #2563eb; 
+                    margin: 25px 0; 
+                }
+                .info-row { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    padding: 10px 0; 
+                    border-bottom: 1px solid #d1e7ff; 
+                }
+                .info-row:last-child { border-bottom: none; }
+                .info-label { font-weight: bold; color: #041a35; }
+                .info-value { color: #2563eb; font-weight: 500; }
+                .timeline-box { 
+                    background: #fff3cd; 
+                    padding: 20px; 
+                    border-radius: 8px; 
+                    border-left: 4px solid #ffc107; 
+                    margin: 25px 0; 
+                }
+                .contact-box { 
+                    background: #f8f9fa; 
+                    padding: 20px; 
+                    border-radius: 8px; 
+                    text-align: center; 
+                    margin: 25px 0; 
+                }
+                .contact-box a { 
+                    color: #2563eb; 
+                    text-decoration: none; 
+                    font-weight: bold; 
+                }
+                .footer { 
+                    text-align: center; 
+                    padding: 20px; 
+                    color: #6c757d; 
+                    font-size: 12px; 
+                    border-top: 1px solid #e9ecef; 
+                }
+                .logo-footer { 
+                    color: #041a35; 
+                    font-weight: bold; 
+                    font-size: 16px; 
+                    margin: 10px 0; 
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <img src="https://www.civvest.com/civvest company logo.png" alt="Civvest Logo" />
+                    <h1>CIVVEST®</h1>
+                </div>
+                
+                <div class="success-banner">
+                    <h2>✅ ROI Withdrawal Request Received</h2>
+                    <p style="margin: 0; font-size: 16px;">Your request is being processed</p>
+                </div>
+                
+                <div class="content">
+                    <h2 style="color: #041a35; margin-top: 0;">Dear ${userName},</h2>
+                    
+                    <p style="font-size: 16px; line-height: 1.8;">
+                        We are pleased to inform you that your request for <strong>Return on Investment (ROI) withdrawal</strong> has been <strong>successfully received and is being processed</strong>.
+                    </p>
+                    
+                    <div class="amount-box">
+                        <p style="margin: 0; color: #6c757d; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Withdrawal Amount</p>
+                        <div class="amount">$${parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 14px;">via ${withdrawalMethod === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Crypto Wallet'}</p>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h3 style="margin-top: 0; color: #041a35;">Withdrawal Details</h3>
+                        <div class="info-row">
+                            <span class="info-label">Investment:</span>
+                            <span class="info-value">${investmentTitle || 'N/A'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Transaction ID:</span>
+                            <span class="info-value">#${transactionId}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Request Date:</span>
+                            <span class="info-value">${new Date(requestDate).toLocaleString('en-US', { 
+                                dateStyle: 'long', 
+                                timeStyle: 'short' 
+                            })}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Method:</span>
+                            <span class="info-value">${withdrawalMethod === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Cryptocurrency'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Status:</span>
+                            <span class="info-value" style="color: #ffc107; font-weight: bold;">⏳ PENDING APPROVAL</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-box">
+                        <h3 style="margin-top: 0; color: #041a35;">⏰ Processing Timeline</h3>
+                        <p style="margin: 0; line-height: 1.8;">
+                            <strong>Please note:</strong> All withdrawals are subject to internal verification and approval. 
+                            <strong style="color: #dc3545;">Kindly allow up to 24 hours</strong> for approval and funds transfer to be completed.
+                        </p>
+                        <ul style="margin: 15px 0 0 20px; line-height: 1.8;">
+                            <li><strong>Step 1:</strong> Request Verification (2-6 hours)</li>
+                            <li><strong>Step 2:</strong> Admin Approval (6-12 hours)</li>
+                            <li><strong>Step 3:</strong> Funds Transfer (12-24 hours)</li>
+                        </ul>
+                    </div>
+                    
+                    <p style="font-size: 16px; line-height: 1.8; margin-top: 30px;">
+                        Thank you for your continued trust and investment in our oil and gas production ventures. 
+                        We value your partnership and remain committed to delivering sustainable returns.
+                    </p>
+                    
+                    <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                        <h4 style="margin-top: 0; color: #041a35;">📊 What Happens Next?</h4>
+                        <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+                            <li>Our team will verify your withdrawal request</li>
+                            <li>You'll receive an email once it's approved</li>
+                            <li>Funds will be transferred to your registered ${withdrawalMethod === 'BANK_TRANSFER' ? 'bank account' : 'crypto wallet'}</li>
+                            <li>You'll receive a final confirmation once the transfer is complete</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="contact-box">
+                        <h3 style="margin-top: 0; color: #041a35;">Need Assistance?</h3>
+                        <p style="margin: 10px 0;">For any inquiries or assistance, please contact us:</p>
+                        <p style="margin: 10px 0;">
+                            📧 <a href="mailto:admin@civvest.com">admin@civvest.com</a>
+                        </p>
+                        <p style="margin: 10px 0;">
+                            🌐 <a href="https://www.civvest.com">www.civvest.com</a>
+                        </p>
+                    </div>
+                    
+                    <p style="margin-top: 30px; font-size: 16px;">
+                        <strong>Warm regards,</strong><br>
+                        <span style="color: #041a35; font-size: 18px; font-weight: bold;">CIVVEST®</span><br>
+                        <span style="color: #6c757d;">Investment Management Team</span>
+                    </p>
+                </div>
+                
+                <div class="footer">
+                    <div class="logo-footer">CIVVEST®</div>
+                    <p>© ${new Date().getFullYear()} Civvest. All rights reserved.</p>
+                    <p>Transaction ID: #${transactionId} | ${email}</p>
+                    <p style="margin-top: 10px; font-size: 11px;">
+                        This is an automated notification. Please do not reply directly to this email.
+                    </p>
+                    <p style="margin-top: 10px;">
+                        <a href="https://www.civvest.com/terms" style="color: #6c757d; margin: 0 10px;">Terms</a> | 
+                        <a href="https://www.civvest.com/privacy" style="color: #6c757d; margin: 0 10px;">Privacy</a>
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const textTemplate = `
+        ROI WITHDRAWAL REQUEST RECEIVED - CIVVEST®
+        
+        Dear ${userName},
+        
+        We are pleased to inform you that your request for Return on Investment (ROI) withdrawal has been successfully received and is being processed.
+        
+        WITHDRAWAL DETAILS:
+        -------------------
+        Amount: $${parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        Investment: ${investmentTitle || 'N/A'}
+        Transaction ID: #${transactionId}
+        Request Date: ${new Date(requestDate).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' })}
+        Method: ${withdrawalMethod === 'BANK_TRANSFER' ? 'Bank Transfer' : 'Cryptocurrency'}
+        Status: PENDING APPROVAL
+        
+        PROCESSING TIMELINE:
+        -------------------
+        Please note: All withdrawals are subject to internal verification and approval. 
+        Kindly allow up to 24 hours for approval and funds transfer to be completed.
+        
+        Thank you for your continued trust and investment in our oil and gas production ventures. 
+        We value your partnership and remain committed to delivering sustainable returns.
+        
+        NEED ASSISTANCE?
+        ---------------
+        📧 admin@civvest.com
+        🌐 www.civvest.com
+        
+        Warm regards,
+        CIVVEST®
+        Investment Management Team
+        
+        ---
+        © ${new Date().getFullYear()} Civvest. All rights reserved.
+        Transaction ID: #${transactionId}
+        This is an automated notification.
+    `;
+
+    try {
+        console.log(`📧 Sending ROI withdrawal request email to: ${email}`);
+        console.log(`   Amount: $${amount} | Transaction ID: ${transactionId}`);
+        
+        const info = await transporter.sendMail({
+            from: `"${process.env.EMAIL_FROM_NAME || 'Civvest'}" <${process.env.EMAIL_FROM}>`,
+            to: email,
+            subject: 'ROI Withdrawal Request Received - Civvest',
+            text: textTemplate,
+            html: htmlTemplate,
+        });
+
+        console.log(`✅ ROI withdrawal request email sent successfully to ${email}`);
+        console.log(`   Message ID: ${info.messageId}`);
+        
+        return info;
+    } catch (error) {
+        console.error('❌ FAILED to send ROI withdrawal request email:', error.message);
+        throw new Error(`ROI withdrawal email failed: ${error.message}`);
+    }
+};
+
