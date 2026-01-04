@@ -8,53 +8,68 @@
 <!-- Home -->
 <url>
   <loc>https://www.civvest.com/</loc>
+  <lastmod>2025-01-05</lastmod>
+  <changefreq>weekly</changefreq>
   <priority>1.0</priority>
 </url>
 
 <!-- our-company -->
 <url>
   <loc>https://www.civvest.com/our-company</loc>
+  <lastmod>2025-01-05</lastmod>
+  <changefreq>weekly</changefreq>
   <priority>0.9</priority>
 </url>
 
 <!-- company-bio -->
 <url>
   <loc>https://www.civvest.com/company-bio</loc>
+  <lastmod>2025-01-05</lastmod>
+  <changefreq>monthly</changefreq>
   <priority>0.8</priority>
 </url>
 
 <!-- principled-approach -->
 <url>
   <loc>https://www.civvest.com/principled-approach</loc>
+  <lastmod>2025-01-05</lastmod>
+  <changefreq>monthly</changefreq>
   <priority>0.8</priority>
 </url>
 
 <!-- view-investment -->
 <url>
   <loc>https://www.civvest.com/view-investment</loc>
+  <lastmod>2025-01-05</lastmod>
+  <changefreq>monthly</changefreq>
   <priority>0.9</priority>
 </url>
 
 <!-- news -->
 <url>
   <loc>https://www.civvest.com/news</loc>
+  <lastmod>2025-01-05</lastmod>
+  <changefreq>monthly</changefreq>
   <priority>0.8</priority>
 </url>
 
 <!-- faq -->
 <url>
   <loc>https://www.civvest.com/faq</loc>
+  <lastmod>2025-01-05</lastmod>
+  <changefreq>yearly</changefreq>
   <priority>0.8</priority>
 </url>
 
 <!-- contact-us  -->
 <url>
   <loc>https://www.civvest.com/contact-us</loc>
+  <lastmod>2025-01-05</lastmod>
+  <changefreq>yearly</changefreq>
   <priority>0.7</priority>
 </url>
 
 
 </urlset>
-
 
 
