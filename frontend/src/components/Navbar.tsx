@@ -335,7 +335,7 @@ const Navbar: React.FC = () => {
                         <p className="text-sm font-semibold text-gray-800">Notifications</p>
                         {unreadCount > 0 && (
                           <button
-                            onClick={() => axiosInstance.put('/notifications/mark-all-read').then(fetchNotifications)}
+                            onClick={() => axiosInstance.put('/api/notifications/mark-all-read').then(fetchNotifications)}
                             className="text-xs text-blue-600 hover:text-blue-800"
                           >
                             Mark all read
@@ -596,5 +596,6 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
+
 
 
