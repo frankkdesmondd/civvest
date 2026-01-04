@@ -375,12 +375,39 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
         }
       });
 
-      // 2. If PROCESSED, mark the investment as COMPLETED and update withdrawalStatus
-      if (status === 'PROCESSED' && withdrawal.userInvestmentId) {
+      // 2. If APPROVED, clear withdrawalStatus so user can make another withdrawal
+      if (status === 'APPROVED' && withdrawal.userInvestmentId) {
         await tx.userInvestment.update({
           where: { id: withdrawal.userInvestmentId },
           data: { 
-            status: 'COMPLETED',
+            withdrawalStatus: null // ✅ CLEAR STATUS - User can withdraw again
+          }
+        });
+
+        // Create notification for user
+        await tx.notification.create({
+          data: {
+            userId: withdrawal.userId,
+            title: 'Withdrawal Approved',
+            message: `Your withdrawal of ${withdrawal.amount.toFixed(2)} has been approved. Funds will be transferred shortly.`,
+            type: 'WITHDRAWAL_APPROVED'
+          }
+        });
+      }
+
+      // 3. If PROCESSED, mark the investment as COMPLETED and update withdrawalStatus
+      if (status === 'PROCESSED' && withdrawal.userInvestmentId) {
+        const investment = await tx.userInvestment.findUnique({
+          where: { id: withdrawal.userInvestmentId }
+        });
+
+        // Only mark as COMPLETED if no ROI remaining
+        const shouldComplete = investment && investment.roiAmount <= 0;
+
+        await tx.userInvestment.update({
+          where: { id: withdrawal.userInvestmentId },
+          data: { 
+            ...(shouldComplete && { status: 'COMPLETED' }),
             withdrawalStatus: 'PROCESSED'
           }
         });
@@ -390,13 +417,13 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
           data: {
             userId: withdrawal.userId,
             title: 'Withdrawal Processed',
-            message: `Your withdrawal of $${withdrawal.amount.toFixed(2)} has been processed successfully. Investment closed.`,
+            message: `Your withdrawal of ${withdrawal.amount.toFixed(2)} has been processed successfully.${shouldComplete ? ' Investment closed.' : ''}`,
             type: 'WITHDRAWAL_PROCESSED'
           }
         });
       }
 
-      // 3. If REJECTED, refund the ROI back to the investment
+      // 4. If REJECTED, refund the ROI back to the investment
       if (status === 'REJECTED' && withdrawal.userInvestmentId) {
         const investment = await tx.userInvestment.findUnique({
           where: { id: withdrawal.userInvestmentId }
@@ -407,7 +434,7 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
             where: { id: withdrawal.userInvestmentId },
             data: {
               roiAmount: { increment: withdrawal.amount },
-              withdrawalStatus: null
+              withdrawalStatus: null // ✅ CLEAR STATUS - User can try again
             }
           });
 
@@ -439,7 +466,7 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
           data: {
             userId: withdrawal.userId,
             title: 'Withdrawal Rejected',
-            message: `Your withdrawal request of $${withdrawal.amount.toFixed(2)} was rejected. ROI has been refunded to your investment. ${adminNotes ? `Reason: ${adminNotes}` : ''}`,
+            message: `Your withdrawal request of ${withdrawal.amount.toFixed(2)} was rejected. ROI has been refunded to your investment. ${adminNotes ? `Reason: ${adminNotes}` : ''}`,
             type: 'WITHDRAWAL_REJECTED'
           }
         });
@@ -452,7 +479,7 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
     if (status === 'APPROVED') {
       res.json({
         success: true,
-        message: 'Withdrawal approved successfully',
+        message: 'Withdrawal approved successfully. User can now make another withdrawal if ROI available.',
         withdrawal: result.withdrawal
       });
     } else if (status === 'REJECTED') {
@@ -464,7 +491,7 @@ router.put('/admin/:withdrawalId/status', authenticateToken, async (req, res) =>
     } else if (status === 'PROCESSED') {
       res.json({
         success: true,
-        message: 'Withdrawal processed and investment closed',
+        message: 'Withdrawal processed successfully',
         withdrawal: result.withdrawal
       });
     } else {
@@ -516,4 +543,3 @@ router.get('/my-withdrawals', authenticateToken, async (req, res) => {
 });
 
 export default router;
-
