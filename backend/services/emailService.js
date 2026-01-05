@@ -900,12 +900,12 @@ export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
         <body>
             <div class="container">
                 <div class="header">
-                    <img src="https://www.civvest.com/civvest company logo.png" alt="Civvest Logo" />
+                    <img src="https://www.civvest.com/civvest-main.jpg" alt="Civvest Logo" />
                     <h1>CIVVEST®</h1>
                 </div>
                 
                 <div class="success-banner">
-                    <h2>✅ ROI Withdrawal Request Received</h2>
+                    <h2>ROI Withdrawal Request Received</h2>
                     <p style="margin: 0; font-size: 16px;">Your request is being processed</p>
                 </div>
                 
@@ -949,19 +949,6 @@ export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
                         </div>
                     </div>
                     
-                    <div class="timeline-box">
-                        <h3 style="margin-top: 0; color: #041a35;">⏰ Processing Timeline</h3>
-                        <p style="margin: 0; line-height: 1.8;">
-                            <strong>Please note:</strong> All withdrawals are subject to internal verification and approval. 
-                            <strong style="color: #dc3545;">Kindly allow up to 24 hours</strong> for approval and funds transfer to be completed.
-                        </p>
-                        <ul style="margin: 15px 0 0 20px; line-height: 1.8;">
-                            <li><strong>Step 1:</strong> Request Verification (2-6 hours)</li>
-                            <li><strong>Step 2:</strong> Admin Approval (6-12 hours)</li>
-                            <li><strong>Step 3:</strong> Funds Transfer (12-24 hours)</li>
-                        </ul>
-                    </div>
-                    
                     <p style="font-size: 16px; line-height: 1.8; margin-top: 30px;">
                         Thank you for your continued trust and investment in our oil and gas production ventures. 
                         We value your partnership and remain committed to delivering sustainable returns.
@@ -1003,8 +990,8 @@ export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
                         This is an automated notification. Please do not reply directly to this email.
                     </p>
                     <p style="margin-top: 10px;">
-                        <a href="https://www.civvest.com/terms" style="color: #6c757d; margin: 0 10px;">Terms</a> | 
-                        <a href="https://www.civvest.com/privacy" style="color: #6c757d; margin: 0 10px;">Privacy</a>
+                        <a href="https://www.civvest.com/terms-and-services" style="color: #6c757d; margin: 0 10px;">Terms</a> | 
+                        <a href="https://www.civvest.com/privacy-policy" style="color: #6c757d; margin: 0 10px;">Privacy</a>
                     </p>
                 </div>
             </div>
@@ -1072,4 +1059,5 @@ export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
         throw new Error(`ROI withdrawal email failed: ${error.message}`);
     }
 };
+
 
