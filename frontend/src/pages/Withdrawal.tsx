@@ -503,7 +503,7 @@ const isInvestmentClosed = (investment: Investment) => {
                         ) : investment.withdrawalStatus === 'PENDING' ? (
                           <div className="text-center p-3 bg-yellow-50 rounded-lg">
                             <p className="text-xs sm:text-sm text-yellow-800">
-                              ROI withdrawal request pending admin approval
+                              ROI withdrawal request is being processed
                             </p>
                           </div>
                         ) : investment.status === 'PENDING' ? (
@@ -552,4 +552,5 @@ const isInvestmentClosed = (investment: Investment) => {
 };
 
 export default Withdrawal;
+
 
