@@ -901,7 +901,6 @@ export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
             <div class="container">
                 <div class="header">
                     <img src="https://www.civvest.com/civvest-main.jpg" alt="Civvest Logo" />
-                    <h1>CIVVEST®</h1>
                 </div>
                 
                 <div class="success-banner">
@@ -1058,6 +1057,7 @@ export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
         throw new Error(`ROI withdrawal email failed: ${error.message}`);
     }
 };
+
 
 
 
