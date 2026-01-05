@@ -957,7 +957,6 @@ export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
                     <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 25px 0;">
                         <h4 style="margin-top: 0; color: #041a35;">📊 What Happens Next?</h4>
                         <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
-                            <li>Our team will verify your withdrawal request</li>
                             <li>You'll receive an email once it's approved</li>
                             <li>Funds will be transferred to your registered ${withdrawalMethod === 'BANK_TRANSFER' ? 'bank account' : 'crypto wallet'}</li>
                             <li>You'll receive a final confirmation once the transfer is complete</li>
@@ -1059,5 +1058,6 @@ export const sendROIWithdrawalRequestEmail = async (email, withdrawalData) => {
         throw new Error(`ROI withdrawal email failed: ${error.message}`);
     }
 };
+
 
 
