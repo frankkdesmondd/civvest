@@ -310,15 +310,6 @@ const Profile: React.FC = () => {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Cannot be changed</p>
                 </div>
-
-                {/* <div>
-                  <label className="block text-gray-600 text-sm mb-2">Member Since</label>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <span className="text-gray-800">
-                      {new Date(profile.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div> */}
               </div>
 
               {/* Editable Fields */}
@@ -417,16 +408,16 @@ const Profile: React.FC = () => {
                 <p className="text-gray-600 text-sm mb-4">
                   Share this link with friends and earn rewards when they invest!
                 </p>
-                <div className="flex items-center gap-2 bg-white p-4 rounded-lg border-2 border-blue-200">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white p-4 rounded-lg border-2 border-blue-200">
                   <input
                     type="text"
                     value={profile.referralLink}
                     readOnly
-                    className="flex-1 bg-transparent text-gray-800 text-sm outline-none"
+                    className="flex-1 bg-transparent text-gray-800 text-sm outline-none px-2 py-2 sm:py-0"
                   />
                   <button
                     onClick={copyReferralLink}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition flex items-center gap-2 text-blue-600 font-semibold"
+                    className="p-2 hover:bg-gray-100 rounded-lg transition flex items-center justify-center gap-2 text-blue-600 font-semibold whitespace-nowrap"
                   >
                     {copied ? (
                       <>
@@ -643,8 +634,3 @@ const Profile: React.FC = () => {
 };
 
 export default Profile;
-
-
-
-
-
