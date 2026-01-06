@@ -144,7 +144,7 @@ const Deposit: React.FC = () => {
 
       await axiosInstance.post('/api/deposits', formData);
 
-      showToast('Payment confirmation submitted! An admin will verify your deposit shortly.', 'success');
+      showToast('Payment confirmation submitted and is being processed', 'success');
       
       setTimeout(() => {
         navigate('/dashboard');
@@ -158,8 +158,9 @@ const Deposit: React.FC = () => {
 
   if (!investment || !wallets) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen bg-[#041a35] flex flex-col items-center justify-center">
+        <img src={HomeUtils[0].companyLogo} alt="" className='w-[8em]'/>
+        <p className='text-white'>Page Loading......</p>
       </div>
     );
   }
@@ -394,4 +395,5 @@ const Deposit: React.FC = () => {
 };
 
 export default Deposit;
+
 
