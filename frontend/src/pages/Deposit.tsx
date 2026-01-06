@@ -7,6 +7,7 @@ import Foot from '../components/Foot';
 import { useToast } from '../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
 import axiosInstance from '../config/axios';
+import { HomeUtils } from '../utils/HomeUtils';
 
 interface Investment {
   id: string;
@@ -395,5 +396,6 @@ const Deposit: React.FC = () => {
 };
 
 export default Deposit;
+
 
 
